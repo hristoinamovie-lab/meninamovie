@@ -1468,8 +1468,10 @@ function renderSite(){ if(!DATA.craft) DATA.craft=[]; renderDraftBar(); renderSe
 function renderDraftBar(){
   var el=dyn("draftbar"); if(!el) return;
   if(!dirty){ el.innerHTML=""; return; }
-  el.innerHTML = '<b>Непубликувани промени</b><span>Виждаш ги само ти на това устройство.</span>'+
-    '<button data-draft="admin">Към админа</button><button class="x" data-draft="hide" title="Скрий">✕</button>';
+  var txt = SRV===true
+    ? "<b>Незаписани промени</b><span>"+esc(srvMsg||"Изчакват записване на сайта.")+"</span>"
+    : "<b>Непубликувани промени</b><span>Виждаш ги само ти на това устройство.</span>";
+  el.innerHTML = txt+'<button data-draft="admin">Към админа</button><button class="x" data-draft="hide" title="Скрий">✕</button>';
 }
 document.addEventListener("click",function(e){
   var d=e.target.closest&&e.target.closest("[data-draft]"); if(!d) return;
@@ -1632,7 +1634,57 @@ function reveal(){
 /* ==================================================================
    АДМИН ПАНЕЛ
    ================================================================== */
-var HOST="static";
+var HOST="static";           /* artifact | server | static */
+var SRV=null;                /* null = още не знаем, true/false = има ли сървър */
+var SRVKEY="";               /* ключът, с който сме влезли — праща се при запис */
+var srvTimer=null, srvBusy=false, srvMsg="";
+try{ SRVKEY = sessionStorage.getItem("mim-key")||""; }catch(e){}
+
+function apiGet(){
+  if(!/^https?:$/.test(location.protocol)){ SRV=false; return; }
+  fetch("/api/content",{cache:"no-store"}).then(function(r){
+    if(r.status===204){ SRV=true; HOST="server"; afterServer(null); return; }
+    if(!r.ok) throw 0;
+    return r.json().then(function(d){ SRV=true; HOST="server"; afterServer(d); });
+  }).catch(function(){ SRV=false; });
+}
+function afterServer(d){
+  if(d && d.settings){
+    DATA=d; migrate(); dirty=false;
+    try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
+    renderSite();
+  } else { renderDraftBar(); }
+  if(!admEl.hidden && A.unlocked) admRender();
+}
+function apiSave(now){
+  if(SRV!==true) return;
+  clearTimeout(srvTimer);
+  srvTimer = setTimeout(doSave, now?0:1200);
+}
+function doSave(){
+  if(srvBusy){ apiSave(); return; }
+  srvBusy=true; srvMsg="Записва…"; paintSrv();
+  fetch("/api/content",{
+    method:"POST",
+    headers:{"content-type":"application/json","x-mim-key":SRVKEY},
+    body:JSON.stringify(DATA)
+  }).then(function(r){
+    return r.json().catch(function(){ return {}; }).then(function(j){
+      srvBusy=false;
+      if(r.ok&&j.ok){
+        dirty=false; try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
+        srvMsg="Записано на сайта ✓";
+      } else { srvMsg = j.message || "Записът не мина"; }
+      paintSrv();
+    });
+  }).catch(function(){
+    srvBusy=false; srvMsg="Няма връзка — промените са запазени тук"; paintSrv();
+  });
+}
+function paintSrv(){
+  renderDraftBar();
+  if(!admEl.hidden && A.unlocked){ A.msg=srvMsg; A.msgType = /✓/.test(srvMsg)?"ok":(/Записва/.test(srvMsg)?"":"err"); admRender(); }
+}
 (function(){
   if(window.claude&&window.claude.use){
     try{ Promise.resolve(window.claude.use("artifact")).then(function(api){
@@ -1648,7 +1700,7 @@ var admEl = $("#admin"), siteEl = $("#site");
 function getP(o,p){ return p.split(".").reduce(function(x,k){ return x==null?x:x[k]; },o); }
 function setP(o,p,v){ var ks=p.split("."), last=ks.pop(); var t=ks.reduce(function(x,k){ if(x[k]==null) x[k]={}; return x[k]; },o); t[last]=v; }
 
-function markDirty(){ dirty=true; try{ localStorage.setItem(DRAFT_KEY,JSON.stringify(DATA)); }catch(e){} }
+function markDirty(){ dirty=true; try{ localStorage.setItem(DRAFT_KEY,JSON.stringify(DATA)); }catch(e){} apiSave(); }
 
 function fldInp(label,attr,val,opts){
   opts=opts||{};
@@ -1695,9 +1747,11 @@ function vDash(){
   "</div></div>"+
   '<div class="panel"><div class="panel-head"><h3>Как работи</h3></div><div class="panel-body hint" style="display:flex;flex-direction:column;gap:10px">'+
     "<p><b style=\"color:var(--ink)\">1.</b> Редактираш тук — промените се пазят локално в твоя браузър и се виждат веднага на сайта при теб.</p>"+
-    "<p><b style=\"color:var(--ink)\">2.</b> "+(HOST==="artifact"
+    "<p><b style=\"color:var(--ink)\">2.</b> "+(SRV===true
+      ? "Всяка промяна се записва <b style=\"color:var(--brand)\">автоматично на сайта</b>. Бутонът горе вдясно записва веднага, без да чакаш."
+      : HOST==="artifact"
       ? "Натискаш <b style=\"color:var(--brand)\">Публикувай</b> горе вдясно — новата версия става видима за всички."
-      : "Натискаш <b style=\"color:var(--brand)\">Изтегли обновения сайт</b> горе вдясно — сваляш нов <b>index.html</b> и го качваш в GitHub. След половин минута сайтът е обновен.")+"</p>"+
+      : "Натискаш <b style=\"color:var(--brand)\">Изтегли обновения сайт</b> горе вдясно — сваляш нов <b>index.html</b> и го качваш при хостинга.")+"</p>"+
     "<p><b style=\"color:var(--ink)\">3.</b> Ако публикуването не е налично (отваряш страницата само за четене), запази резервно копие от Настройки → Резервно копие.</p>"+
   "</div></div>"+
   '<div class="panel"><div class="panel-head"><h3>Последен епизод</h3><button class="btn btn-ghost btn-sm" data-act="tab" data-tab="episodes">Всички епизоди</button></div>'+
@@ -1984,7 +2038,9 @@ function admRender(){
       (A.msg?'<span class="pill '+A.msgType+'">'+esc(A.msg)+"</span>":"")+
       '<span class="pill">'+esc((A.me&&A.me.name)||"")+" · "+esc(ROLE_LABEL[A.role]||"")+"</span>"+
       (dirty?'<span class="pill warn">Непубликувани промени</span>':'<span class="pill ok">Публикувано</span>')+
-      (perm().publish?'<button class="btn btn-gold btn-sm" data-act="publish">'+(HOST==="artifact"?"Публикувай":"Изтегли обновения сайт")+"</button>":"")+"</div>"+
+      (perm().publish?'<button class="btn btn-gold btn-sm" data-act="publish">'+
+        (HOST==="artifact"?"Публикувай":(SRV===true?"Запиши сега":"Изтегли обновения сайт"))+"</button>":"")+
+      (SRV===true?'<button class="btn btn-ghost btn-sm" data-act="download">Свали копие</button>':"")+"</div>"+
     '<div class="adm-body">'+body+"</div></main></div>";
 }
 
@@ -2002,7 +2058,8 @@ admEl.addEventListener("click",function(ev){
   var act=t.dataset.act, i=t.dataset.i!=null?+t.dataset.i:-1, kind=A.tab;
   if(act==="gate"){ tryGate(); return; }
   if(act==="exit"){ closeAdmin(); return; }
-  if(act==="lock"){ A.unlocked=false; A.me=null; A.role=null; try{ sessionStorage.removeItem("mim-admin-ok"); }catch(e){} closeAdmin(); return; }
+  if(act==="lock"){ A.unlocked=false; A.me=null; A.role=null; SRVKEY="";
+    try{ sessionStorage.removeItem("mim-key"); }catch(e){} try{ sessionStorage.removeItem("mim-admin-ok"); }catch(e){} closeAdmin(); return; }
   if(act==="tab"){ A.tab=t.dataset.tab; A.edit=null; A.msg=""; A.confirmId=null; admRender(); return; }
   if(act==="new"){ A.tab=t.dataset.kind; A.kind=t.dataset.kind; A.idx=-1; A.edit=prep(blank(A.kind)); admRender(); return; }
   if(act==="edit"){ A.kind=kind; A.idx=i; A.edit=prep(JSON.parse(JSON.stringify(DATA[kind][i]))); admRender(); return; }
@@ -2027,6 +2084,7 @@ admEl.addEventListener("click",function(ev){
   if(act==="pick"){ pickImage(t.dataset.key); return; }
   if(act==="clearimg"){ putImage(t.dataset.key,""); return; }
   if(act==="publish"){ publish(); return; }
+  if(act==="download"){ saveSiteFile(); return; }
   if(act==="copyjson"){ copy($("#jsonBox").value,t,"Копирай"); return; }
   if(act==="dlbackup"){ downloadBackup(t); return; }
   if(act==="upbackup"){ uploadBackup(); return; }
@@ -2185,6 +2243,7 @@ function saveSiteFile(){
   }).catch(function(){ A.msg="Свалянето не мина"; A.msgType="err"; admRender(); });
 }
 function publish(){
+  if(SRV===true){ apiSave(true); return; }
   if(HOST!=="artifact"){ saveSiteFile(); return; }
   A.msg="Публикуване…"; A.msgType=""; admRender();
   var api = (window.claude&&window.claude.use) ? window.claude.use("artifact") : Promise.resolve(null);
@@ -2206,12 +2265,13 @@ function publish(){
 /* ============================ РУТЕР ============================ */
 function whoIs(key){
   key=String(key||"").trim(); if(!key) return null;
-  if(key===String(DATA.settings.adminKey)) return {role:"admin",id:"owner",name:"Администратор"};
+  if(key===String(DATA.settings.adminKey)) return {role:"admin",id:"owner",name:"Администратор",key:key};
   var u=(DATA.settings.users||[]).filter(function(x){ return x.key&&x.key===key; })[0];
-  return u ? {role:u.role||"author",id:u.id,name:u.name||"Потребител"} : null;
+  return u ? {role:u.role||"author",id:u.id,name:u.name||"Потребител",key:key} : null;
 }
 function signIn(who){
   A.unlocked=true; A.gateBad=false; A.me=who;
+  SRVKEY = who.key||""; try{ sessionStorage.setItem("mim-key",SRVKEY); }catch(e){}
   A.role=who.role;
   if(PERMS[A.role].tabs.indexOf(A.tab)<0) A.tab="dash";
   try{ sessionStorage.setItem("mim-admin-ok",JSON.stringify(who)); }catch(e){}
@@ -2238,7 +2298,8 @@ function route(){
   if((location.hash||"").indexOf("#/admin")===0){
     var k=location.hash.split("/")[2]||"";
     var who=whoIs(k);
-    if(who){ A.me=who; A.role=who.role; A.unlocked=true; try{ sessionStorage.setItem("mim-admin-ok",JSON.stringify(who)); }catch(e){} }
+    if(who){ A.me=who; A.role=who.role; A.unlocked=true; SRVKEY=who.key||"";
+      try{ sessionStorage.setItem("mim-admin-ok",JSON.stringify(who)); sessionStorage.setItem("mim-key",SRVKEY); }catch(e){} }
     openAdmin();
   } else if(!admEl.hidden){ /* оставаме в панела */ }
 }
@@ -2269,6 +2330,7 @@ try{
 }catch(e){}
 renderSite();
 route();
+apiGet();
 })();
 </script>
 
