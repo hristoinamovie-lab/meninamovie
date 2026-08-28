@@ -180,6 +180,18 @@ nav.main a:hover::after,nav.main a.active::after{right:0}
 .ep-links{display:flex;gap:8px}
 
 
+/* ================= ЛЕНТА ЗА НЕПУБЛИКУВАНИ ПРОМЕНИ ================= */
+#draftbar:empty{display:none}
+#draftbar{position:fixed;left:16px;bottom:16px;z-index:150;background:var(--brand);color:#000;
+  display:flex;align-items:center;gap:12px;padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,.5);max-width:min(92vw,520px)}
+#draftbar b{font-family:var(--f-cond);text-transform:uppercase;letter-spacing:.1em;font-size:12.5px;font-weight:700}
+#draftbar span{font-size:13px;opacity:.8}
+#draftbar button{background:#000;color:var(--brand);border:0;font-family:var(--f-cond);text-transform:uppercase;
+  letter-spacing:.09em;font-size:12px;font-weight:600;padding:7px 12px;cursor:pointer;white-space:nowrap}
+#draftbar button:hover{background:#1b1b1b}
+#draftbar .x{background:transparent;color:#000;padding:4px 8px;font-size:15px}
+@media (max-width:620px){#draftbar{left:10px;right:10px;bottom:10px;flex-wrap:wrap;gap:8px}}
+
 /* ================= ОЦЕНКА С КЛАПИ ================= */
 .claps{display:inline-flex;gap:3px;align-items:center;line-height:0}
 .clap{width:var(--cs,13px);height:var(--cs,13px);display:block;color:var(--brand)}
@@ -1157,6 +1169,7 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
   <div class="drawer-foot" id="drawerFoot" data-dyn="drawerFoot"></div>
 </aside>
 
+<div id="draftbar" data-dyn="draftbar"></div>
 <div id="admin" hidden data-dyn="admin"></div>
 
 <script data-mim="1">
@@ -1450,7 +1463,19 @@ function openCraft(c){
   openModal();
 }
 
-function renderSite(){ if(!DATA.craft) DATA.craft=[]; renderSettings(); renderAds(); renderHero(); renderFilters(); renderReviews(); renderEpisodes(); renderCraftFilters(); renderCraft(); renderNews(); renderMerch(); }
+function renderSite(){ if(!DATA.craft) DATA.craft=[]; renderDraftBar(); renderSettings(); renderAds(); renderHero(); renderFilters(); renderReviews(); renderEpisodes(); renderCraftFilters(); renderCraft(); renderNews(); renderMerch(); }
+
+function renderDraftBar(){
+  var el=dyn("draftbar"); if(!el) return;
+  if(!dirty){ el.innerHTML=""; return; }
+  el.innerHTML = '<b>Непубликувани промени</b><span>Виждаш ги само ти на това устройство.</span>'+
+    '<button data-draft="admin">Към админа</button><button class="x" data-draft="hide" title="Скрий">✕</button>';
+}
+document.addEventListener("click",function(e){
+  var d=e.target.closest&&e.target.closest("[data-draft]"); if(!d) return;
+  if(d.dataset.draft==="admin") openAdmin();
+  else dyn("draftbar").innerHTML="";
+});
 
 /* ============================ ВЗАИМОДЕЙСТВИЯ ============================ */
 document.addEventListener("click",function(e){
@@ -2206,7 +2231,7 @@ function openAdmin(){
   A.msg=""; admRender(); window.scrollTo(0,0);
 }
 function closeAdmin(){
-  admEl.hidden=true; siteEl.hidden=false;
+  admEl.hidden=true; siteEl.hidden=false; renderDraftBar();
   if((location.hash||"").indexOf("#/admin")===0){ try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){ location.hash=""; } }
 }
 function route(){
@@ -2235,7 +2260,13 @@ document.addEventListener("keydown",function(e){
 })();
 
 /* ============================ СТАРТ ============================ */
-try{ var d0=localStorage.getItem(DRAFT_KEY); if(d0&&location.hash.indexOf("#/admin")===0){ DATA=JSON.parse(d0); dirty=true; } }catch(e){}
+try{
+  var published = JSON.stringify(DATA), d0=localStorage.getItem(DRAFT_KEY);
+  if(d0){
+    if(JSON.stringify(JSON.parse(d0))===published){ localStorage.removeItem(DRAFT_KEY); }
+    else { DATA=JSON.parse(d0); migrate(); dirty=true; }
+  }
+}catch(e){}
 renderSite();
 route();
 })();
