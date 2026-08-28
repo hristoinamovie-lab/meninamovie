@@ -448,7 +448,7 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
 <script data-mim="1" type="application/json" id="mim-data">
 {
  "settings": {
-  "adminKey": "mim2026",
+  "adminKey": "",
   "tagline": "Кино • Подкаст • Ревюта",
   "podcastDay": "Всеки четвъртък, 20:00",
   "podcastLede": "Час и нещо за киното, което всички гледаме и малцина защитават. Навсякъде, където слушате подкасти.",
@@ -1898,8 +1898,8 @@ function vUsers(){
   var rows = us.map(function(u,i){
     return '<div class="rowi"><div class="thumb">'+esc((u.name||"?").slice(0,1).toUpperCase())+"</div>"+
       "<div><h4>"+esc(u.name||"Без име")+'</h4><div class="meta">'+esc(ROLE_LABEL[u.role]||u.role)+(u.email?" • "+esc(u.email):"")+"</div></div>"+
-      '<div class="acts"><code class="k" data-key="'+i+'">'+(A.showKey===i?esc(u.key):"••••••••")+"</code>"+
-        '<button class="ibtn" data-act="showkey" data-i="'+i+'" title="Покажи ключа">👁</button>'+
+      '<div class="acts"><code class="k" data-key="'+i+'">'+(u.key?(A.showKey===i?esc(u.key):"••••••••"):"скрит")+"</code>"+
+        (u.key?'<button class="ibtn" data-act="showkey" data-i="'+i+'" title="Покажи ключа">👁</button>':"")+
         '<button class="btn btn-ghost btn-sm" data-act="ukey" data-i="'+i+'">Нов ключ</button>'+
         (A.confirmId==="u"+i
           ? '<button class="btn btn-sm" style="background:var(--bad);color:#000" data-act="udel2" data-i="'+i+'">Изтрий?</button>'
@@ -1962,7 +1962,9 @@ function vSettings(){
   var url = location.origin+location.pathname+"#/admin/"+s.adminKey;
   return '<div class="panel"><div class="panel-head"><h3>Достъп до админа</h3></div><div class="panel-body"><div class="form">'+
     '<p class="hint">Панелът няма линк никъде в сайта. Отваря се по три начина: <b style="color:var(--ink)">Ctrl (⌘) + Alt + A</b>, <b style="color:var(--ink)">три клика върху „© Men In A Movie“ във футъра</b>, или адрес с ключа — когато сайтът е на собствен домейн. И трите искат ключа по-долу.</p>'+
-    fldInp("Таен ключ",'data-p="settings.adminKey"',s.adminKey)+
+    (SRV===true
+      ? '<div class="field"><label>Таен ключ</label><input value="" placeholder="въведи нов ключ, за да го смениш" data-p="settings.adminKey"><span class="hint">Ключът се пази на сървъра и вече не се вижда в кода на страницата. Остави полето празно, ако не го сменяш.</span></div>'
+      : fldInp("Таен ключ",'data-p="settings.adminKey"',s.adminKey))+
     '<div class="field"><label>Адрес на админа (на собствен домейн)</label><input readonly value="'+esc(url)+'"><span class="hint">Публикуването е позволено само на теб като собственик на страницата — чужд човек с ключа може да гледа панела, но не и да запише промени за всички.</span></div>'+
     "</div></div></div>"+
   '<div class="panel"><div class="panel-head"><h3>Канал</h3></div><div class="panel-body"><div class="form">'+
@@ -2279,7 +2281,23 @@ function signIn(who){
 }
 function tryGate(){
   var el=$("#gateKey"); if(!el) return;
-  var who=whoIs(el.value);
+  var k=String(el.value||"").trim();
+  if(SRV===true){
+    A.msg="Проверява…"; A.msgType=""; admRender();
+    fetch("/api/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({key:k})})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(w){
+        A.msg="";
+        if(w){
+          w.key=k;
+          if(w.bootstrap){ DATA.settings.adminKey=k; markDirty(); }
+          signIn(w);
+        } else { A.gateBad=true; admRender(); }
+      })
+      .catch(function(){ var who=whoIs(k); if(who) signIn(who); else { A.gateBad=true; admRender(); } });
+    return;
+  }
+  var who=whoIs(k);
   if(who) signIn(who); else { A.gateBad=true; admRender(); }
 }
 function openAdmin(){
