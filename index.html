@@ -500,7 +500,9 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
    "350 мл"
   ],
   "formEndpoint": "",
-  "users": []
+  "users": [],
+  "copyright": "© 2026 Men In A Movie",
+  "footerNote": ""
  },
  "ads": {
   "top": {
@@ -1124,8 +1126,8 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
       </div>
     </div>
     <div class="foot-bottom">
-      <span>© 2026 Men In A Movie</span>
-      <span>Демо съдържание — текстовете са примерни</span>
+      <span data-dyn="copyText"></span>
+      <span data-dyn="footNote"></span>
     </div>
   </div>
 </footer>
@@ -1215,6 +1217,9 @@ function migrate(){
   if(!s.genres) s.genres=["Екшън","Комедия","Драма","Sci-Fi","Хорър","Трилър","Анимация","Документален"];
   if(!s.sizesList) s.sizesList=["XS","S","M","L","XL","XXL","3XL","Универсален","Комплект","A2","350 мл"];
   if(s.formEndpoint==null) s.formEndpoint="";
+  if(s.copyright==null) s.copyright="© "+new Date().getFullYear()+" Men In A Movie";
+  if(s.footerNote==null) s.footerNote="";
+  if(s.footerNote==="Демо съдържание — текстовете са примерни") s.footerNote="";
   if(!s.users) s.users=[];
   if(!DATA.craft) DATA.craft=[];
   (DATA.reviews||[]).forEach(function(r){
@@ -1307,6 +1312,9 @@ function renderSettings(){
     '<a href="mailto:'+esc(s.contactEmail)+'">'+esc(s.contactEmail)+"</a>"+
     '<a href="mailto:'+esc(s.orderEmail)+'">'+esc(s.orderEmail)+"</a>"+
     '<a href="mailto:'+esc(s.contactEmail)+'?subject=Реклама">Реклама и партньорства</a>';
+  var cp=dyn("copyText"), fn=dyn("footNote");
+  if(cp) cp.textContent = s.copyright||"";
+  if(fn) fn.textContent = s.footerNote||"";
   var one = "<ul>"+(s.ticker||[]).map(function(x){return "<li>"+esc(x)+"</li>";}).join("")+"</ul>";
   dyn("ticker").innerHTML = one+one;
 }
@@ -1885,6 +1893,8 @@ function vSettings(){
     fldTa("Заглавие „За нас“",'data-p="settings.aboutTitle"',s.aboutTitle,{rows:2,hint:"Нов ред = нов ред в заглавието."})+
     fldTa("Текст „За нас“",'data-p="settings.about"',s.about,{rows:4})+
     fldInp("Три числа отстрани (със запетая)",'data-p="settings.stats" data-type="csv"',(s.stats||[]).join(", "))+
+    '<div class="grid2">'+fldInp("Ред долу вляво",'data-p="settings.copyright"',s.copyright,{ph:"© 2026 Men In A Movie"})+
+      fldInp("Ред долу вдясно",'data-p="settings.footerNote"',s.footerNote,{ph:"празно = нищо не се показва"})+"</div>"+
     fldTa("Бягаща лента (по един ред)",'data-p="settings.ticker" data-type="lines"',(s.ticker||[]).join("\n"),{rows:6})+
   "</div></div></div>"+
   '<div class="panel"><div class="panel-head"><h3>Контакти и мрежи</h3></div><div class="panel-body"><div class="form">'+
