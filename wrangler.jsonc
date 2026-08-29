@@ -2,6 +2,7 @@
   "name": "meninamovie",
   "main": "worker.js",
   "compatibility_date": "2026-08-01",
+"vars": { "ADMIN_KEY": "M1M_2026" },
   "assets": {
     "directory": "./public",
     "binding": "ASSETS"
