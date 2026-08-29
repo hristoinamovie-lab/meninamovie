@@ -169,6 +169,13 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
+    // един адрес: www.meninamovie.com → meninamovie.com
+    if (url.hostname.startsWith("www.")) {
+      const to = new URL(url.toString());
+      to.hostname = url.hostname.slice(4);
+      return Response.redirect(to.toString(), 301);
+    }
+
     /* ---------- как се влиза ---------- */
     if (path === "/api/auth") {
       if (request.method === "GET") {
