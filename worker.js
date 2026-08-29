@@ -233,6 +233,15 @@ export default {
       const rec = await authRecord(env);
       const data = await stored(env);
 
+      // резервен вход: ключът ADMIN_KEY от Cloudflare влиза винаги,
+      // за да има как да се влезе при забравена парола
+      const rescue = String(body.key || "").trim();
+      if (rescue && env.ADMIN_KEY && sameString(rescue, env.ADMIN_KEY)) {
+        const who = { role: "admin", id: "owner", name: "Администратор" };
+        const token = await newSession(env, who);
+        return json(Object.assign({ token, rescue: true }, who));
+      }
+
       if (rec && rec.users.length) {
         const email = normMail(body.email);
         const password = String(body.password || "");
