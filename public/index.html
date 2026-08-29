@@ -216,6 +216,7 @@ nav.main a:hover::after,nav.main a.active::after{right:0}
 .craft-body .meta{font-family:var(--f-cond);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:auto;padding-top:8px}
 .vwrap{position:relative;width:100%;aspect-ratio:16/9;margin-bottom:14px;background:#000;border:1px solid var(--line)}
 .vwrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
+.sig{margin-top:22px;padding-top:14px;border-top:1px solid var(--line);font-family:var(--f-cond);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .craft-hero{width:100%;aspect-ratio:16/9;background-size:cover;background-position:center;display:grid;place-items:center;position:relative;border:1px solid var(--line)}
 
 /* ================= НОВИНИ ================= */
@@ -1457,6 +1458,15 @@ function renderCraftFilters(){
     return '<button class="filter" data-cf="'+esc(g)+'" aria-pressed="'+(g===activeCraft)+'">'+esc(g)+"</button>";
   }).join("");
 }
+function sig(it){
+  var n=String((it&&it.authorName)||"").trim();
+  return n ? '<p class="sig">Текст: '+esc(n)+"</p>" : "";
+}
+/* бутон „Чуй повече“ — само когато има линк към видео */
+function moreBtn(it){
+  var v=String((it&&it.video)||"").trim();
+  return v ? '<a class="btn btn-gold btn-sm" href="'+esc(v)+'" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Чуй повече</a>' : "";
+}
 function videoEmbed(u){
   u=String(u||"").trim(); if(!u) return null;
   var m;
@@ -1504,8 +1514,8 @@ function openCraft(c){
     hero = c.img ? '<div class="craft-hero" '+art+"></div>" : "";
   }
   $("#modalBody").innerHTML = hero+
-    md(c.body||c.p)+
-    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px"><button class="btn btn-ghost btn-sm" data-close>Затвори</button></div>';
+    md(c.body||c.p)+sig(c)+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px"><button class="btn btn-ghost btn-sm" data-close>Затвори</button></div>';
   openModal();
 }
 
@@ -1579,11 +1589,8 @@ function openReview(r){
   $("#modalScore").style.display = "";
   $("#modalMeta").innerHTML = (r.mins?'<span class="chip">'+r.mins+" мин</span>":"")+
     (r.tags||[]).map(function(t){return '<span class="chip">'+esc(t)+"</span>";}).join("");
-  $("#modalBody").innerHTML = '<p class="verdict">'+esc(r.verdict)+"</p>"+md(r.body)+
-    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">'+
-      (String(r.video||"").trim()
-        ? '<a class="btn btn-gold btn-sm" href="'+esc(r.video)+'" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Чуй повече</a>'
-        : "")+
+  $("#modalBody").innerHTML = md(r.body||r.verdict)+sig(r)+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">'+moreBtn(r)+
       '<button class="btn btn-ghost btn-sm" data-close>Затвори</button></div>';
   openModal();
 }
@@ -1593,7 +1600,9 @@ function openNews(n){
   $("#modalTitle").textContent = n.t;
   $("#modalScore").innerHTML=""; $("#modalScore").style.display="none";
   $("#modalMeta").innerHTML="";
-  $("#modalBody").innerHTML = md(n.body||n.p)+'<div style="margin-top:8px"><button class="btn btn-ghost btn-sm" data-close>Затвори</button></div>';
+  $("#modalBody").innerHTML = md(n.body||n.p)+sig(n)+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">'+moreBtn(n)+
+      '<button class="btn btn-ghost btn-sm" data-close>Затвори</button></div>';
   openModal();
 }
 
@@ -1894,7 +1903,7 @@ function listView(kind){
       title=it.t; meta=it.y+" • "+it.g+" • "+it.s+"/5 клапи"+(String(it.video||"").trim()?" • С ВИДЕО":""); }
     else if(kind==="craft"){ th = it.img?'style="background-image:url('+it.img+')"':'style="background:linear-gradient(150deg,'+(it.c1||"#333")+","+(it.c2||"#666")+')"';
       title=it.t; meta=it.tag+" • "+fmtDate(it.when)+" • "+craftKind(it).toUpperCase(); }
-    else if(kind==="news"){ th = it.img?'style="background-image:url('+it.img+')"':""; title=it.t; meta=it.tag+" • "+fmtDate(it.when)+(it.lead?" • ВОДЕЩА":""); }
+    else if(kind==="news"){ th = it.img?'style="background-image:url('+it.img+')"':""; title=it.t; meta=it.tag+" • "+fmtDate(it.when)+(it.lead?" • ВОДЕЩА":"")+(String(it.video||"").trim()?" • С ВИДЕО":""); }
     else if(kind==="episodes"){ th=""; title=it.t; meta="Еп. "+it.n+" • "+fmtDate(it.d)+" • "+fmtLen(it.lenH,it.lenM); }
     else { th = it.img?'style="background-image:url('+it.img+')"':""; title=it.t; meta=it.p+" € • "+(it.sizes||[]).join(", ")+(it.on===false?" • СКРИТ":""); }
     var st = hasStatus ? (STATUS[it.status||"published"]||STATUS.published) : null;
@@ -1966,7 +1975,8 @@ function editView(){
       '<div class="mdprev" data-prev="1">'+md(e.body)+"</div>"+
       fldInp("Линк към видеото в YouTube (по избор)",'data-k="video"',e.video,{ph:"https://youtu.be/…",hint:"Ако има видео за този филм, тук слагаш линка и в ревюто се появява бутон „Чуй повече“. Празно поле = без бутон."})+
       fldImg("Постер","poster",e.poster,"2:3, препоръчано 600×900. Ако няма постер, се ползват двата цвята.")+
-      '<div class="grid2">'+fldInp("Цвят 1",'data-k="c1"',e.c1,{type:"color"})+fldInp("Цвят 2",'data-k="c2"',e.c2,{type:"color"})+"</div>";
+      '<div class="grid2">'+fldInp("Цвят 1",'data-k="c1"',e.c1,{type:"color"})+fldInp("Цвят 2",'data-k="c2"',e.c2,{type:"color"})+"</div>"+
+      fldInp("Автор (подпис в края на текста)",'data-k="authorName"',e.authorName,{ph:"Име и фамилия",hint:"Показва се най-долу под текста. Празно поле = без подпис."});
   } else if(k==="craft"){
     f = '<div class="grid3">'+
       fldSel("Рубрика",'data-k="tag"',["Камера","Монтаж","Звук","VFX","Каскади","Продукция","Кадър по кадър"],e.tag)+
@@ -1979,7 +1989,8 @@ function editView(){
       fldTa("Текст",'data-k="body" data-md-target="1"',e.body,{rows:10,toolbar:MDBAR,hint:"**удебелено**, *курсив*, ## подзаглавие, - списък, > акцент, [текст](линк)."})+
       '<div class="mdprev" data-prev="1">'+md(e.body)+"</div>"+
       fldImg("Кадър от видеото","img",e.img,"16:9, препоръчано 800×450.")+
-      '<div class="grid2">'+fldInp("Цвят 1",'data-k="c1"',e.c1,{type:"color"})+fldInp("Цвят 2",'data-k="c2"',e.c2,{type:"color"})+"</div>";
+      '<div class="grid2">'+fldInp("Цвят 1",'data-k="c1"',e.c1,{type:"color"})+fldInp("Цвят 2",'data-k="c2"',e.c2,{type:"color"})+"</div>"+
+      fldInp("Автор (подпис в края на текста)",'data-k="authorName"',e.authorName,{ph:"Име и фамилия",hint:"Показва се най-долу под текста. Празно поле = без подпис."});
   } else if(k==="news"){
     f = '<div class="grid3">'+fldInp("Рубрика",'data-k="tag"',e.tag,{ph:"Индустрия / Боксофис…"})+
       fldDate("Дата","when",e.when)+
@@ -1988,7 +1999,9 @@ function editView(){
       fldTa("Кратко (на картата)",'data-k="p"',e.p,{rows:2})+
       fldTa("Текст",'data-k="body" data-md-target="1"',e.body,{rows:10,toolbar:MDBAR,hint:"Същото форматиране като при ревютата."})+
       '<div class="mdprev" data-prev="1">'+md(e.body)+"</div>"+
-      fldImg("Изображение","img",e.img,"16:11, препоръчано 800×550.");
+      fldInp("Линк към видеото в YouTube (по избор)",'data-k="video"',e.video,{ph:"https://youtu.be/…",hint:"Ако има видео по темата, тук слагаш линка и в новината се появява бутон „Чуй повече“. Празно поле = без бутон."})+
+      fldImg("Изображение","img",e.img,"16:11, препоръчано 800×550.")+
+      fldInp("Автор (подпис в края на текста)",'data-k="authorName"',e.authorName,{ph:"Име и фамилия",hint:"Показва се най-долу под текста. Празно поле = без подпис."});
   } else if(k==="episodes"){
     f = '<div class="grid3">'+fldInp("Номер",'data-k="n" data-type="num"',e.n,{type:"number"})+
       fldDate("Дата","d",e.d)+
@@ -2317,7 +2330,7 @@ function newKey(){ return Math.random().toString(36).slice(2,6)+"-"+Math.random(
 function blank(kind){
   if(kind==="reviews") return {id:uid("r"),t:"",y:new Date().getFullYear(),g:(DATA.settings.genres||["Екшън"])[0],s:4,mins:0,c1:"#1F1B14",c2:"#6B5620",poster:"",video:"",tags:[],verdict:"",body:"",status:"published",author:"",authorName:""};
   if(kind==="craft") return {id:uid("c"),tag:"Камера",t:"",when:todayISO(),role:"",guest:"",video:"",img:"",c1:"#1E1B14",c2:"#6B5620",p:"",body:"",status:"published",author:"",authorName:""};
-  if(kind==="news") return {id:uid("n"),tag:"Индустрия",t:"",when:todayISO(),lead:false,img:"",p:"",body:"",status:"published",author:"",authorName:""};
+  if(kind==="news") return {id:uid("n"),tag:"Индустрия",t:"",when:todayISO(),lead:false,img:"",video:"",p:"",body:"",status:"published",author:"",authorName:""};
   if(kind==="episodes"){ var top=(DATA.episodes[0]||{}).n||0; return {id:uid("e"),n:top+1,t:"",d:todayISO(),lenH:1,lenM:0,tag:"Сезон 3",desc:"",yt:"",sp:""}; }
   return {id:uid("m"),t:"",d:"",p:20,sizes:["S","M","L","XL"],c1:"#141210",c2:"#3A3018",img:"",on:true};
 }
@@ -2325,7 +2338,8 @@ function saveEdit(){
   var e=A.edit;
   if(A.kind==="reviews"){ e.mins=(+e._h||0)*60+(+e._m||0); delete e._h; delete e._m; }
   if(["reviews","craft","news"].indexOf(A.kind)>=0){
-    if(!e.author){ e.author=(A.me&&A.me.id)||""; e.authorName=(A.me&&A.me.name)||""; }
+    if(!e.author) e.author=(A.me&&A.me.id)||"";
+    if(!String(e.authorName||"").trim()) e.authorName=(A.me&&A.me.name)||"";
     if(!perm().all) e.status="review"; else if(!e.status) e.status="published";
   }
   if(A.idx<0) DATA[A.kind].unshift(e); else DATA[A.kind][A.idx]=e;
