@@ -216,7 +216,13 @@ nav.main a:hover::after,nav.main a.active::after{right:0}
 .craft-body .meta{font-family:var(--f-cond);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:auto;padding-top:8px}
 .vwrap{position:relative;width:100%;aspect-ratio:16/9;margin-bottom:14px;background:#000;border:1px solid var(--line)}
 .vwrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
-.sig{margin-top:22px;padding-top:14px;border-top:1px solid var(--line);font-family:var(--f-cond);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.dwrap{display:flex;gap:8px;align-items:stretch}
+.dwrap input[type="text"]{flex:1;min-width:0}
+.dwrap{position:relative}
+.dbtn{flex:none;width:46px;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--line);color:var(--muted);cursor:pointer;transition:color .18s ease,border-color .18s ease}
+.dbtn:hover{color:var(--brand);border-color:var(--brand)}
+.dpick{position:absolute;right:0;bottom:0;width:46px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
+.sig{margin-top:20px;text-align:right;font-size:13px;font-style:italic;color:var(--muted);opacity:.8}
 .craft-hero{width:100%;aspect-ratio:16/9;background-size:cover;background-position:center;display:grid;place-items:center;position:relative;border:1px solid var(--line)}
 
 /* ================= НОВИНИ ================= */
@@ -1460,7 +1466,7 @@ function renderCraftFilters(){
 }
 function sig(it){
   var n=String((it&&it.authorName)||"").trim();
-  return n ? '<p class="sig">Текст: '+esc(n)+"</p>" : "";
+  return n ? '<p class="sig">— '+esc(n)+"</p>" : "";
 }
 /* бутон „Чуй повече“ — само когато има линк към видео */
 function moreBtn(it){
@@ -1933,8 +1939,29 @@ function opts(list,val){ return (list||[]).map(function(o){ return '<option'+(St
 function fldSel(label,attr,list,val,hint){
   return '<div class="field"><label>'+esc(label)+"</label><select "+attr+">"+opts(list,val)+"</select>"+(hint?'<span class="hint">'+hint+"</span>":"")+"</div>";
 }
+function pad2(n){ n=String(n); return n.length<2 ? "0"+n : n; }
+/* 2026-08-24 → 24.08.2026 */
+function bgDate(iso){ var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso||"")); return m ? m[3]+"."+m[2]+"."+m[1] : ""; }
+/* 24.08.2026 (или 24/8/2026) → 2026-08-24, иначе null */
+function isoDate(txt){
+  var m=/^(\d{1,2})[.\/\- ](\d{1,2})[.\/\- ](\d{4})$/.exec(String(txt||"").trim());
+  if(!m) return null;
+  var d=+m[1], mo=+m[2], y=+m[3];
+  if(d<1||d>31||mo<1||mo>12) return null;
+  var dt=new Date(y,mo-1,d);
+  if(dt.getFullYear()!==y||dt.getMonth()!==mo-1||dt.getDate()!==d) return null;
+  return y+"-"+pad2(mo)+"-"+pad2(d);
+}
 function fldDate(label,key,val,hint){
-  return '<div class="field"><label>'+esc(label)+'</label><input type="date" data-k="'+key+'" value="'+esc(val||"")+'">'+
+  return '<div class="field"><label>'+esc(label)+"</label>"+
+    '<div class="dwrap">'+
+      '<input type="text" inputmode="numeric" maxlength="10" placeholder="дд.мм.гггг" data-k="'+key+'" data-type="bgdate" value="'+esc(bgDate(val))+'">'+
+      '<button type="button" class="dbtn" data-act="cal" data-key="'+key+'" title="Избери от календара" aria-label="Избери от календара">'+
+        '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+
+        '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>'+
+      "</button>"+
+      '<input type="date" class="dpick" data-pick="'+key+'" value="'+esc(val||"")+'" tabindex="-1" aria-hidden="true">'+
+    "</div>"+
     (hint?'<span class="hint">'+hint+"</span>":"")+"</div>";
 }
 function years(){ var y=new Date().getFullYear()+1, a=[]; for(var i=y;i>=1930;i--) a.push(i); return a; }
@@ -2276,6 +2303,11 @@ admEl.addEventListener("click",function(ev){
   if(act==="del"){ A.confirmId=kind+i; admRender(); return; }
   if(act==="del2"){ DATA[kind].splice(i,1); A.confirmId=null; afterChange(); return; }
   if(act==="approve"){ DATA[kind][i].status="published"; A.msg="Одобрено"; A.msgType="ok"; afterChange(); return; }
+  if(act==="cal"){
+    var pk=admEl.querySelector('[data-pick="'+t.dataset.key+'"]');
+    if(pk){ if(pk.showPicker){ try{ pk.showPicker(); }catch(e){ pk.focus(); } } else { pk.focus(); pk.click(); } }
+    return;
+  }
   if(act==="setauth"){ setAuth(); return; }
   if(act==="unew"){ A.uedit={id:"",name:"",email:"",role:"author"}; A.umsg=""; admRender(); return; }
   if(act==="ucancel"){ A.uedit=null; A.umsg=""; admRender(); return; }
@@ -2305,6 +2337,19 @@ admEl.addEventListener("click",function(ev){
 
 admEl.addEventListener("input",function(ev){
   var el=ev.target, v=el.type==="checkbox"?el.checked:el.value, ty=el.dataset.type;
+  if(el.dataset.pick!=null&&A.edit){
+    if(v){ A.edit[el.dataset.pick]=v;
+      var tf=admEl.querySelector('input[data-k="'+el.dataset.pick+'"][data-type="bgdate"]');
+      if(tf) tf.value=bgDate(v); }
+    return;
+  }
+  if(ty==="bgdate"){
+    var iso=isoDate(v);
+    var box=el.closest(".field"); if(box) box.classList.toggle("bad", !!v && !iso);
+    if(!iso) return;                       /* още се пише — не пипаме стойността */
+    var pk=admEl.querySelector('[data-pick="'+el.dataset.k+'"]'); if(pk) pk.value=iso;
+    v=iso;
+  }
   if(ty==="num") v=parseFloat(v)||0;
   if(ty==="csv") v=String(v).split(",").map(function(x){return x.trim();}).filter(Boolean);
   if(ty==="lines") v=String(v).split("\n").map(function(x){return x.trim();}).filter(Boolean);
