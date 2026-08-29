@@ -1467,6 +1467,12 @@ function renderSite(){ if(!DATA.craft) DATA.craft=[]; renderDraftBar(); renderSe
 
 function renderDraftBar(){
   var el=dyn("draftbar"); if(!el) return;
+  if(admEl && !admEl.hidden){ el.innerHTML=""; return; }
+  if(orphan && !dirty){
+    el.innerHTML = '<b>Стари промени от този браузър</b><span>Качването им <b>заменя всичко</b> на сайта с тази версия.</span>'+
+      '<button data-draft="useorphan">Качи ги</button><button data-draft="droporphan">Изхвърли ги</button>';
+    return;
+  }
   if(!dirty){ el.innerHTML=""; return; }
   var txt = SRV===true
     ? "<b>Незаписани промени</b><span>"+esc(srvMsg||"Изчакват записване на сайта.")+"</span>"
@@ -1475,8 +1481,21 @@ function renderDraftBar(){
 }
 document.addEventListener("click",function(e){
   var d=e.target.closest&&e.target.closest("[data-draft]"); if(!d) return;
-  if(d.dataset.draft==="admin") openAdmin();
-  else dyn("draftbar").innerHTML="";
+  var act=d.dataset.draft;
+  if(act==="admin"){ openAdmin(); return; }
+  if(act==="useorphan"){
+    try{
+      var o=JSON.parse(orphan);
+      DATA = SRV===true ? stripKeys(o) : o;
+      migrate(); orphan=null;
+      try{ localStorage.removeItem(ORPH_KEY); }catch(e){}
+      markDirty(); renderSite();
+      if(SRV===true) apiSave(true);
+    }catch(e){}
+    return;
+  }
+  if(act==="droporphan"){ orphan=null; try{ localStorage.removeItem(ORPH_KEY); }catch(e){} renderDraftBar(); return; }
+  dyn("draftbar").innerHTML="";
 });
 
 /* ============================ ВЗАИМОДЕЙСТВИЯ ============================ */
@@ -1640,6 +1659,16 @@ var SRVKEY="";               /* ключът, с който сме влезли 
 var srvTimer=null, srvBusy=false, srvMsg="";
 try{ SRVKEY = sessionStorage.getItem("mim-key")||""; }catch(e){}
 
+var ORPH_KEY="mim-draft-orphan", orphan=null;
+function stripKeys(o){
+  var c=JSON.parse(JSON.stringify(o));
+  if(c.settings){
+    delete c.settings.adminKey;
+    c.settings.users=(c.settings.users||[]).map(function(u){ return {id:u.id,name:u.name,email:u.email,role:u.role}; });
+  }
+  return c;
+}
+function sameContent(a,b){ try{ return JSON.stringify(stripKeys(a))===JSON.stringify(stripKeys(b)); }catch(e){ return false; } }
 function apiGet(){
   if(!/^https?:$/.test(location.protocol)){ SRV=false; return; }
   fetch("/api/content",{cache:"no-store"}).then(function(r){
@@ -1650,10 +1679,23 @@ function apiGet(){
 }
 function afterServer(d){
   if(d && d.settings){
+    var draft=null;
+    try{ draft=localStorage.getItem(DRAFT_KEY); }catch(e){}
     DATA=d; migrate(); dirty=false;
-    try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
+    if(draft){
+      var same=false;
+      try{ same=sameContent(JSON.parse(draft),d); }catch(e){}
+      if(same){ try{ localStorage.removeItem(DRAFT_KEY); }catch(e){} }
+      else {
+        orphan=draft;
+        try{ localStorage.setItem(ORPH_KEY,draft); localStorage.removeItem(DRAFT_KEY); }catch(e){}
+      }
+    }
     renderSite();
-  } else { renderDraftBar(); }
+  } else {
+    try{ orphan = orphan || localStorage.getItem(ORPH_KEY); }catch(e){}
+    renderDraftBar();
+  }
   if(!admEl.hidden && A.unlocked) admRender();
 }
 function apiSave(now){
@@ -2150,7 +2192,7 @@ function afterChange(){ markDirty(); renderSite(); admRender(); }
 function applyBackup(d){
   if(!d||typeof d!=="object"||!d.settings){ A.msg="Файлът не изглежда като копие на сайта"; A.msgType="err"; admRender(); return; }
   A.prevBackup = JSON.stringify(DATA);
-  DATA = d; migrate();
+  DATA = (SRV===true) ? stripKeys(d) : d; migrate();
   A.msg="Възстановено"; A.msgType="ok"; afterChange();
 }
 function downloadBackup(btn){
@@ -2306,7 +2348,7 @@ function openAdmin(){
     if(ss){ var who = ss==="1" ? {role:"admin",id:"owner",name:"Администратор"} : JSON.parse(ss);
       if(who&&PERMS[who.role]){ A.unlocked=true; A.me=who; A.role=who.role; } } }catch(e){}
   siteEl.hidden=true; admEl.hidden=false; document.body.style.overflow="";
-  A.msg=""; admRender(); window.scrollTo(0,0);
+  A.msg=""; admRender(); renderDraftBar(); window.scrollTo(0,0);
 }
 function closeAdmin(){
   admEl.hidden=true; siteEl.hidden=false; renderDraftBar();
@@ -2346,6 +2388,7 @@ try{
     else { DATA=JSON.parse(d0); migrate(); dirty=true; }
   }
 }catch(e){}
+try{ orphan = localStorage.getItem(ORPH_KEY)||null; }catch(e){}
 renderSite();
 route();
 apiGet();
