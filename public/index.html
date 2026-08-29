@@ -1580,7 +1580,11 @@ function openReview(r){
   $("#modalMeta").innerHTML = (r.mins?'<span class="chip">'+r.mins+" мин</span>":"")+
     (r.tags||[]).map(function(t){return '<span class="chip">'+esc(t)+"</span>";}).join("");
   $("#modalBody").innerHTML = '<p class="verdict">'+esc(r.verdict)+"</p>"+md(r.body)+
-    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px"><a class="btn btn-gold btn-sm" href="#podcast" data-close>Чуй разбора в подкаста</a><button class="btn btn-ghost btn-sm" data-close>Затвори</button></div>';
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">'+
+      (String(r.video||"").trim()
+        ? '<a class="btn btn-gold btn-sm" href="'+esc(r.video)+'" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Чуй повече</a>'
+        : "")+
+      '<button class="btn btn-ghost btn-sm" data-close>Затвори</button></div>';
   openModal();
 }
 function openNews(n){
@@ -1887,7 +1891,7 @@ function listView(kind){
   var rows = items.map(function(it){
     var i = all.indexOf(it), th, title, meta;
     if(kind==="reviews"){ th = it.poster?'style="background-image:url('+it.poster+')"':'style="background:linear-gradient(150deg,'+(it.c1||"#333")+","+(it.c2||"#666")+')"';
-      title=it.t; meta=it.y+" • "+it.g+" • "+it.s+"/5 клапи"; }
+      title=it.t; meta=it.y+" • "+it.g+" • "+it.s+"/5 клапи"+(String(it.video||"").trim()?" • С ВИДЕО":""); }
     else if(kind==="craft"){ th = it.img?'style="background-image:url('+it.img+')"':'style="background:linear-gradient(150deg,'+(it.c1||"#333")+","+(it.c2||"#666")+')"';
       title=it.t; meta=it.tag+" • "+fmtDate(it.when)+" • "+craftKind(it).toUpperCase(); }
     else if(kind==="news"){ th = it.img?'style="background-image:url('+it.img+')"':""; title=it.t; meta=it.tag+" • "+fmtDate(it.when)+(it.lead?" • ВОДЕЩА":""); }
@@ -1960,6 +1964,7 @@ function editView(){
       fldTa("Кратко мнение (показва се на картата)",'data-k="verdict"',e.verdict,{rows:2})+
       fldTa("Ревю",'data-k="body" data-md-target="1"',e.body,{rows:10,toolbar:MDBAR,hint:"**удебелено**, *курсив*, ## подзаглавие, - списък, > акцент, [текст](линк). Празен ред = нов абзац."})+
       '<div class="mdprev" data-prev="1">'+md(e.body)+"</div>"+
+      fldInp("Линк към видеото в YouTube (по избор)",'data-k="video"',e.video,{ph:"https://youtu.be/…",hint:"Ако има видео за този филм, тук слагаш линка и в ревюто се появява бутон „Чуй повече“. Празно поле = без бутон."})+
       fldImg("Постер","poster",e.poster,"2:3, препоръчано 600×900. Ако няма постер, се ползват двата цвята.")+
       '<div class="grid2">'+fldInp("Цвят 1",'data-k="c1"',e.c1,{type:"color"})+fldInp("Цвят 2",'data-k="c2"',e.c2,{type:"color"})+"</div>";
   } else if(k==="craft"){
@@ -2310,7 +2315,7 @@ function updatePills(){
 function prep(e){ if(A.kind==="reviews"){ e._h=Math.floor((e.mins||0)/60); e._m=(e.mins||0)%60; } return e; }
 function newKey(){ return Math.random().toString(36).slice(2,6)+"-"+Math.random().toString(36).slice(2,6); }
 function blank(kind){
-  if(kind==="reviews") return {id:uid("r"),t:"",y:new Date().getFullYear(),g:(DATA.settings.genres||["Екшън"])[0],s:4,mins:0,c1:"#1F1B14",c2:"#6B5620",poster:"",tags:[],verdict:"",body:"",status:"published",author:"",authorName:""};
+  if(kind==="reviews") return {id:uid("r"),t:"",y:new Date().getFullYear(),g:(DATA.settings.genres||["Екшън"])[0],s:4,mins:0,c1:"#1F1B14",c2:"#6B5620",poster:"",video:"",tags:[],verdict:"",body:"",status:"published",author:"",authorName:""};
   if(kind==="craft") return {id:uid("c"),tag:"Камера",t:"",when:todayISO(),role:"",guest:"",video:"",img:"",c1:"#1E1B14",c2:"#6B5620",p:"",body:"",status:"published",author:"",authorName:""};
   if(kind==="news") return {id:uid("n"),tag:"Индустрия",t:"",when:todayISO(),lead:false,img:"",p:"",body:"",status:"published",author:"",authorName:""};
   if(kind==="episodes"){ var top=(DATA.episodes[0]||{}).n||0; return {id:uid("e"),n:top+1,t:"",d:todayISO(),lenH:1,lenM:0,tag:"Сезон 3",desc:"",yt:"",sp:""}; }
