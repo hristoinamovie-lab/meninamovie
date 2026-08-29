@@ -2194,7 +2194,8 @@ function admRender(){
       (pw
         ? '<p class="hint">Влез с имейла и паролата си.</p>'+
           '<div class="field"><input id="gateMail" type="email" autocomplete="username" placeholder="имейл" value="'+esc(A.gateMail||"")+'"></div>'+
-          '<div class="field"><input id="gateKey" type="password" autocomplete="current-password" placeholder="парола"><span class="err" id="gateErr" style="display:'+(A.gateBad?"block":"none")+'">Грешен имейл или парола.</span></div>'
+          '<div class="field"><input id="gateKey" type="password" autocomplete="current-password" placeholder="парола"><span class="err" id="gateErr" style="display:'+(A.gateBad?"block":"none")+'">Грешен имейл или парола.</span></div>'+
+          '<p class="hint" style="font-size:11px">Забравена парола: остави имейла празен и въведи спасителния ключ (ADMIN_KEY от Cloudflare).</p>'
         : '<p class="hint">Въведи ключа за достъп.</p>'+
           '<div class="field"><input id="gateKey" type="password" placeholder="ключ" autocomplete="off"><span class="err" id="gateErr" style="display:'+(A.gateBad?"block":"none")+'">Грешен ключ.</span></div>')+
       '<button class="btn btn-gold" data-act="gate" style="justify-content:center">Влез</button>'+
@@ -2468,7 +2469,8 @@ function tryGate(){
   var k=String(el.value||"").trim();
   var mailEl=$("#gateMail"); A.gateMail = mailEl ? String(mailEl.value||"").trim() : "";
   if(SRV===true){
-    var payload = (AUTHMODE==="password") ? {email:A.gateMail,password:k} : {key:k};
+    /* празен имейл = резервен вход със спасителния ключ от Cloudflare */
+    var payload = (AUTHMODE==="password" && A.gateMail) ? {email:A.gateMail,password:k} : {key:k};
     fetch("/api/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)})
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(w){
