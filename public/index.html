@@ -23,6 +23,7 @@
 <link data-mim="1" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,700;0,800;0,900;1,800;1,900&family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap">
 </head>
 <body>
+
 <style data-mim="1">
 /* ================= TOKENS — само тъмна тема ================= */
 :root{
@@ -213,6 +214,8 @@ nav.main a:hover::after,nav.main a.active::after{right:0}
 .craft-body h3{font-size:19px;text-transform:uppercase;font-style:italic;line-height:1.08}
 .craft-body p{font-size:14.5px;color:var(--muted)}
 .craft-body .meta{font-family:var(--f-cond);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:auto;padding-top:8px}
+.vwrap{position:relative;width:100%;aspect-ratio:16/9;margin-bottom:14px;background:#000;border:1px solid var(--line)}
+.vwrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
 .craft-hero{width:100%;aspect-ratio:16/9;background-size:cover;background-position:center;display:grid;place-items:center;position:relative;border:1px solid var(--line)}
 
 /* ================= НОВИНИ ================= */
@@ -301,8 +304,8 @@ nav.main a:hover::after,nav.main a.active::after{right:0}
 .sub-form input{flex:1;min-width:210px;background:rgba(0,0,0,.07);border:2px solid rgba(0,0,0,.3);color:#000;padding:13px 15px;font-size:15px;font-family:var(--f-body)}
 .sub-form input::placeholder{color:rgba(0,0,0,.45)}
 .sub-form input:focus{outline:none;border-color:#000}
-.sub-form button{background:#000;color:var(--brand);border:0}
-.sub-form button:hover{background:#1a1a1a}
+.sub-form button,.sub-form a.btn{background:#000;color:var(--brand);border:0}
+.sub-form button:hover,.sub-form a.btn:hover{background:#1a1a1a;color:var(--brand)}
 .sub-msg{font-family:var(--f-cond);font-size:12px;letter-spacing:.1em;text-transform:uppercase;margin-top:10px;min-height:16px;color:#000;font-weight:600}
 footer.site{background:var(--surface);border-top:1px solid var(--line);padding:54px 0 30px}
 .foot-grid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:34px}
@@ -1100,18 +1103,8 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
 
 <div class="wrap"><div class="adslot" data-dyn="ad-prefooter"></div></div>
 
-<div class="sub-band">
-  <div class="wrap sub-grid">
-    <div>
-      <h2>Не изпускай епизод</h2>
-      <p>Едно писмо в четвъртък: новият епизод, ревютата от седмицата и какво да гледате през уикенда. Без спам, без спойлери в темата.</p>
-    </div>
-    <form class="sub-form" id="subForm" novalidate>
-      <input type="email" id="subEmail" placeholder="твоят@имейл.бг" aria-label="Имейл">
-      <button class="btn" type="submit">Абонирай ме</button>
-      <div class="sub-msg" id="subMsg"></div>
-    </form>
-  </div>
+<div class="sub-band" id="subBand" hidden>
+  <div class="wrap sub-grid" data-dyn="sub"></div>
 </div>
 
 <footer class="site">
@@ -1224,12 +1217,16 @@ var PERMS={
 var ROLE_LABEL={admin:"Администратор",moderator:"Модератор",author:"Автор"};
 function visible(it){ return !it.status || it.status==="published"; }
 
+var SUB_MODES=["Скрита","Връзки към канала","Записване за бюлетин"];
 /* ---------- миграция на стари данни ---------- */
 function migrate(){
   var s=DATA.settings||(DATA.settings={});
   if(!s.genres) s.genres=["Екшън","Комедия","Драма","Sci-Fi","Хорър","Трилър","Анимация","Документален"];
   if(!s.sizesList) s.sizesList=["XS","S","M","L","XL","XXL","3XL","Универсален","Комплект","A2","350 мл"];
   if(s.formEndpoint==null) s.formEndpoint="";
+  if(s.subBand==null) s.subBand=SUB_MODES[0];
+  if(s.subTitle==null) s.subTitle="Не изпускай епизод";
+  if(s.subText==null) s.subText="Новият епизод, ревютата от седмицата и какво да гледате през уикенда.";
   if(s.copyright==null) s.copyright="© "+new Date().getFullYear()+" Men In A Movie";
   if(s.footerNote==null) s.footerNote="";
   if(s.footerNote==="Демо съдържание — текстовете са примерни") s.footerNote="";
@@ -1330,6 +1327,28 @@ function renderSettings(){
   if(fn) fn.textContent = s.footerNote||"";
   var one = "<ul>"+(s.ticker||[]).map(function(x){return "<li>"+esc(x)+"</li>";}).join("")+"</ul>";
   dyn("ticker").innerHTML = one+one;
+  renderSub();
+}
+
+/* лентата „Не изпускай епизод“ — скрита, връзки към канала или запис за бюлетин */
+function renderSub(){
+  var s=DATA.settings, band=$("#subBand"), box=dyn("sub"), mode=s.subBand||SUB_MODES[0];
+  if(!band||!box) return;
+  if(mode===SUB_MODES[0]){ band.hidden=true; box.innerHTML=""; return; }
+  band.hidden=false;
+  var head="<div><h2>"+esc(s.subTitle||"Не изпускай епизод")+"</h2><p>"+esc(s.subText||"")+"</p></div>";
+  if(mode===SUB_MODES[1]){
+    var L=s.links||{};
+    var btns=[["Гледай в YouTube",L.youtube],["Слушай в Spotify",L.spotify],["Apple Podcasts",L.apple]]
+      .filter(function(x){return x[1];})
+      .map(function(x){ return '<a class="btn" href="'+esc(x[1])+'" target="_blank" rel="noopener">'+esc(x[0])+"</a>"; }).join("");
+    box.innerHTML = head+'<div class="sub-form">'+btns+"</div>";
+    return;
+  }
+  box.innerHTML = head+'<form class="sub-form" id="subForm" novalidate>'+
+    '<input type="email" id="subEmail" placeholder="твоят@имейл.бг" aria-label="Имейл">'+
+    '<button class="btn" type="submit">Абонирай ме</button>'+
+    '<div class="sub-msg" id="subMsg"></div></form>';
 }
 
 function renderHero(){
@@ -1435,16 +1454,31 @@ function renderCraftFilters(){
     return '<button class="filter" data-cf="'+esc(g)+'" aria-pressed="'+(g===activeCraft)+'">'+esc(g)+"</button>";
   }).join("");
 }
+function videoEmbed(u){
+  u=String(u||"").trim(); if(!u) return null;
+  var m;
+  if((m=/youtu\.be\/([\w-]{6,})/.exec(u))) return "https://www.youtube.com/embed/"+m[1];
+  if((m=/youtube\.com\/shorts\/([\w-]{6,})/.exec(u))) return "https://www.youtube.com/embed/"+m[1];
+  if((m=/youtube\.com\/live\/([\w-]{6,})/.exec(u))) return "https://www.youtube.com/embed/"+m[1];
+  if((m=/[?&]v=([\w-]{6,})/.exec(u))) return "https://www.youtube.com/embed/"+m[1];
+  if((m=/youtube\.com\/embed\/([\w-]{6,})/.exec(u))) return "https://www.youtube.com/embed/"+m[1];
+  if((m=/vimeo\.com\/(\d+)/.exec(u))) return "https://player.vimeo.com/video/"+m[1];
+  return null;
+}
+function craftKind(c){
+  var hasV=!!String(c.video||"").trim(), hasT=!!String(c.body||"").trim();
+  return hasV&&hasT ? "Видео и статия" : hasV ? "Видео" : "Статия";
+}
 function renderCraft(){
   var el=dyn("craft"); if(!el) return;
   el.innerHTML = (DATA.craft||[]).filter(visible).filter(function(c){ return activeCraft==="Всички"||c.tag===activeCraft; }).map(function(c){
     var art = c.img ? 'style="background-image:url('+c.img+')"' : 'style="background:linear-gradient(150deg,'+(c.c1||"#1E1B14")+","+(c.c2||"#6B5620")+')"';
     var who = [c.guest,c.role].filter(Boolean).join(", ");
     return '<button class="craft rv" data-craft="'+esc(c.id)+'">'+
-      '<div class="craft-art" '+art+'><span class="tab lab">'+esc(c.tag)+'</span>'+
-        '<span class="pl"><svg width="18" height="18" viewBox="0 0 24 24" fill="#000"><path d="M8 5v14l11-7z"/></svg></span></div>'+
+      '<div class="craft-art" '+art+'><span class="tab lab">'+esc(c.tag)+"</span>"+
+        (String(c.video||"").trim()?'<span class="pl"><svg width="18" height="18" viewBox="0 0 24 24" fill="#000"><path d="M8 5v14l11-7z"/></svg></span>':"")+"</div>"+
       '<div class="craft-body"><h3>'+esc(c.t)+"</h3><p>"+esc(c.p)+"</p>"+
-        '<div class="meta">'+esc(fmtDate(c.when))+(who?" &nbsp;•&nbsp; разказва "+esc(who):"")+"</div></div></button>";
+        '<div class="meta">'+esc(craftKind(c))+" &nbsp;•&nbsp; "+esc(fmtDate(c.when))+(who?" &nbsp;•&nbsp; разказва "+esc(who):"")+"</div></div></button>";
   }).join("");
   reveal();
 }
@@ -1456,7 +1490,16 @@ function openCraft(c){
   $("#modalScore").innerHTML=""; $("#modalScore").style.display="none";
   $("#modalMeta").innerHTML = who ? '<span class="chip">Разказва '+esc(who)+"</span>" : "";
   var art = c.img ? 'style="background-image:url('+c.img+')"' : 'style="background:linear-gradient(150deg,'+(c.c1||"#1E1B14")+","+(c.c2||"#6B5620")+')"';
-  var hero = (c.img||c.video) ? '<div class="craft-hero" '+art+'>'+(c.video?'<a class="btn btn-gold" href="'+esc(c.video)+'" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Гледай видеото</a>':"")+"</div>" : "";
+  var emb = videoEmbed(c.video), hero;
+  if(emb){
+    hero = '<div class="vwrap"><iframe src="'+esc(emb)+'" title="'+esc(c.t)+'" loading="lazy" allowfullscreen '+
+           'allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture"></iframe></div>'+
+           '<p class="hint" style="margin:-2px 0 10px">Ако видеото не тръгне тук, <a href="'+esc(c.video)+'" target="_blank" rel="noopener">отвори го в YouTube</a>.</p>';
+  } else if(String(c.video||"").trim()){
+    hero = '<div class="craft-hero" '+art+'><a class="btn btn-gold" href="'+esc(c.video)+'" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Гледай видеото</a></div>';
+  } else {
+    hero = c.img ? '<div class="craft-hero" '+art+"></div>" : "";
+  }
   $("#modalBody").innerHTML = hero+
     md(c.body||c.p)+
     '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px"><button class="btn btn-ghost btn-sm" data-close>Затвори</button></div>';
@@ -1627,11 +1670,18 @@ function copy(txt,btn,label){
 }
 
 /* ---------- нюзлетър, меню, скрол ---------- */
-$("#subForm").addEventListener("submit",function(e){
+document.addEventListener("submit",function(e){
+  if(!e.target || e.target.id!=="subForm") return;
   e.preventDefault();
-  var v=$("#subEmail").value.trim();
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)){ $("#subMsg").textContent="Провери имейла и опитай пак."; return; }
-  $("#subMsg").textContent="Записахме те. Ще се чуем в четвъртък."; $("#subEmail").value="";
+  var v=$("#subEmail").value.trim(), msg=$("#subMsg");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)){ msg.textContent="Провери имейла и опитай пак."; return; }
+  var ep=(DATA.settings.formEndpoint||"").trim();
+  if(!ep){ msg.textContent="Записването още не е включено. Пиши ни на "+(DATA.settings.contactEmail||""); return; }
+  msg.textContent="Изпращаме…";
+  fetch(ep,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},
+    body:JSON.stringify({_subject:"Нов абонат за бюлетина",email:v,"Абонат":v})})
+    .then(function(r){ if(r.ok){ msg.textContent="Записахме те. Ще се чуем в четвъртък."; $("#subEmail").value=""; } else msg.textContent="Не тръгна. Опитай пак по-късно."; })
+    .catch(function(){ msg.textContent="Не тръгна. Опитай пак по-късно."; });
 });
 var nav=$("#nav"), burger=$("#burger");
 burger.addEventListener("click",function(){ burger.setAttribute("aria-expanded",nav.classList.toggle("open")); });
@@ -1655,9 +1705,22 @@ function reveal(){
    ================================================================== */
 var HOST="static";           /* artifact | server | static */
 var SRV=null;                /* null = още не знаем, true/false = има ли сървър */
-var SRVKEY="";               /* ключът, с който сме влезли — праща се при запис */
+var SRVKEY="";               /* стар ключ — пази се за съвместимост */
+var SRVTOKEN="";             /* талон за сесия след вход с имейл и парола */
+var AUTHMODE=null;           /* "password" | "key" — как се влиза в момента */
 var srvTimer=null, srvBusy=false, srvMsg="";
 try{ SRVKEY = sessionStorage.getItem("mim-key")||""; }catch(e){}
+try{ SRVTOKEN = localStorage.getItem("mim-token")||""; }catch(e){}
+function authHeaders(){
+  var h={"content-type":"application/json"};
+  if(SRVTOKEN) h["x-mim-token"]=SRVTOKEN; else if(SRVKEY) h["x-mim-key"]=SRVKEY;
+  return h;
+}
+function loadAuthMode(){
+  return fetch("/api/auth",{cache:"no-store"}).then(function(r){ return r.ok?r.json():null; })
+    .then(function(j){ AUTHMODE = j ? j.mode : "key"; if(!admEl.hidden&&!A.unlocked) admRender(); })
+    .catch(function(){ AUTHMODE="key"; });
+}
 
 var ORPH_KEY="mim-draft-orphan", orphan=null;
 function stripKeys(o){
@@ -1672,9 +1735,9 @@ function sameContent(a,b){ try{ return JSON.stringify(stripKeys(a))===JSON.strin
 function apiGet(){
   if(!/^https?:$/.test(location.protocol)){ SRV=false; return; }
   fetch("/api/content",{cache:"no-store"}).then(function(r){
-    if(r.status===204){ SRV=true; HOST="server"; afterServer(null); return; }
+    if(r.status===204){ SRV=true; HOST="server"; loadAuthMode(); afterServer(null); return; }
     if(!r.ok) throw 0;
-    return r.json().then(function(d){ SRV=true; HOST="server"; afterServer(d); });
+    return r.json().then(function(d){ SRV=true; HOST="server"; loadAuthMode(); afterServer(d); });
   }).catch(function(){ SRV=false; });
 }
 function afterServer(d){
@@ -1708,7 +1771,7 @@ function doSave(){
   srvBusy=true; srvMsg="Записва…"; paintSrv();
   fetch("/api/content",{
     method:"POST",
-    headers:{"content-type":"application/json","x-mim-key":SRVKEY},
+    headers:authHeaders(),
     body:JSON.stringify(DATA)
   }).then(function(r){
     return r.json().catch(function(){ return {}; }).then(function(j){
@@ -1725,7 +1788,16 @@ function doSave(){
 }
 function paintSrv(){
   renderDraftBar();
-  if(!admEl.hidden && A.unlocked){ A.msg=srvMsg; A.msgType = /✓/.test(srvMsg)?"ok":(/Записва/.test(srvMsg)?"":"err"); admRender(); }
+  if(admEl.hidden || !A.unlocked) return;
+  A.msg=srvMsg; A.msgType = /✓/.test(srvMsg)?"ok":(/Записва/.test(srvMsg)?"":"err");
+  var top = admEl.querySelector(".adm-top");
+  if(!top){ admRender(); return; }
+  var pill = top.querySelector('.pill[data-msg="1"]');
+  if(pill){ pill.className="pill "+A.msgType; pill.textContent=A.msg; }
+  else { var h=top.querySelector("h1");
+    if(h){ var sp=document.createElement("span"); sp.className="pill "+A.msgType; sp.setAttribute("data-msg","1"); sp.textContent=A.msg; h.insertAdjacentElement("afterend",sp); } }
+  var st = top.querySelector(".pill.warn, .pill.ok:not([data-msg])");
+  if(st && !st.hasAttribute("data-msg")){ st.className = dirty?"pill warn":"pill ok"; st.textContent = dirty?"Непубликувани промени":"Публикувано"; }
 }
 (function(){
   if(window.claude&&window.claude.use){
@@ -1734,7 +1806,7 @@ function paintSrv(){
     }).catch(function(){}); }catch(e){}
   }
 })();
-var A = { tab:"dash", kind:null, edit:null, idx:-1, msg:"", msgType:"", confirmId:null, unlocked:false, gateBad:false, me:null, role:null, prevBackup:null };
+var A = { tab:"dash", kind:null, edit:null, idx:-1, msg:"", msgType:"", confirmId:null, unlocked:false, gateBad:false, gateMail:"", me:null, role:null, prevBackup:null, authMail:"", authMsg:"", authMsgType:"", users:null, umsg:"", umsgType:"", uedit:null };
 function perm(){ return PERMS[A.role]||PERMS.author; }
 function canEdit(it){ return perm().all || (it.author===(A.me&&A.me.id) && it.status!=="published"); }
 var admEl = $("#admin"), siteEl = $("#site");
@@ -1814,7 +1886,7 @@ function listView(kind){
     if(kind==="reviews"){ th = it.poster?'style="background-image:url('+it.poster+')"':'style="background:linear-gradient(150deg,'+(it.c1||"#333")+","+(it.c2||"#666")+')"';
       title=it.t; meta=it.y+" • "+it.g+" • "+it.s+"/5 клапи"; }
     else if(kind==="craft"){ th = it.img?'style="background-image:url('+it.img+')"':'style="background:linear-gradient(150deg,'+(it.c1||"#333")+","+(it.c2||"#666")+')"';
-      title=it.t; meta=it.tag+" • "+fmtDate(it.when)+(it.video?" • ВИДЕО":" • без видео"); }
+      title=it.t; meta=it.tag+" • "+fmtDate(it.when)+" • "+craftKind(it).toUpperCase(); }
     else if(kind==="news"){ th = it.img?'style="background-image:url('+it.img+')"':""; title=it.t; meta=it.tag+" • "+fmtDate(it.when)+(it.lead?" • ВОДЕЩА":""); }
     else if(kind==="episodes"){ th=""; title=it.t; meta="Еп. "+it.n+" • "+fmtDate(it.d)+" • "+fmtLen(it.lenH,it.lenM); }
     else { th = it.img?'style="background-image:url('+it.img+')"':""; title=it.t; meta=it.p+" € • "+(it.sizes||[]).join(", ")+(it.on===false?" • СКРИТ":""); }
@@ -1891,7 +1963,7 @@ function editView(){
     f = '<div class="grid3">'+
       fldSel("Рубрика",'data-k="tag"',["Камера","Монтаж","Звук","VFX","Каскади","Продукция","Кадър по кадър"],e.tag)+
       fldDate("Дата","when",e.when)+
-      fldInp("Линк към видеото",'data-k="video"',e.video,{ph:"https://youtu.be/…"})+"</div>"+
+      fldInp("Линк към видеото в YouTube",'data-k="video"',e.video,{ph:"https://youtu.be/…",hint:"Видеата не се качват на сайта — слагаш линка от YouTube (или Vimeo) и плейърът се показва вътре в статията. Празно поле = само текст."})+"</div>"+
       fldInp("Заглавие",'data-k="t"',e.t)+
       '<div class="grid2">'+fldInp("Гост (име)",'data-k="guest"',e.guest,{ph:"Име на госта"})+
       fldInp("Роля на госта",'data-k="role"',e.role,{ph:"оператор / монтажист / звукар"})+"</div>"+
@@ -1935,38 +2007,87 @@ function editView(){
     "</div></div></div>";
 }
 
+function loadUsers(){
+  if(SRV!==true) return;
+  fetch("/api/users",{headers:authHeaders(),cache:"no-store"})
+    .then(function(r){ return r.ok?r.json():null; })
+    .then(function(j){ if(j&&j.users){ A.users=j.users; if(!admEl.hidden&&A.tab==="users") admRender(); } })
+    .catch(function(){});
+}
 function vUsers(){
-  var us = DATA.settings.users||[];
-  var rows = us.map(function(u,i){
+  var us = A.users || [];
+  var rows = us.map(function(u){
     return '<div class="rowi"><div class="thumb">'+esc((u.name||"?").slice(0,1).toUpperCase())+"</div>"+
       "<div><h4>"+esc(u.name||"Без име")+'</h4><div class="meta">'+esc(ROLE_LABEL[u.role]||u.role)+(u.email?" • "+esc(u.email):"")+"</div></div>"+
-      '<div class="acts"><code class="k" data-key="'+i+'">'+(u.key?(A.showKey===i?esc(u.key):"••••••••"):"скрит")+"</code>"+
-        (u.key?'<button class="ibtn" data-act="showkey" data-i="'+i+'" title="Покажи ключа">👁</button>':"")+
-        '<button class="btn btn-ghost btn-sm" data-act="ukey" data-i="'+i+'">Нов ключ</button>'+
-        (A.confirmId==="u"+i
-          ? '<button class="btn btn-sm" style="background:var(--bad);color:#000" data-act="udel2" data-i="'+i+'">Изтрий?</button>'
-          : '<button class="ibtn danger" data-act="udel" data-i="'+i+'" title="Изтрий">✕</button>')+
+      '<div class="acts">'+
+        '<button class="btn btn-ghost btn-sm" data-act="uedit" data-id="'+esc(u.id)+'">Промени</button>'+
+        (u.id==="owner" ? '<span class="pill">собственик</span>'
+          : (A.confirmId==="u"+u.id
+              ? '<button class="btn btn-sm" style="background:var(--bad);color:#000" data-act="udel2" data-id="'+esc(u.id)+'">Изтрий?</button>'
+              : '<button class="ibtn danger" data-act="udel" data-id="'+esc(u.id)+'" title="Изтрий">✕</button>'))+
       "</div></div>";
   }).join("");
   return '<div class="panel"><div class="panel-head"><h3>Какво може всяка роля</h3></div><div class="panel-body hint" style="display:flex;flex-direction:column;gap:8px">'+
     "<p><b style=\"color:var(--brand)\">Администратор</b> — всичко: съдържание, мърч, реклама, настройки, потребители и публикуване. Това си ти.</p>"+
     "<p><b style=\"color:var(--brand)\">Модератор</b> — създава и редактира ревюта, „Зад кадър“, новини и епизоди; одобрява чуждите материали.</p>"+
     "<p><b style=\"color:var(--brand)\">Автор</b> — пише ревюта, „Зад кадър“ и новини и ги записва за одобрение. Вижда само своите и не може да публикува.</p>"+
-    "<p style=\"margin-top:6px\">Всеки влиза в панела със своя ключ — по същия начин, по който влизаш ти. Публикуването на сайта остава само за теб като собственик на страницата.</p>"+
+    "<p style=\"margin-top:6px\">Всички влизат от едно и също място — с имейл и парола. Паролите се пазят само на сървъра, като отпечатък: нито ти, нито аз можем да ги видим обратно. Ако някой я забрави, задаваш нова оттук.</p>"+
     "</div></div>"+
+    (A.umsg?'<div class="panel"><div class="panel-body"><span class="pill '+A.umsgType+'">'+esc(A.umsg)+"</span></div></div>":"")+
     '<div class="panel"><div class="panel-head"><h3>Потребители</h3><span class="pill">'+us.length+' бр.</span>'+
       '<button class="btn btn-gold btn-sm" data-act="unew">+ Нов потребител</button></div>'+
-      '<div class="rows">'+(rows||'<div class="panel-body hint">Още няма добавени хора.</div>')+"</div></div>"+
+      '<div class="rows">'+(rows||'<div class="panel-body hint">'+(A.users?"Още няма добавени хора.":"Зареждам…")+"</div>")+"</div></div>"+
     (A.uedit!=null?userForm():"");
 }
 function userForm(){
-  var u=A.uedit;
-  return '<div class="panel"><div class="panel-head"><h3>Нов потребител</h3></div><div class="panel-body"><div class="form">'+
-    '<div class="grid2">'+fldInp("Име",'data-u="name"',u.name)+fldInp("Имейл (по избор)",'data-u="email"',u.email)+"</div>"+
-    '<div class="grid2">'+fldSel("Роля",'data-u="role"',["moderator","author"].map(function(r){return ROLE_LABEL[r];}),ROLE_LABEL[u.role])+
-      fldInp("Ключ за вход",'data-u="key"',u.key,{hint:"Даваш му този ключ. Може да го смениш по всяко време."})+"</div>"+
+  var u=A.uedit, isNew=!u.id, owner=(u.id==="owner");
+  return '<div class="panel"><div class="panel-head"><h3>'+(isNew?"Нов потребител":esc(u.name||"Промяна"))+"</h3></div><div class=\"panel-body\"><div class=\"form\">"+
+    '<div class="grid2">'+fldInp("Име",'data-u="name"',u.name)+fldInp("Имейл",'data-u="email"',u.email,{ph:"име@example.com"})+"</div>"+
+    '<div class="grid2">'+
+      (owner ? '<div class="field"><label>Роля</label><input value="Администратор" disabled></div>'
+             : fldSel("Роля",'data-u="role"',["Модератор","Автор"],ROLE_LABEL[u.role||"author"]))+
+      fldInp("Парола",'data-u="password"',"",{hint:isNew?"Поне 8 знака. Даваш я на човека — той влиза с имейла си и нея.":"Остави празно, ако не сменяш паролата."})+
+    "</div>"+
     '<div class="adm-foot"><button class="btn btn-gold" data-act="usave">Запази</button><button class="btn btn-ghost" data-act="ucancel">Отказ</button></div>'+
     "</div></div></div>";
+}
+function usersPost(payload,okMsg){
+  A.umsg="Записва…"; A.umsgType=""; admRender();
+  fetch("/api/users",{method:"POST",headers:authHeaders(),body:JSON.stringify(payload)})
+    .then(function(r){ return r.json().catch(function(){return {};}).then(function(j){ return {ok:r.ok,j:j}; }); })
+    .then(function(res){
+      if(res.ok&&res.j.ok){ A.users=res.j.users; A.uedit=null; A.umsg=okMsg; A.umsgType="ok"; }
+      else { A.umsg=res.j.message||"Не се получи."; A.umsgType="err"; }
+      admRender();
+    })
+    .catch(function(){ A.umsg="Няма връзка със сървъра."; A.umsgType="err"; admRender(); });
+}
+function setAuth(){
+  var m=$("#authMail"), pw=$("#authPass");
+  if(!m||!pw) return;
+  A.authMail=String(m.value||"").trim();
+  var pass=String(pw.value||"");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(A.authMail)){ A.authMsg="Имейлът не изглежда истински."; A.authMsgType="err"; admRender(); return; }
+  if(pass.length<8){ A.authMsg="Паролата трябва да е поне 8 знака."; A.authMsgType="err"; admRender(); return; }
+  A.authMsg="Записва…"; A.authMsgType=""; admRender();
+  fetch("/api/auth",{method:"POST",headers:authHeaders(),body:JSON.stringify({email:A.authMail,password:pass,name:(A.me&&A.me.name)||"Администратор"})})
+    .then(function(r){ return r.json().catch(function(){return {};}).then(function(j){ return {ok:r.ok,j:j}; }); })
+    .then(function(res){
+      if(res.ok&&res.j.ok){
+        AUTHMODE="password"; A.authMsg="Готово. Оттук нататък влизаш с този имейл и парола."; A.authMsgType="ok";
+        if(DATA.settings.adminKey){ DATA.settings.adminKey=""; }
+        loadUsers();
+      } else { A.authMsg=res.j.message||"Не се получи."; A.authMsgType="err"; }
+      admRender();
+    })
+    .catch(function(){ A.authMsg="Няма връзка със сървъра."; A.authMsgType="err"; admRender(); });
+}
+function saveUser(){
+  var box=admEl.querySelector('[data-u="name"]'); if(!box) return;
+  var val=function(k){ var el=admEl.querySelector('[data-u="'+k+'"]'); return el?String(el.value||"").trim():""; };
+  var roleEl=admEl.querySelector('[data-u="role"]');
+  var roleKey = roleEl ? (roleEl.value==="Модератор"?"moderator":"author") : (A.uedit&&A.uedit.role)||"author";
+  usersPost({act:"save",id:(A.uedit&&A.uedit.id)||"",name:val("name"),email:val("email"),role:roleKey,password:val("password")},"Записано ✓");
 }
 
 function vAds(){
@@ -2002,12 +2123,20 @@ function vAds(){
 function vSettings(){
   var s=DATA.settings, L=s.links||{};
   var url = location.origin+location.pathname+"#/admin/"+s.adminKey;
-  return '<div class="panel"><div class="panel-head"><h3>Достъп до админа</h3></div><div class="panel-body"><div class="form">'+
-    '<p class="hint">Панелът няма линк никъде в сайта. Отваря се по три начина: <b style="color:var(--ink)">Ctrl (⌘) + Alt + A</b>, <b style="color:var(--ink)">три клика върху „© Men In A Movie“ във футъра</b>, или адрес с ключа — когато сайтът е на собствен домейн. И трите искат ключа по-долу.</p>'+
+  return '<div class="panel"><div class="panel-head"><h3>Вход в панела</h3></div><div class="panel-body"><div class="form">'+
+    '<p class="hint">Панелът няма линк никъде в сайта. Отваря се по три начина: <b style="color:var(--ink)">Ctrl (⌘) + Alt + A</b>, <b style="color:var(--ink)">три клика върху „© Men In A Movie“ във футъра</b>, или адрес с ключа — когато сайтът е на собствен домейн.</p>'+
     (SRV===true
-      ? '<div class="field"><label>Таен ключ</label><input value="" placeholder="въведи нов ключ, за да го смениш" data-p="settings.adminKey"><span class="hint">Ключът се пази на сървъра и вече не се вижда в кода на страницата. Остави полето празно, ако не го сменяш.</span></div>'
-      : fldInp("Таен ключ",'data-p="settings.adminKey"',s.adminKey))+
-    '<div class="field"><label>Адрес на админа (на собствен домейн)</label><input readonly value="'+esc(url)+'"><span class="hint">Публикуването е позволено само на теб като собственик на страницата — чужд човек с ключа може да гледа панела, но не и да запише промени за всички.</span></div>'+
+      ? (A.authMsg?'<span class="pill '+A.authMsgType+'">'+esc(A.authMsg)+"</span>":"")+
+        '<p class="hint">'+(AUTHMODE==="password"
+          ? "Влизаш с имейл и парола. Оттук ги сменяш — важи веднага, старите спират да работят."
+          : "Задай имейл и парола. От този момент нататък се влиза само с тях, а старият ключ спира да важи. Модераторите и авторите влизат от същото място със своите имейли — добавяш ги в „Потребители“.")+"</p>"+
+        '<div class="grid2">'+
+          '<div class="field"><label>Имейл на администратора</label><input id="authMail" type="email" placeholder="hr.colov@gmail.com" value="'+esc(A.authMail||"")+'"></div>'+
+          '<div class="field"><label>Парола</label><input id="authPass" type="password" placeholder="поне 8 знака"></div>'+
+        "</div>"+
+        '<div><button class="btn btn-gold btn-sm" data-act="setauth">'+(AUTHMODE==="password"?"Смени достъпа":"Задай имейл и парола")+"</button></div>"+
+        '<p class="hint">Паролата се пази на сървъра само като отпечатък и никога не се връща обратно в браузъра.</p>'
+      : fldInp("Таен ключ",'data-p="settings.adminKey"',s.adminKey,{hint:"Този вариант е за файла на компютъра. На истинския сайт влизането е с имейл и парола."}))+
     "</div></div></div>"+
   '<div class="panel"><div class="panel-head"><h3>Канал</h3></div><div class="panel-body"><div class="form">'+
     fldInp("Подзаглавие под логото",'data-p="settings.tagline"',s.tagline)+
@@ -2024,6 +2153,10 @@ function vSettings(){
     '<div class="grid2">'+fldInp("Имейл за контакт",'data-p="settings.contactEmail"',s.contactEmail)+fldInp("Имейл за поръчки",'data-p="settings.orderEmail"',s.orderEmail)+"</div>"+
     '<div class="grid3">'+fldInp("YouTube",'data-p="settings.links.youtube"',L.youtube)+fldInp("Spotify",'data-p="settings.links.spotify"',L.spotify)+fldInp("Apple Podcasts",'data-p="settings.links.apple"',L.apple)+"</div>"+
     '<div class="grid2">'+fldInp("Instagram",'data-p="settings.links.instagram"',L.instagram)+fldInp("TikTok",'data-p="settings.links.tiktok"',L.tiktok)+"</div>"+
+  "</div></div></div>"+
+  '<div class="panel"><div class="panel-head"><h3>Лента „Не изпускай епизод“</h3></div><div class="panel-body"><div class="form">'+
+    fldSel("Какво да показва",'data-p="settings.subBand"',SUB_MODES,s.subBand,"„Скрита“ маха лентата от сайта. „Връзки към канала“ показва бутони към YouTube и Spotify. „Записване за бюлетин“ праща имейла на пощата ти през адреса на формата по-долу — без него няма къде да отиде.")+
+    '<div class="grid2">'+fldInp("Заглавие",'data-p="settings.subTitle"',s.subTitle)+fldInp("Текст",'data-p="settings.subText"',s.subText)+"</div>"+
   "</div></div></div>"+
   '<div class="panel"><div class="panel-head"><h3>Поръчки от мърча</h3></div><div class="panel-body"><div class="form">'+
     '<p class="hint">Най-простият вариант, без магазин и плащания: клиентът попълва формата, а поръчката идва на пощата ти. Регистрираш се безплатно в <b style="color:var(--ink)">Formspree</b> или <b style="color:var(--ink)">Web3Forms</b>, взимаш адреса на формата и го слагаш тук. Оттам нататък всяка поръчка пада в пощата ти и я изпращаш ръчно.</p>'+
@@ -2052,18 +2185,27 @@ function vSettings(){
 /* ---------- рамка ---------- */
 function admRender(){
   if(!A.unlocked){
+    var pw = (SRV===true && AUTHMODE==="password");
     admEl.innerHTML = '<div class="gate"><div class="box"><div class="mimlogo" style="width:96px;height:69px;margin:0 auto"></div>'+
       "<h2 style=\"font-size:22px;text-transform:uppercase;font-style:italic\">Админ панел</h2>"+
-      '<p class="hint">Въведи ключа за достъп.</p>'+
-      '<div class="field"><input id="gateKey" type="password" placeholder="ключ" autocomplete="off"><span class="err" id="gateErr" style="display:'+(A.gateBad?"block":"none")+'">Грешен ключ.</span></div>'+
+      (pw
+        ? '<p class="hint">Влез с имейла и паролата си.</p>'+
+          '<div class="field"><input id="gateMail" type="email" autocomplete="username" placeholder="имейл" value="'+esc(A.gateMail||"")+'"></div>'+
+          '<div class="field"><input id="gateKey" type="password" autocomplete="current-password" placeholder="парола"><span class="err" id="gateErr" style="display:'+(A.gateBad?"block":"none")+'">Грешен имейл или парола.</span></div>'
+        : '<p class="hint">Въведи ключа за достъп.</p>'+
+          '<div class="field"><input id="gateKey" type="password" placeholder="ключ" autocomplete="off"><span class="err" id="gateErr" style="display:'+(A.gateBad?"block":"none")+'">Грешен ключ.</span></div>')+
       '<button class="btn btn-gold" data-act="gate" style="justify-content:center">Влез</button>'+
       '<button class="btn btn-ghost btn-sm" data-act="exit" style="justify-content:center">Към сайта</button></div></div>';
-    var gk=$("#gateKey"); if(gk){ gk.focus(); gk.addEventListener("keydown",function(e){ if(e.key==="Enter") tryGate(); }); }
+    var first = (pw && !(A.gateMail||"")) ? $("#gateMail") : $("#gateKey");
+    if(first) first.focus();
+    [$("#gateMail"),$("#gateKey")].forEach(function(el){
+      if(el) el.addEventListener("keydown",function(e){ if(e.key==="Enter") tryGate(); });
+    });
     return;
   }
   var allTabs = {dash:["Табло",""],reviews:["Ревюта",DATA.reviews.length],craft:["Зад кадър",(DATA.craft||[]).length],
     news:["Новини",DATA.news.length],episodes:["Епизоди",DATA.episodes.length],merch:["Мърч",DATA.merch.length],
-    ads:["Реклама",""],users:["Потребители",(DATA.settings.users||[]).length],settings:["Настройки",""]};
+    ads:["Реклама",""],users:["Потребители",(A.users||[]).length||""],settings:["Настройки",""]};
   var tabs = perm().tabs.map(function(k){ return [k,allTabs[k][0],allTabs[k][1]]; });
   var body;
   if(A.edit) body = editView();
@@ -2103,7 +2245,7 @@ admEl.addEventListener("click",function(ev){
   if(act==="gate"){ tryGate(); return; }
   if(act==="exit"){ closeAdmin(); return; }
   if(act==="lock"){ A.unlocked=false; A.me=null; A.role=null; SRVKEY="";
-    try{ sessionStorage.removeItem("mim-key"); }catch(e){} try{ sessionStorage.removeItem("mim-admin-ok"); }catch(e){} closeAdmin(); return; }
+    SRVTOKEN=""; SRVKEY=""; A.users=null; try{ sessionStorage.removeItem("mim-key"); }catch(e){} try{ sessionStorage.removeItem("mim-admin-ok"); }catch(e){} try{ localStorage.removeItem("mim-token"); }catch(e){} closeAdmin(); return; }
   if(act==="tab"){ A.tab=t.dataset.tab; A.edit=null; A.msg=""; A.confirmId=null; admRender(); return; }
   if(act==="new"){ A.tab=t.dataset.kind; A.kind=t.dataset.kind; A.idx=-1; A.edit=prep(blank(A.kind)); admRender(); return; }
   if(act==="edit"){ A.kind=kind; A.idx=i; A.edit=prep(JSON.parse(JSON.stringify(DATA[kind][i]))); admRender(); return; }
@@ -2112,17 +2254,13 @@ admEl.addEventListener("click",function(ev){
   if(act==="del"){ A.confirmId=kind+i; admRender(); return; }
   if(act==="del2"){ DATA[kind].splice(i,1); A.confirmId=null; afterChange(); return; }
   if(act==="approve"){ DATA[kind][i].status="published"; A.msg="Одобрено"; A.msgType="ok"; afterChange(); return; }
-  if(act==="unew"){ A.uedit={id:uid("u"),name:"",email:"",role:"author",key:newKey()}; admRender(); return; }
-  if(act==="ucancel"){ A.uedit=null; admRender(); return; }
-  if(act==="usave"){
-    if(!A.uedit.name){ A.msg="Въведи име"; A.msgType="err"; admRender(); return; }
-    (DATA.settings.users=DATA.settings.users||[]).push(A.uedit); A.uedit=null;
-    A.msg="Потребителят е добавен"; A.msgType="ok"; afterChange(); return;
-  }
-  if(act==="showkey"){ A.showKey = (A.showKey===i?null:i); admRender(); return; }
-  if(act==="ukey"){ DATA.settings.users[i].key=newKey(); A.showKey=i; afterChange(); return; }
-  if(act==="udel"){ A.confirmId="u"+i; admRender(); return; }
-  if(act==="udel2"){ DATA.settings.users.splice(i,1); A.confirmId=null; afterChange(); return; }
+  if(act==="setauth"){ setAuth(); return; }
+  if(act==="unew"){ A.uedit={id:"",name:"",email:"",role:"author"}; A.umsg=""; admRender(); return; }
+  if(act==="ucancel"){ A.uedit=null; A.umsg=""; admRender(); return; }
+  if(act==="usave"){ saveUser(); return; }
+  if(act==="uedit"){ A.uedit=(A.users||[]).filter(function(u){return u.id===t.dataset.id;})[0]||null; A.umsg=""; admRender(); return; }
+  if(act==="udel"){ A.confirmId="u"+t.dataset.id; admRender(); return; }
+  if(act==="udel2"){ A.confirmId=null; usersPost({act:"delete",id:t.dataset.id},"Изтрит ✓"); return; }
   if(act==="up"&&i>0){ var a=DATA[kind]; a.splice(i-1,0,a.splice(i,1)[0]); afterChange(); return; }
   if(act==="down"&&i<DATA[kind].length-1){ var b=DATA[kind]; b.splice(i+1,0,b.splice(i,1)[0]); afterChange(); return; }
   if(act==="pick"){ pickImage(t.dataset.key); return; }
@@ -2314,24 +2452,26 @@ function whoIs(key){
   return u ? {role:u.role||"author",id:u.id,name:u.name||"Потребител",key:key} : null;
 }
 function signIn(who){
-  A.unlocked=true; A.gateBad=false; A.me=who;
+  A.unlocked=true; A.gateBad=false; A.gateMail=""; A.me=who;
   SRVKEY = who.key||""; try{ sessionStorage.setItem("mim-key",SRVKEY); }catch(e){}
   A.role=who.role;
   if(PERMS[A.role].tabs.indexOf(A.tab)<0) A.tab="dash";
   try{ sessionStorage.setItem("mim-admin-ok",JSON.stringify(who)); }catch(e){}
   admRender();
+  if(A.role==="admin" && SRV===true) loadUsers();
 }
 function tryGate(){
   var el=$("#gateKey"); if(!el) return;
   var k=String(el.value||"").trim();
+  var mailEl=$("#gateMail"); A.gateMail = mailEl ? String(mailEl.value||"").trim() : "";
   if(SRV===true){
-    A.msg="Проверява…"; A.msgType=""; admRender();
-    fetch("/api/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({key:k})})
+    var payload = (AUTHMODE==="password") ? {email:A.gateMail,password:k} : {key:k};
+    fetch("/api/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)})
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(w){
-        A.msg="";
         if(w){
-          w.key=k;
+          w.key = (AUTHMODE==="password") ? "" : k;
+          if(w.token){ SRVTOKEN=w.token; try{ localStorage.setItem("mim-token",w.token); }catch(e){} }
           if(w.bootstrap){ DATA.settings.adminKey=k; markDirty(); }
           signIn(w);
         } else { A.gateBad=true; admRender(); }
