@@ -128,6 +128,9 @@ nav.main a:hover::after,nav.main a.active::after{right:0}
 .gframe{position:relative;background:var(--brand);padding:14px;box-shadow:var(--shadow)}
 .gframe .inner{position:relative;background:#000;border:3px solid rgba(255,255,255,.9);overflow:hidden;aspect-ratio:16/10;display:grid;place-items:center}
 .gframe .inner>img{width:42%}
+.gframe .inner>img.ythumb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.gframe .inner::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.5),transparent 55%);pointer-events:none;z-index:2}
+.ep-thumb{width:104px;aspect-ratio:16/9;object-fit:cover;border:1px solid var(--line);flex:none;background:#000}
 .gbar{position:absolute;height:4px;pointer-events:none;mix-blend-mode:screen;animation:gl 5.5s steps(1) infinite}
 .gbar:nth-child(1){top:14%;left:0;width:38%;background:#39FF9B;animation-delay:.2s}
 .gbar:nth-child(2){top:32%;right:0;width:26%;background:#FF3B5B;animation-delay:1.6s;height:7px}
@@ -222,6 +225,8 @@ nav.main a:hover::after,nav.main a.active::after{right:0}
 .dbtn{flex:none;width:46px;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--line);color:var(--muted);cursor:pointer;transition:color .18s ease,border-color .18s ease}
 .dbtn:hover{color:var(--brand);border-color:var(--brand)}
 .dpick{position:absolute;right:0;bottom:0;width:46px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
+.btn.imdb{font-weight:700;letter-spacing:.08em}
+.btn.imdb:hover{color:#000;background:#F5C518;border-color:#F5C518}
 .sig{margin-top:20px;text-align:right;font-size:13px;font-style:italic;color:var(--muted);opacity:.8}
 .craft-hero{width:100%;aspect-ratio:16/9;background-size:cover;background-position:center;display:grid;place-items:center;position:relative;border:1px solid var(--line)}
 
@@ -1205,6 +1210,9 @@ function fmtLen(h,m){
   if(!h&&!m) return "";
   return (h?h+" ч ":"")+(m?(h?("0"+m).slice(-2):m)+" мин":"");
 }
+/* епизодите са в минути */
+function epMins(e){ return +(e&&e.len)||0; }
+function fmtMins(n){ n=+n||0; return n ? n+" мин" : ""; }
 
 /* ---------- клапи (оценка 1–5) ---------- */
 var CLAP='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'+
@@ -1232,6 +1240,7 @@ var SUB_MODES=["Скрита","Връзки към канала","Записва
 function migrate(){
   var s=DATA.settings||(DATA.settings={});
   if(!s.genres) s.genres=["Екшън","Комедия","Драма","Sci-Fi","Хорър","Трилър","Анимация","Документален"];
+  if(!s.newsTags) s.newsTags=["Индустрия","Боксофис","Премиери","Трейлъри","Кастинг","Награди","Стрийминг","Продукция","Сериали","Фестивали","Слухове"];
   if(!s.sizesList) s.sizesList=["XS","S","M","L","XL","XXL","3XL","Универсален","Комплект","A2","350 мл"];
   if(s.formEndpoint==null) s.formEndpoint="";
   if(s.subBand==null) s.subBand=SUB_MODES[0];
@@ -1249,8 +1258,9 @@ function migrate(){
   });
   (DATA.news||[]).concat(DATA.craft||[]).forEach(function(n){ if(!n.status) n.status="published"; });
   (DATA.episodes||[]).forEach(function(e){
-    if(e.lenH==null&&e.len){ var m=/^\s*(?:(\d+)\s*ч)?\s*(\d+)?/.exec(e.len)||[]; e.lenH=+(m[1]||0); e.lenM=+(m[2]||0); }
-    if(e.lenH==null) e.lenH=0; if(e.lenM==null) e.lenM=0;
+    if(typeof e.len==="string"){ var m=/^\s*(?:(\d+)\s*ч)?\s*(\d+)?/.exec(e.len)||[]; e.len=(+(m[1]||0))*60+(+(m[2]||0)); }
+    if(e.len==null) e.len=(+e.lenH||0)*60+(+e.lenM||0);
+    delete e.lenH; delete e.lenM;
   });
 }
 migrate();
@@ -1368,7 +1378,7 @@ function renderHero(){
     '<div>'+
       '<div class="now"><i class="dot"></i><span class="eyebrow">Епизод '+esc(e.n)+' • Ново</span></div>'+
       '<h1 class="hl-stack">'+titleBlocks(e.t,15)+'</h1>'+
-      '<div class="ep-meta"><span class="chip">'+esc(fmtDate(e.d))+'</span><span class="chip">'+esc(fmtLen(e.lenH,e.lenM))+'</span><span class="chip">'+esc(e.tag)+'</span></div>'+
+      '<div class="ep-meta"><span class="chip">'+esc(fmtDate(e.d))+'</span><span class="chip">'+esc(fmtMins(epMins(e)))+'</span><span class="chip">'+esc(e.tag)+'</span></div>'+
       '<p class="lede">'+esc(e.desc)+'</p>'+
       '<div class="hero-cta">'+
         '<a class="btn btn-gold" href="'+esc(e.yt||"#podcast")+'"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Гледай епизода</a>'+
@@ -1377,8 +1387,12 @@ function renderHero(){
       (sp.on&&sp.name ? '<p class="sponsor">Епизодът се представя от <b>'+(sp.href?'<a href="'+esc(sp.href)+'" target="_blank" rel="noopener sponsored">'+esc(sp.name)+"</a>":esc(sp.name))+"</b></p>" : "")+
     '</div>'+
     '<div class="gframe">'+
-      '<div class="inner"><i class="gbar"></i><i class="gbar"></i><i class="gbar"></i><i class="gbar"></i>'+
-        '<div class="mimlogo" style="width:48%;aspect-ratio:1.4"></div>'+
+      '<div class="inner">'+
+        (ytThumb(e.yt)
+          ? '<img class="ythumb" src="'+esc(ytThumb(e.yt))+'" alt="'+esc(e.t)+'" loading="lazy" onerror="this.onerror=null;this.src=\''+esc(ytThumbAlt(e.yt))+'\'">'
+          : "")+
+        '<i class="gbar"></i><i class="gbar"></i><i class="gbar"></i><i class="gbar"></i>'+
+        (ytThumb(e.yt) ? "" : '<div class="mimlogo" style="width:48%;aspect-ratio:1.4"></div>')+
         '<button class="play" id="heroPlay" aria-label="Пусни епизода"><i><svg width="21" height="21" viewBox="0 0 24 24" fill="#000"><path d="M8 5v14l11-7z"/></svg></i></button>'+
       '</div>'+
       '<div class="gframe-foot"><span>Men In A Movie</span><span>Еп. '+esc(e.n)+'</span></div>'+
@@ -1414,9 +1428,11 @@ function renderReviews(){
 }
 function renderEpisodes(){
   dyn("episodes").innerHTML = (DATA.episodes||[]).map(function(e){
+    var th=ytThumb(e.yt);
     return '<div class="ep rv">'+
-      '<div class="ep-num">'+esc(e.n)+"<small>ЕПИЗОД</small></div>"+
-      "<div><h3>"+esc(e.t)+'</h3><div class="sub">'+esc(fmtDate(e.d))+" &nbsp;•&nbsp; "+esc(fmtLen(e.lenH,e.lenM))+" &nbsp;•&nbsp; "+esc(e.tag)+"</div></div>"+
+      (th ? '<img class="ep-thumb" src="'+esc(th)+'" alt="" loading="lazy" onerror="this.onerror=null;this.src=\''+esc(ytThumbAlt(e.yt))+'\'">'
+          : '<div class="ep-num">'+esc(e.n)+"<small>ЕПИЗОД</small></div>")+
+      "<div><h3>"+esc(e.t)+'</h3><div class="sub">'+esc(fmtDate(e.d))+" &nbsp;•&nbsp; "+esc(fmtMins(epMins(e)))+" &nbsp;•&nbsp; "+esc(e.tag)+"</div></div>"+
       '<div class="ep-links">'+
         '<a class="btn btn-gold btn-sm" href="'+esc(e.yt||"#")+'"'+(e.yt?' target="_blank" rel="noopener"':"")+">Гледай</a>"+
         '<a class="btn btn-ghost btn-sm" href="'+esc(e.sp||"#")+'"'+(e.sp?' target="_blank" rel="noopener"':"")+">Слушай</a>"+
@@ -1464,6 +1480,22 @@ function renderCraftFilters(){
     return '<button class="filter" data-cf="'+esc(g)+'" aria-pressed="'+(g===activeCraft)+'">'+esc(g)+"</button>";
   }).join("");
 }
+var SHARE_KEY={reviews:"r",news:"n",craft:"c",episodes:"e",merch:"m"};
+function shareUrl(kind,id){
+  if(!/^https?:$/.test(location.protocol)) return "";
+  return location.origin+"/s/"+SHARE_KEY[kind]+"/"+encodeURIComponent(id);
+}
+function shareBtn(kind,it){
+  var u=shareUrl(kind,it&&it.id); if(!u) return "";
+  return '<button class="btn btn-ghost btn-sm" data-share="'+esc(u)+'">'+
+    '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M12 3v13M8 7l4-4 4 4"/></svg> Копирай линк</button>';
+}
+/* линк към IMDb — по желание */
+function imdbBtn(it){
+  var u=String((it&&it.imdb)||"").trim(); if(!u) return "";
+  if(!/^https?:/i.test(u)) u = /^tt\d+$/.test(u) ? "https://www.imdb.com/title/"+u+"/" : "https://"+u.replace(/^\/+/,"");
+  return '<a class="btn btn-ghost btn-sm imdb" href="'+esc(u)+'" target="_blank" rel="noopener">IMDb</a>';
+}
 function sig(it){
   var n=String((it&&it.authorName)||"").trim();
   return n ? '<p class="sig">— '+esc(n)+"</p>" : "";
@@ -1473,6 +1505,20 @@ function moreBtn(it){
   var v=String((it&&it.video)||"").trim();
   return v ? '<a class="btn btn-gold btn-sm" href="'+esc(v)+'" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Чуй повече</a>' : "";
 }
+/* id-то на видеото от какъвто и да е ютюб адрес */
+function ytId(u){
+  u=String(u||"").trim(); if(!u) return null;
+  var m;
+  if((m=/youtu\.be\/([\w-]{6,})/.exec(u))) return m[1];
+  if((m=/youtube\.com\/shorts\/([\w-]{6,})/.exec(u))) return m[1];
+  if((m=/youtube\.com\/live\/([\w-]{6,})/.exec(u))) return m[1];
+  if((m=/youtube\.com\/embed\/([\w-]{6,})/.exec(u))) return m[1];
+  if((m=/[?&]v=([\w-]{6,})/.exec(u))) return m[1];
+  return null;
+}
+/* картинката на видеото — тегли се направо от YouTube, нищо не се качва */
+function ytThumb(u){ var id=ytId(u); return id ? "https://i.ytimg.com/vi/"+id+"/maxresdefault.jpg" : ""; }
+function ytThumbAlt(u){ var id=ytId(u); return id ? "https://i.ytimg.com/vi/"+id+"/hqdefault.jpg" : ""; }
 function videoEmbed(u){
   u=String(u||"").trim(); if(!u) return null;
   var m;
@@ -1521,7 +1567,8 @@ function openCraft(c){
   }
   $("#modalBody").innerHTML = hero+
     md(c.body||c.p)+sig(c)+
-    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px"><button class="btn btn-ghost btn-sm" data-close>Затвори</button></div>';
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">'+shareBtn("craft",c)+
+      '<button class="btn btn-ghost btn-sm" data-close>Затвори</button></div>';
   openModal();
 }
 
@@ -1576,6 +1623,11 @@ document.addEventListener("click",function(e){
   if(b){ openOrder((DATA.merch||[]).filter(function(m){return m.id===b.dataset.buy;})[0]); return; }
   if(e.target.closest && e.target.closest("[data-close]")) closeAll();
 });
+document.addEventListener("click",function(e){
+  var b=e.target.closest && e.target.closest("[data-share]");
+  if(!b) return;
+  copy(b.dataset.share,b,b.textContent.trim()||"Копирай линк");
+});
 
 var overlay=$("#overlay"), modal=$("#modal"), drawer=$("#drawer"), lastFocus=null;
 function closeAll(){
@@ -1596,7 +1648,7 @@ function openReview(r){
   $("#modalMeta").innerHTML = (r.mins?'<span class="chip">'+r.mins+" мин</span>":"")+
     (r.tags||[]).map(function(t){return '<span class="chip">'+esc(t)+"</span>";}).join("");
   $("#modalBody").innerHTML = md(r.body||r.verdict)+sig(r)+
-    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">'+moreBtn(r)+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">'+moreBtn(r)+imdbBtn(r)+shareBtn("reviews",r)+
       '<button class="btn btn-ghost btn-sm" data-close>Затвори</button></div>';
   openModal();
 }
@@ -1607,7 +1659,7 @@ function openNews(n){
   $("#modalScore").innerHTML=""; $("#modalScore").style.display="none";
   $("#modalMeta").innerHTML="";
   $("#modalBody").innerHTML = md(n.body||n.p)+sig(n)+
-    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">'+moreBtn(n)+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">'+moreBtn(n)+shareBtn("news",n)+
       '<button class="btn btn-ghost btn-sm" data-close>Затвори</button></div>';
   openModal();
 }
@@ -1781,6 +1833,7 @@ function afterServer(d){
     try{ orphan = orphan || localStorage.getItem(ORPH_KEY); }catch(e){}
     renderDraftBar();
   }
+  if(A.unlocked&&A.role==="admin"&&A.users==null) loadUsers();
   if(!admEl.hidden && A.unlocked) admRender();
 }
 function apiSave(now){
@@ -1910,7 +1963,7 @@ function listView(kind){
     else if(kind==="craft"){ th = it.img?'style="background-image:url('+it.img+')"':'style="background:linear-gradient(150deg,'+(it.c1||"#333")+","+(it.c2||"#666")+')"';
       title=it.t; meta=it.tag+" • "+fmtDate(it.when)+" • "+craftKind(it).toUpperCase(); }
     else if(kind==="news"){ th = it.img?'style="background-image:url('+it.img+')"':""; title=it.t; meta=it.tag+" • "+fmtDate(it.when)+(it.lead?" • ВОДЕЩА":"")+(String(it.video||"").trim()?" • С ВИДЕО":""); }
-    else if(kind==="episodes"){ th=""; title=it.t; meta="Еп. "+it.n+" • "+fmtDate(it.d)+" • "+fmtLen(it.lenH,it.lenM); }
+    else if(kind==="episodes"){ th=""; title=it.t; meta="Еп. "+it.n+" • "+fmtDate(it.d)+" • "+fmtMins(epMins(it)); }
     else { th = it.img?'style="background-image:url('+it.img+')"':""; title=it.t; meta=it.p+" € • "+(it.sizes||[]).join(", ")+(it.on===false?" • СКРИТ":""); }
     var st = hasStatus ? (STATUS[it.status||"published"]||STATUS.published) : null;
     var may = canEdit(it);
@@ -2000,7 +2053,9 @@ function editView(){
       fldTa("Кратко мнение (показва се на картата)",'data-k="verdict"',e.verdict,{rows:2})+
       fldTa("Ревю",'data-k="body" data-md-target="1"',e.body,{rows:10,toolbar:MDBAR,hint:"**удебелено**, *курсив*, ## подзаглавие, - списък, > акцент, [текст](линк). Празен ред = нов абзац."})+
       '<div class="mdprev" data-prev="1">'+md(e.body)+"</div>"+
+      '<div class="grid2">'+
       fldInp("Линк към видеото в YouTube (по избор)",'data-k="video"',e.video,{ph:"https://youtu.be/…",hint:"Ако има видео за този филм, тук слагаш линка и в ревюто се появява бутон „Чуй повече“. Празно поле = без бутон."})+
+      fldInp("Линк към IMDb (по избор)",'data-k="imdb"',e.imdb,{ph:"https://www.imdb.com/title/tt…",hint:"Показва се като малък бутон „IMDb“ под ревюто."})+"</div>"+
       fldImg("Постер","poster",e.poster,"2:3, препоръчано 600×900. Ако няма постер, се ползват двата цвята.")+
       '<div class="grid2">'+fldInp("Цвят 1",'data-k="c1"',e.c1,{type:"color"})+fldInp("Цвят 2",'data-k="c2"',e.c2,{type:"color"})+"</div>"+
       fldInp("Автор (подпис в края на текста)",'data-k="authorName"',e.authorName,{ph:"Име и фамилия",hint:"Показва се най-долу под текста. Празно поле = без подпис."});
@@ -2019,7 +2074,8 @@ function editView(){
       '<div class="grid2">'+fldInp("Цвят 1",'data-k="c1"',e.c1,{type:"color"})+fldInp("Цвят 2",'data-k="c2"',e.c2,{type:"color"})+"</div>"+
       fldInp("Автор (подпис в края на текста)",'data-k="authorName"',e.authorName,{ph:"Име и фамилия",hint:"Показва се най-долу под текста. Празно поле = без подпис."});
   } else if(k==="news"){
-    f = '<div class="grid3">'+fldInp("Рубрика",'data-k="tag"',e.tag,{ph:"Индустрия / Боксофис…"})+
+    var nt=(DATA.settings.newsTags||[]).slice(); if(e.tag&&nt.indexOf(e.tag)<0) nt.unshift(e.tag);
+    f = '<div class="grid3">'+fldSel("Рубрика",'data-k="tag"',nt,e.tag)+
       fldDate("Дата","when",e.when)+
       '<div class="field"><label>Водеща новина</label>'+fldSw("Голяма карта",'data-k="lead" data-type="bool"',e.lead)+"</div></div>"+
       fldInp("Заглавие",'data-k="t"',e.t)+
@@ -2032,11 +2088,11 @@ function editView(){
   } else if(k==="episodes"){
     f = '<div class="grid3">'+fldInp("Номер",'data-k="n" data-type="num"',e.n,{type:"number"})+
       fldDate("Дата","d",e.d)+
-      fldDur("Времетраене","lenH","lenM",e.lenH,e.lenM)+"</div>"+
+      fldInp("Времетраене (минути)",'data-k="len" data-type="num"',e.len,{type:"number",min:"0",max:"600"})+"</div>"+
       fldInp("Заглавие",'data-k="t"',e.t)+
       fldInp("Сезон / етикет",'data-k="tag"',e.tag,{ph:"Сезон 3"})+
       fldTa("Описание",'data-k="desc"',e.desc,{rows:4,hint:"Първият епизод в списъка се показва в началото на сайта."})+
-      '<div class="grid2">'+fldInp("YouTube линк",'data-k="yt"',e.yt,{ph:"https://youtu.be/…"})+fldInp("Spotify линк",'data-k="sp"',e.sp,{ph:"https://open.spotify.com/…"})+"</div>";
+      '<div class="grid2">'+fldInp("YouTube линк",'data-k="yt"',e.yt,{ph:"https://youtu.be/…",hint:"Картинката на епизода се взима автоматично от това видео."})+fldInp("Spotify линк",'data-k="sp"',e.sp,{ph:"https://open.spotify.com/…"})+"</div>";
   } else {
     f = '<div class="grid2">'+fldInp("Име",'data-k="t"',e.t)+fldInp("Цена в евро",'data-k="p" data-type="num"',e.p,{type:"number",step:"0.5"})+"</div>"+
       fldTa("Описание",'data-k="d"',e.d,{rows:3})+
@@ -2214,6 +2270,7 @@ function vSettings(){
   "</div></div></div>"+
   '<div class="panel"><div class="panel-head"><h3>Списъци за избор</h3></div><div class="panel-body"><div class="form">'+
     fldTa("Жанрове (по един на ред)",'data-p="settings.genres" data-type="lines"',(s.genres||[]).join("\n"),{rows:7,hint:"Появяват се в падащото меню при ревютата."})+
+    fldTa("Рубрики за новините (по една на ред)",'data-p="settings.newsTags" data-type="lines"',(s.newsTags||[]).join("\n"),{rows:7,hint:"Появяват се в падащото меню при новините."})+
     fldTa("Размери за мърч (по един на ред)",'data-p="settings.sizesList" data-type="lines"',(s.sizesList||[]).join("\n"),{rows:6})+
   "</div></div></div>"+
   '<div class="panel"><div class="panel-head"><h3>Резервно копие</h3>'+
@@ -2295,7 +2352,9 @@ admEl.addEventListener("click",function(ev){
   if(act==="exit"){ closeAdmin(); return; }
   if(act==="lock"){ A.unlocked=false; A.me=null; A.role=null; SRVKEY="";
     SRVTOKEN=""; SRVKEY=""; A.users=null; try{ sessionStorage.removeItem("mim-key"); }catch(e){} try{ sessionStorage.removeItem("mim-admin-ok"); }catch(e){} try{ localStorage.removeItem("mim-token"); }catch(e){} closeAdmin(); return; }
-  if(act==="tab"){ A.tab=t.dataset.tab; A.edit=null; A.msg=""; A.confirmId=null; admRender(); return; }
+  if(act==="tab"){ A.tab=t.dataset.tab; A.edit=null; A.msg=""; A.confirmId=null;
+    if(A.tab==="users"&&A.users==null&&A.role==="admin") loadUsers();
+    admRender(); return; }
   if(act==="new"){ A.tab=t.dataset.kind; A.kind=t.dataset.kind; A.idx=-1; A.edit=prep(blank(A.kind)); admRender(); return; }
   if(act==="edit"){ A.kind=kind; A.idx=i; A.edit=prep(JSON.parse(JSON.stringify(DATA[kind][i]))); admRender(); return; }
   if(act==="cancel"){ A.edit=null; admRender(); return; }
@@ -2373,10 +2432,10 @@ function updatePills(){
 function prep(e){ if(A.kind==="reviews"){ e._h=Math.floor((e.mins||0)/60); e._m=(e.mins||0)%60; } return e; }
 function newKey(){ return Math.random().toString(36).slice(2,6)+"-"+Math.random().toString(36).slice(2,6); }
 function blank(kind){
-  if(kind==="reviews") return {id:uid("r"),t:"",y:new Date().getFullYear(),g:(DATA.settings.genres||["Екшън"])[0],s:4,mins:0,c1:"#1F1B14",c2:"#6B5620",poster:"",video:"",tags:[],verdict:"",body:"",status:"published",author:"",authorName:""};
+  if(kind==="reviews") return {id:uid("r"),t:"",y:new Date().getFullYear(),g:(DATA.settings.genres||["Екшън"])[0],s:4,mins:0,c1:"#1F1B14",c2:"#6B5620",poster:"",video:"",imdb:"",tags:[],verdict:"",body:"",status:"published",author:"",authorName:""};
   if(kind==="craft") return {id:uid("c"),tag:"Камера",t:"",when:todayISO(),role:"",guest:"",video:"",img:"",c1:"#1E1B14",c2:"#6B5620",p:"",body:"",status:"published",author:"",authorName:""};
   if(kind==="news") return {id:uid("n"),tag:"Индустрия",t:"",when:todayISO(),lead:false,img:"",video:"",p:"",body:"",status:"published",author:"",authorName:""};
-  if(kind==="episodes"){ var top=(DATA.episodes[0]||{}).n||0; return {id:uid("e"),n:top+1,t:"",d:todayISO(),lenH:1,lenM:0,tag:"Сезон 3",desc:"",yt:"",sp:""}; }
+  if(kind==="episodes"){ var top=(DATA.episodes[0]||{}).n||0; return {id:uid("e"),n:top+1,t:"",d:todayISO(),len:45,tag:"Сезон 3",desc:"",yt:"",sp:""}; }
   return {id:uid("m"),t:"",d:"",p:20,sizes:["S","M","L","XL"],c1:"#141210",c2:"#3A3018",img:"",on:true};
 }
 function saveEdit(){
@@ -2551,11 +2610,26 @@ function tryGate(){
   var who=whoIs(k);
   if(who) signIn(who); else { A.gateBad=true; admRender(); }
 }
+/* адрес от споделен линк: #/n/<id> отваря точно този материал */
+function openFromHash(){
+  var m=/^#\/([rncem])\/(.+)$/.exec(location.hash||"");
+  if(!m) return;
+  var kind={r:"reviews",n:"news",c:"craft",e:"episodes",m:"merch"}[m[1]];
+  var id=decodeURIComponent(m[2]);
+  var it=(DATA[kind]||[]).filter(function(x){ return String(x.id)===id; })[0];
+  if(!it) return;
+  var sec={reviews:"revyuta",news:"novini",craft:"zad-kadar",episodes:"podcast",merch:"merch"}[kind];
+  var el=document.getElementById(sec); if(el) el.scrollIntoView();
+  if(kind==="reviews") openReview(it);
+  else if(kind==="news") openNews(it);
+  else if(kind==="craft") openCraft(it);
+}
 function openAdmin(){
   if(!dirty){ try{ var d=localStorage.getItem(DRAFT_KEY); if(d){ DATA=JSON.parse(d); dirty=true; renderSite(); } }catch(e){} }
   try{ var ss=sessionStorage.getItem("mim-admin-ok");
     if(ss){ var who = ss==="1" ? {role:"admin",id:"owner",name:"Администратор"} : JSON.parse(ss);
       if(who&&PERMS[who.role]){ A.unlocked=true; A.me=who; A.role=who.role; } } }catch(e){}
+  if(A.unlocked&&A.role==="admin"&&A.users==null) loadUsers();
   siteEl.hidden=true; admEl.hidden=false; document.body.style.overflow="";
   A.msg=""; admRender(); renderDraftBar(); window.scrollTo(0,0);
 }
@@ -2600,6 +2674,8 @@ try{
 try{ orphan = localStorage.getItem(ORPH_KEY)||null; }catch(e){}
 renderSite();
 route();
+openFromHash();
+window.addEventListener("hashchange",openFromHash);
 apiGet();
 })();
 </script>
