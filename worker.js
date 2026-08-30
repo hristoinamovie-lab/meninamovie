@@ -164,6 +164,44 @@ function keepSecrets(incoming, prev) {
 const safeUsers = (rec) =>
   (rec && rec.users ? rec.users : []).map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role }));
 
+
+/* ---------- споделяне: страница с картинка за Facebook, Viber и т.н. ---------- */
+const KINDS = { r: "reviews", n: "news", c: "craft", e: "episodes", m: "merch" };
+const SECTION = { reviews: "revyuta", news: "novini", craft: "zad-kadar", episodes: "podcast", merch: "merch" };
+
+function findItem(data, kindKey, id) {
+  const list = (data && data[KINDS[kindKey]]) || [];
+  return list.find((x) => x && String(x.id) === String(id)) || null;
+}
+function itemImage(it) {
+  if (!it) return "";
+  return it.poster || it.img || "";
+}
+function ytIdOf(u) {
+  u = String(u || "").trim();
+  const pats = [/youtu\.be\/([\w-]{6,})/, /youtube\.com\/shorts\/([\w-]{6,})/, /youtube\.com\/live\/([\w-]{6,})/, /youtube\.com\/embed\/([\w-]{6,})/, /[?&]v=([\w-]{6,})/];
+  for (const p of pats) { const m = p.exec(u); if (m) return m[1]; }
+  return null;
+}
+function escHtml(t) {
+  return String(t == null ? "" : t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function plain(t, max) {
+  const s = String(t || "").replace(/[*_>#\[\]()]/g, " ").replace(/\s+/g, " ").trim();
+  return s.length > max ? s.slice(0, max - 1).trimEnd() + "…" : s;
+}
+/* data:image/... → същинските байтове */
+function dataUriToResponse(uri) {
+  const m = /^data:([^;,]+);base64,(.*)$/s.exec(String(uri || ""));
+  if (!m) return null;
+  const bin = atob(m[2]);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Response(bytes, {
+    headers: { "content-type": m[1], "cache-control": "public, max-age=300" },
+  });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -369,6 +407,61 @@ export default {
       }
 
       return json({ error: "method" }, 405);
+    }
+
+    /* картинката на един материал — за визитката при споделяне */
+    if (path.startsWith("/img/")) {
+      const parts = path.split("/").filter(Boolean); // img, kind, id
+      const kindKey = parts[1], id = decodeURIComponent(parts[2] || "");
+      if (!KINDS[kindKey]) return new Response("no", { status: 404 });
+      const data = await stored(env);
+      const it = findItem(data, kindKey, id);
+      if (!it) return new Response("no", { status: 404 });
+      const yt = ytIdOf(it.yt || it.video);
+      const img = itemImage(it);
+      if (!img && yt) return Response.redirect("https://i.ytimg.com/vi/" + yt + "/maxresdefault.jpg", 302);
+      const resp = img && dataUriToResponse(img);
+      if (resp) return resp;
+      if (img) return Response.redirect(img, 302);
+      return Response.redirect(new URL("/og.jpg", url).toString(), 302);
+    }
+
+    /* адрес за споделяне: показва визитка на ботовете, човека праща в сайта */
+    if (path.startsWith("/s/")) {
+      const parts = path.split("/").filter(Boolean); // s, kind, id
+      const kindKey = parts[1], id = decodeURIComponent(parts[2] || "");
+      const data = await stored(env);
+      const it = KINDS[kindKey] ? findItem(data, kindKey, id) : null;
+      const site = (data && data.settings) || {};
+      const origin = url.origin;
+      const target = origin + "/#/" + kindKey + "/" + encodeURIComponent(id);
+      if (!it) return Response.redirect(origin + "/", 302);
+      const title = it.t || "Men In A Movie";
+      const desc = plain(it.verdict || it.p || it.desc || it.body || "", 200);
+      const image = origin + "/img/" + kindKey + "/" + encodeURIComponent(id);
+      const html =
+        '<!doctype html><html lang="bg"><head><meta charset="utf-8">' +
+        '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+        "<title>" + escHtml(title) + " — Men In A Movie</title>" +
+        '<meta name="description" content="' + escHtml(desc) + '">' +
+        '<link rel="canonical" href="' + escHtml(target) + '">' +
+        '<meta property="og:type" content="article">' +
+        '<meta property="og:site_name" content="Men In A Movie">' +
+        '<meta property="og:locale" content="bg_BG">' +
+        '<meta property="og:url" content="' + escHtml(target) + '">' +
+        '<meta property="og:title" content="' + escHtml(title) + '">' +
+        '<meta property="og:description" content="' + escHtml(desc) + '">' +
+        '<meta property="og:image" content="' + escHtml(image) + '">' +
+        '<meta property="og:image:alt" content="' + escHtml(title) + '">' +
+        '<meta name="twitter:card" content="summary_large_image">' +
+        '<meta name="twitter:title" content="' + escHtml(title) + '">' +
+        '<meta name="twitter:description" content="' + escHtml(desc) + '">' +
+        '<meta name="twitter:image" content="' + escHtml(image) + '">' +
+        '<meta http-equiv="refresh" content="0; url=' + escHtml(target) + '">' +
+        '<style>body{background:#0A0908;color:#F6F2E6;font-family:system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0}a{color:#F6C92B}</style>' +
+        "</head><body><p>Отваряме „" + escHtml(title) + "“ — <a href=\"" + escHtml(target) + '">натисни тук, ако не стане само</a>.</p>' +
+        '<script>location.replace(' + JSON.stringify(target) + ")<\/script></body></html>";
+      return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=120" } });
     }
 
     const assets = env.ASSETS || env.assets;
