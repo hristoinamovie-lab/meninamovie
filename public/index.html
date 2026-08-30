@@ -126,7 +126,7 @@ nav.main a:hover::after,nav.main a.active::after{right:0}
 .sponsor b{color:var(--brand)}
 
 .gframe{position:relative;background:var(--brand);padding:14px;box-shadow:var(--shadow)}
-.gframe .inner{position:relative;background:#000;border:3px solid rgba(255,255,255,.9);overflow:hidden;aspect-ratio:16/10;display:grid;place-items:center}
+.gframe .inner{position:relative;background:#000;border:3px solid #000;overflow:hidden;aspect-ratio:16/10;display:grid;place-items:center}
 .gframe .inner>img{width:42%}
 .gframe .inner>img.ythumb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .gframe .inner::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.5),transparent 55%);pointer-events:none;z-index:2}
@@ -1137,7 +1137,7 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
         <div class="foot-links"><a href="#revyuta">Ревюта</a><a href="#podcast">Епизоди</a><a href="#zad-kadar">Зад кадър</a><a href="#novini">Новини</a><a href="#merch">Мърч</a></div>
       </div>
       <div>
-        <h4>Слушай ни</h4>
+        <h4>Последвай ни</h4>
         <div class="foot-links" data-dyn="social"></div>
       </div>
       <div>
@@ -1333,15 +1333,19 @@ function renderSettings(){
   dyn("stats").innerHTML = (s.stats||[]).map(function(x){return "<span>"+esc(x)+"</span>";}).join("");
   var L = s.links||{};
   dyn("podcastLinks").innerHTML =
-    '<a class="btn btn-ghost btn-sm" href="'+esc(L.youtube||"#")+'">YouTube</a>'+
-    '<a class="btn btn-ghost btn-sm" href="'+esc(L.spotify||"#")+'">Spotify</a>'+
-    '<a class="btn btn-ghost btn-sm" href="'+esc(L.apple||"#")+'">Apple</a>';
-  dyn("social").innerHTML = [["YouTube",L.youtube],["Spotify",L.spotify],["Apple Podcasts",L.apple],["Instagram",L.instagram],["TikTok",L.tiktok]]
-    .filter(function(x){return x[1];}).map(function(x){return '<a href="'+esc(x[1])+'" target="_blank" rel="noopener">'+x[0]+"</a>";}).join("");
-  dyn("contacts").innerHTML =
-    '<a href="mailto:'+esc(s.contactEmail)+'">'+esc(s.contactEmail)+"</a>"+
-    '<a href="mailto:'+esc(s.orderEmail)+'">'+esc(s.orderEmail)+"</a>"+
-    '<a href="mailto:'+esc(s.contactEmail)+'?subject=Реклама">Реклама и партньорства</a>';
+    [["Гледай в YouTube",L.youtube],["Instagram",L.instagram],["TikTok",L.tiktok]]
+      .filter(function(x){return x[1]&&x[1]!=="#";})
+      .map(function(x){ return '<a class="btn btn-ghost btn-sm" href="'+esc(x[1])+'" target="_blank" rel="noopener">'+esc(x[0])+"</a>"; }).join("");
+  var social = [["YouTube",L.youtube],["Instagram",L.instagram],["TikTok",L.tiktok]]
+    .filter(function(x){ return x[1]&&x[1]!=="#"; });
+  dyn("social").innerHTML = social.map(function(x){return '<a href="'+esc(x[1])+'" target="_blank" rel="noopener">'+x[0]+"</a>";}).join("");
+  var socBox=dyn("social"); if(socBox&&socBox.closest("div")) socBox.closest("div").hidden = !social.length;
+  var mails=[];
+  if(String(s.contactEmail||"").trim()) mails.push('<a href="mailto:'+esc(s.contactEmail)+'">'+esc(s.contactEmail)+"</a>");
+  if(String(s.orderEmail||"").trim() && s.orderEmail!==s.contactEmail) mails.push('<a href="mailto:'+esc(s.orderEmail)+'">'+esc(s.orderEmail)+"</a>");
+  if(String(s.contactEmail||"").trim()) mails.push('<a href="mailto:'+esc(s.contactEmail)+'?subject=Реклама">Реклама и партньорства</a>');
+  dyn("contacts").innerHTML = mails.join("");
+  var conBox=dyn("contacts"); if(conBox&&conBox.closest("div")) conBox.closest("div").hidden = !mails.length;
   var cp=dyn("copyText"), fn=dyn("footNote");
   if(cp) cp.textContent = s.copyright||"";
   if(fn) fn.textContent = s.footerNote||"";
@@ -1359,7 +1363,7 @@ function renderSub(){
   var head="<div><h2>"+esc(s.subTitle||"Не изпускай епизод")+"</h2><p>"+esc(s.subText||"")+"</p></div>";
   if(mode===SUB_MODES[1]){
     var L=s.links||{};
-    var btns=[["Гледай в YouTube",L.youtube],["Слушай в Spotify",L.spotify],["Apple Podcasts",L.apple]]
+    var btns=[["Гледай в YouTube",L.youtube],["Instagram",L.instagram],["TikTok",L.tiktok]]
       .filter(function(x){return x[1];})
       .map(function(x){ return '<a class="btn" href="'+esc(x[1])+'" target="_blank" rel="noopener">'+esc(x[0])+"</a>"; }).join("");
     box.innerHTML = head+'<div class="sub-form">'+btns+"</div>";
@@ -1435,7 +1439,6 @@ function renderEpisodes(){
       "<div><h3>"+esc(e.t)+'</h3><div class="sub">'+esc(fmtDate(e.d))+" &nbsp;•&nbsp; "+esc(fmtMins(epMins(e)))+" &nbsp;•&nbsp; "+esc(e.tag)+"</div></div>"+
       '<div class="ep-links">'+
         '<a class="btn btn-gold btn-sm" href="'+esc(e.yt||"#")+'"'+(e.yt?' target="_blank" rel="noopener"':"")+">Гледай</a>"+
-        '<a class="btn btn-ghost btn-sm" href="'+esc(e.sp||"#")+'"'+(e.sp?' target="_blank" rel="noopener"':"")+">Слушай</a>"+
       "</div></div>";
   }).join("");
   reveal();
@@ -2092,7 +2095,7 @@ function editView(){
       fldInp("Заглавие",'data-k="t"',e.t)+
       fldInp("Сезон / етикет",'data-k="tag"',e.tag,{ph:"Сезон 3"})+
       fldTa("Описание",'data-k="desc"',e.desc,{rows:4,hint:"Първият епизод в списъка се показва в началото на сайта."})+
-      '<div class="grid2">'+fldInp("YouTube линк",'data-k="yt"',e.yt,{ph:"https://youtu.be/…",hint:"Картинката на епизода се взима автоматично от това видео."})+fldInp("Spotify линк",'data-k="sp"',e.sp,{ph:"https://open.spotify.com/…"})+"</div>";
+      '<div class="grid2">'+fldInp("YouTube линк",'data-k="yt"',e.yt,{ph:"https://youtu.be/…",hint:"Картинката на епизода се взима автоматично от това видео."})+"</div>";
   } else {
     f = '<div class="grid2">'+fldInp("Име",'data-k="t"',e.t)+fldInp("Цена в евро",'data-k="p" data-type="num"',e.p,{type:"number",step:"0.5"})+"</div>"+
       fldTa("Описание",'data-k="d"',e.d,{rows:3})+
@@ -2255,8 +2258,10 @@ function vSettings(){
   "</div></div></div>"+
   '<div class="panel"><div class="panel-head"><h3>Контакти и мрежи</h3></div><div class="panel-body"><div class="form">'+
     '<div class="grid2">'+fldInp("Имейл за контакт",'data-p="settings.contactEmail"',s.contactEmail)+fldInp("Имейл за поръчки",'data-p="settings.orderEmail"',s.orderEmail)+"</div>"+
-    '<div class="grid3">'+fldInp("YouTube",'data-p="settings.links.youtube"',L.youtube)+fldInp("Spotify",'data-p="settings.links.spotify"',L.spotify)+fldInp("Apple Podcasts",'data-p="settings.links.apple"',L.apple)+"</div>"+
-    '<div class="grid2">'+fldInp("Instagram",'data-p="settings.links.instagram"',L.instagram)+fldInp("TikTok",'data-p="settings.links.tiktok"',L.tiktok)+"</div>"+
+    '<p class="hint">Празно поле = нищо не се показва във футъра.</p>'+
+    '<div class="grid3">'+fldInp("YouTube (адрес на канала)",'data-p="settings.links.youtube"',L.youtube,{ph:"https://youtube.com/@…"})+
+      fldInp("Instagram",'data-p="settings.links.instagram"',L.instagram,{ph:"https://instagram.com/…"})+
+      fldInp("TikTok",'data-p="settings.links.tiktok"',L.tiktok,{ph:"https://tiktok.com/@…"})+"</div>"+
   "</div></div></div>"+
   '<div class="panel"><div class="panel-head"><h3>Лента „Не изпускай епизод“</h3></div><div class="panel-body"><div class="form">'+
     fldSel("Какво да показва",'data-p="settings.subBand"',SUB_MODES,s.subBand,"„Скрита“ маха лентата от сайта. „Връзки към канала“ показва бутони към YouTube и Spotify. „Записване за бюлетин“ праща имейла на пощата ти през адреса на формата по-долу — без него няма къде да отиде.")+
@@ -2282,7 +2287,8 @@ function vSettings(){
     '<p class="hint">Цялото съдържание — ревюта, „Зад кадър“, новини, епизоди, мърч, настройки и качените снимки — в един файл. Свали го преди всяка по-голяма промяна.'+
     (A.prevBackup?' <b style="color:var(--brand)">Има запазено предишно състояние.</b>':"")+"</p>"+
     (A.prevBackup?'<div><button class="btn btn-ghost btn-sm" data-act="undoimport">Върни предишното състояние</button></div>':"")+
-    '<textarea id="jsonBox" rows="8" style="font-family:var(--f-mono);font-size:12px">'+esc(JSON.stringify(DATA))+"</textarea>"+
+    '<textarea id="jsonBox" rows="8" style="font-family:var(--f-mono);font-size:12px" placeholder="Натисни „Покажи текста“, за да го извадиш тук."></textarea>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn btn-ghost btn-sm" data-act="showjson">Покажи текста</button></div>'+
     '<p class="hint">Текстовото поле е за бърз пренос между браузъри: копираш оттук, поставяш там и натискаш „Внеси от текста“.</p>'+
   "</div></div></div>";
 }
@@ -2314,12 +2320,18 @@ function admRender(){
     ads:["Реклама",""],users:["Потребители",(A.users||[]).length||""],settings:["Настройки",""]};
   var tabs = perm().tabs.map(function(k){ return [k,allTabs[k][0],allTabs[k][1]]; });
   var body;
-  if(A.edit) body = editView();
-  else if(A.tab==="dash") body = vDash();
-  else if(A.tab==="ads") body = vAds();
-  else if(A.tab==="settings") body = vSettings();
-  else if(A.tab==="users") body = vUsers();
-  else body = listView(A.tab);
+  try{
+    if(A.edit) body = editView();
+    else if(A.tab==="dash") body = vDash();
+    else if(A.tab==="ads") body = vAds();
+    else if(A.tab==="settings") body = vSettings();
+    else if(A.tab==="users") body = vUsers();
+    else body = listView(A.tab);
+  }catch(err){
+    body = '<div class="panel"><div class="panel-head"><h3>Нещо се обърка в този раздел</h3></div>'+
+      '<div class="panel-body"><p class="hint">Останалата част от панела работи. Изпрати ми този текст и ще го оправя:</p>'+
+      "<code>"+esc(String((err&&err.message)||err))+"</code></div></div>";
+  }
 
   admEl.innerHTML = '<div class="adm"><aside class="adm-side">'+
     '<div class="adm-logo"><div class="mimlogo" style="width:48px;height:34px"></div><span><b>Men In A Movie</b><i>Админ</i></span></div>'+
@@ -2380,7 +2392,8 @@ admEl.addEventListener("click",function(ev){
   if(act==="clearimg"){ putImage(t.dataset.key,""); return; }
   if(act==="publish"){ publish(); return; }
   if(act==="download"){ saveSiteFile(); return; }
-  if(act==="copyjson"){ copy($("#jsonBox").value,t,"Копирай"); return; }
+  if(act==="showjson"){ var jb=$("#jsonBox"); if(jb){ jb.value=JSON.stringify(DATA); t.textContent="Готово"; } return; }
+  if(act==="copyjson"){ var jb2=$("#jsonBox"); if(jb2&&!jb2.value) jb2.value=JSON.stringify(DATA); copy(jb2.value,t,"Копирай"); return; }
   if(act==="dlbackup"){ downloadBackup(t); return; }
   if(act==="upbackup"){ uploadBackup(); return; }
   if(act==="undoimport"){
@@ -2461,7 +2474,16 @@ function applyBackup(d){
   A.msg="Възстановено"; A.msgType="ok"; afterChange();
 }
 function downloadBackup(btn){
-  var txt=JSON.stringify(DATA,null,1);
+  if(SRV===true){
+    fetch("/api/content?full=1",{headers:authHeaders(),cache:"no-store"})
+      .then(function(r){ return r.ok?r.json():null; })
+      .then(function(d){ saveBackupFile(btn, JSON.stringify(d||DATA,null,1)); })
+      .catch(function(){ saveBackupFile(btn, JSON.stringify(DATA,null,1)); });
+    return;
+  }
+  saveBackupFile(btn, JSON.stringify(DATA,null,1));
+}
+function saveBackupFile(btn,txt){
   var api=(window.claude&&window.claude.use)?window.claude.use("downloads"):Promise.resolve(null);
   Promise.resolve(api).then(function(dl){
     if(!dl){ copy(txt,btn,"Изтегли файл"); A.msg="Свалянето не е налично тук — копието е в клипборда"; A.msgType="warn"; admRender(); return; }
@@ -2496,11 +2518,16 @@ function pickImage(key){
     fr.onload=function(){
       var img=new Image();
       img.onload=function(){
-        var max=900, w=img.width, h=img.height;
+        var max=(key.indexOf("ads.")===0)?1400:1000, w=img.width, h=img.height;
         if(w>max){ h=Math.round(h*max/w); w=max; }
         var cv=document.createElement("canvas"); cv.width=w; cv.height=h;
-        cv.getContext("2d").drawImage(img,0,0,w,h);
-        putImage(key,cv.toDataURL("image/jpeg",0.82));
+        var cx=cv.getContext("2d"); cx.imageSmoothingQuality="high"; cx.drawImage(img,0,0,w,h);
+        var webp=cv.toDataURL("image/webp",0.8);
+        var jpg=cv.toDataURL("image/jpeg",0.8);
+        var best=(webp.indexOf("data:image/webp")===0 && webp.length<jpg.length) ? webp : jpg;
+        putImage(key,best);
+        A.msg="Снимката е смалена до "+w+"px · "+Math.round(best.length*0.75/1024)+" KB";
+        A.msgType="ok";
       };
       img.src=fr.result;
     };
