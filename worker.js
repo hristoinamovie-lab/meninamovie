@@ -165,6 +165,44 @@ const safeUsers = (rec) =>
   (rec && rec.users ? rec.users : []).map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role }));
 
 
+
+/* ---------- снимките се раздават отделно, а не вътре в съдържанието ---------- */
+const IMG_FIELDS = { reviews: "poster", news: "img", craft: "img", merch: "img" };
+const KEY_OF = { reviews: "r", news: "n", craft: "c", merch: "m" };
+const isDataUri = (v) => typeof v === "string" && v.slice(0, 11) === "data:image/";
+/* кратък отпечатък, за да се смени адресът при нова снимка */
+function stamp(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i += 97) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0;
+  return (h.toString(36) + str.length.toString(36)).slice(0, 10);
+}
+/* съдържание за браузъра: снимките стават адреси */
+function liftImages(data) {
+  for (const kind of Object.keys(IMG_FIELDS)) {
+    const f = IMG_FIELDS[kind];
+    for (const it of data[kind] || []) {
+      if (it && isDataUri(it[f])) it[f] = "/img/" + KEY_OF[kind] + "/" + encodeURIComponent(it.id) + "?v=" + stamp(it[f]);
+    }
+  }
+  return data;
+}
+/* при запис: адресите се връщат обратно към снимките, които браузърът никога не е виждал */
+function keepImages(incoming, prev) {
+  if (!prev) return incoming;
+  for (const kind of Object.keys(IMG_FIELDS)) {
+    const f = IMG_FIELDS[kind];
+    const old = prev[kind] || [];
+    for (const it of incoming[kind] || []) {
+      if (!it || isDataUri(it[f])) continue;
+      if (typeof it[f] === "string" && it[f].indexOf("/img/") === 0) {
+        const o = old.find((x) => x && x.id === it.id);
+        it[f] = o && isDataUri(o[f]) ? o[f] : "";
+      }
+    }
+  }
+  return incoming;
+}
+
 /* ---------- споделяне: страница с картинка за Facebook, Viber и т.н. ---------- */
 const KINDS = { r: "reviews", n: "news", c: "craft", e: "episodes", m: "merch" };
 const SECTION = { reviews: "revyuta", news: "novini", craft: "zad-kadar", episodes: "podcast", merch: "merch" };
@@ -372,7 +410,13 @@ export default {
       if (request.method === "GET") {
         const data = await stored(env);
         if (!data) return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
-        return json(publicCopy(data));
+        const pub = publicCopy(data);
+        if (url.searchParams.get("full") === "1") {
+          const who = await whoIs(request, env, data);
+          if (!who) return json({ error: "forbidden" }, 403);
+          return json(pub);                       // с всички снимки вътре — за резервното копие
+        }
+        return json(liftImages(pub));
       }
 
       if (request.method === "POST") {
@@ -396,7 +440,7 @@ export default {
         if (!body || typeof body !== "object" || !body.settings)
           return json({ error: "bad_shape", message: "Данните не приличат на съдържание на сайта." }, 400);
 
-        const merged = keepSecrets(body, prev);
+        const merged = keepImages(keepSecrets(body, prev), prev);
         const text = JSON.stringify(merged);
         if (text.length > 20 * 1024 * 1024)
           return json({ error: "too_large", message: "Съдържанието е над 20 MB." }, 413);
@@ -421,7 +465,10 @@ export default {
       const img = itemImage(it);
       if (!img && yt) return Response.redirect("https://i.ytimg.com/vi/" + yt + "/maxresdefault.jpg", 302);
       const resp = img && dataUriToResponse(img);
-      if (resp) return resp;
+      if (resp) {
+        if (url.searchParams.get("v")) resp.headers.set("cache-control", "public, max-age=31536000, immutable");
+        return resp;
+      }
       if (img) return Response.redirect(img, 302);
       return Response.redirect(new URL("/og.jpg", url).toString(), 302);
     }
@@ -466,6 +513,14 @@ export default {
 
     const assets = env.ASSETS || env.assets;
     if (!assets) return new Response("Няма вързани статични файлове (binding ASSETS).", { status: 500 });
-    return assets.fetch(request);
+    const res = await assets.fetch(request);
+    // страницата да не се кешира: иначе новата версия не стига до хората
+    const ct = res.headers.get("content-type") || "";
+    if (ct.includes("text/html")) {
+      const out = new Response(res.body, res);
+      out.headers.set("cache-control", "no-cache, must-revalidate");
+      return out;
+    }
+    return res;
   },
 };
