@@ -1838,6 +1838,7 @@ function afterServer(d){
   }
   if(A.unlocked&&A.role==="admin"&&A.users==null) loadUsers();
   if(!admEl.hidden && A.unlocked) admRender();
+  openFromHash();                       /* споделен линк към материал, който го няма във файла */
 }
 function apiSave(now){
   if(SRV!==true) return;
@@ -2638,13 +2639,16 @@ function tryGate(){
   if(who) signIn(who); else { A.gateBad=true; admRender(); }
 }
 /* адрес от споделен линк: #/n/<id> отваря точно този материал */
+var hashDone="";
 function openFromHash(){
   var m=/^#\/([rncem])\/(.+)$/.exec(location.hash||"");
-  if(!m) return;
+  if(!m){ hashDone=""; return; }
+  if(hashDone===location.hash) return;
   var kind={r:"reviews",n:"news",c:"craft",e:"episodes",m:"merch"}[m[1]];
   var id=decodeURIComponent(m[2]);
   var it=(DATA[kind]||[]).filter(function(x){ return String(x.id)===id; })[0];
-  if(!it) return;
+  if(!it) return;                       /* съдържанието още не е дошло — пробваме пак после */
+  hashDone=location.hash;
   var sec={reviews:"revyuta",news:"novini",craft:"zad-kadar",episodes:"podcast",merch:"merch"}[kind];
   var el=document.getElementById(sec); if(el) el.scrollIntoView();
   if(kind==="reviews") openReview(it);
