@@ -227,10 +227,16 @@ nav.main a:hover::after,nav.main a.active::after{right:0}
 .dpick{position:absolute;right:0;bottom:0;width:46px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
 .btn.imdb{font-weight:700;letter-spacing:.08em}
 .btn.imdb:hover{color:#000;background:#F5C518;border-color:#F5C518}
+.btn.like{gap:7px}
+.btn.like.on{color:var(--brand);border-color:var(--brand)}
+.btn.like .likeN{font-variant-numeric:tabular-nums}
 .sig{margin-top:20px;text-align:right;font-size:13px;font-style:italic;color:var(--muted);opacity:.8}
 .craft-hero{width:100%;aspect-ratio:16/9;background-size:cover;background-position:center;display:grid;place-items:center;position:relative;border:1px solid var(--line)}
 
 /* ================= НОВИНИ ================= */
+.more-wrap{display:flex;justify-content:center;margin-top:26px}
+.more-wrap:empty{display:none}
+.btn-more{min-width:220px;justify-content:center}
 .grid-news{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:20px}
 .news{background:var(--surface);border:1px solid var(--line);padding:22px;text-decoration:none;display:flex;flex-direction:column;gap:11px;cursor:pointer;text-align:left;transition:border-color .2s ease,transform .2s ease}
 .news:hover{border-color:var(--brand);transform:translateY(-4px)}
@@ -241,7 +247,7 @@ nav.main a:hover::after,nav.main a.active::after{right:0}
 .news-lead{grid-row:span 2;background:var(--brand);border:none;padding:0;display:flex;flex-direction:column;cursor:pointer;text-align:left;transition:transform .2s ease}
 .news-lead:hover{transform:translateY(-4px)}
 .nl-top{padding:16px 18px 10px;font-family:var(--f-cond);font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#000;font-size:14px}
-.nl-art{margin:0 14px;position:relative;background:#000;border:3px solid #fff;aspect-ratio:16/11;overflow:hidden;display:grid;place-items:center;background-size:cover;background-position:center}
+.nl-art{margin:0 14px;position:relative;background:#000;aspect-ratio:16/11;overflow:hidden;display:grid;place-items:center;background-size:cover;background-position:center}
 .nl-art>img{width:38%;opacity:.9}
 .nl-body{padding:16px 18px 20px;display:flex;flex-direction:column;gap:10px;flex:1}
 .nl-body h3{color:#000;font-size:25px;font-style:italic;text-transform:none;line-height:1.06}
@@ -372,6 +378,8 @@ html{scroll-behavior:smooth;scroll-padding-top:86px}
   .hl-stack .hl:nth-child(3){margin-left:16px}
 }
 
+
+
 /* ==================================================================
    АДМИН ПАНЕЛ
    ================================================================== */
@@ -482,8 +490,6 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
   "shipping": 5,
   "links": {
    "youtube": "#",
-   "spotify": "#",
-   "apple": "#",
    "instagram": "#",
    "tiktok": "#"
   },
@@ -1041,6 +1047,7 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
       <div class="filters" data-dyn="filters"></div>
     </div>
     <div class="grid-reviews" data-dyn="reviews"></div>
+    <div class="more-wrap" data-more="reviews"></div>
   </div>
 </section>
 
@@ -1057,6 +1064,7 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
       <div class="ep-links" data-dyn="podcastLinks"></div>
     </div>
     <div class="ep-list" data-dyn="episodes"></div>
+    <div class="more-wrap" data-more="episodes"></div>
   </div>
 </section>
 
@@ -1071,6 +1079,7 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
       <div class="filters" data-dyn="craftFilters"></div>
     </div>
     <div class="grid-craft" data-dyn="craft"></div>
+    <div class="more-wrap" data-more="craft"></div>
   </div>
 </section>
 
@@ -1084,6 +1093,7 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
       </div>
     </div>
     <div class="grid-news" data-dyn="news"></div>
+    <div class="more-wrap" data-more="news"></div>
   </div>
 </section>
 
@@ -1098,6 +1108,7 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
       <span class="chip">Доставка в цялата страна</span>
     </div>
     <div class="grid-merch" data-dyn="merch"></div>
+    <div class="more-wrap" data-more="merch"></div>
     <div class="merch-note">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:0 0 auto;margin-top:3px;color:var(--brand)"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01" stroke-linecap="round"/></svg>
       <span><b>Как работи поръчката:</b> попълваш формата, получаваме заявката и потвърждаваме наличност и срок по имейл. Плащане с наложен платеж или банков превод. Доставка с куриер за 1–3 работни дни.</span>
@@ -1240,6 +1251,8 @@ var SUB_MODES=["Скрита","Връзки към канала","Записва
 function migrate(){
   var s=DATA.settings||(DATA.settings={});
   if(!s.genres) s.genres=["Екшън","Комедия","Драма","Sci-Fi","Хорър","Трилър","Анимация","Документален"];
+  var ad=DATA.ads||(DATA.ads={});
+  if(ad.enabled==null) ad.enabled=true;
   if(!s.newsTags) s.newsTags=["Индустрия","Боксофис","Премиери","Трейлъри","Кастинг","Награди","Стрийминг","Продукция","Сериали","Фестивали","Слухове"];
   if(!s.sizesList) s.sizesList=["XS","S","M","L","XL","XXL","3XL","Универсален","Комплект","A2","350 мл"];
   if(s.formEndpoint==null) s.formEndpoint="";
@@ -1305,7 +1318,9 @@ var AD_SIZES = {
   news:{label:"Карта в новините 300×250",cls:"small"},
   prefooter:{label:"Хоризонтален банер 970×90",cls:""}
 };
+function adsOn(){ return (DATA.ads||{}).enabled!==false; }
 function adHTML(slot){
+  if(!adsOn()) return "";
   var a = (DATA.ads||{})[slot]||{}, sz = AD_SIZES[slot]||{label:"",cls:""};
   if(!a.on){
     if(!(DATA.ads&&DATA.ads.showPlaceholders)) return "";
@@ -1377,7 +1392,7 @@ function renderSub(){
 
 function renderHero(){
   var e = (DATA.episodes||[])[0]; if(!e){ dyn("hero").innerHTML=""; return; }
-  var sp = (DATA.ads||{}).sponsor||{};
+  var sp = adsOn() ? ((DATA.ads||{}).sponsor||{}) : {};
   dyn("hero").innerHTML =
     '<div>'+
       '<div class="now"><i class="dot"></i><span class="eyebrow">Епизод '+esc(e.n)+' • Ново</span></div>'+
@@ -1417,6 +1432,7 @@ function renderFilters(){
 }
 function renderReviews(){
   var list = (DATA.reviews||[]).filter(visible).filter(function(r){ return activeGenre==="Всички"||r.g===activeGenre; });
+  var total=list.length; list=list.slice(0,limitOf("reviews"));
   dyn("reviews").innerHTML = list.map(function(r){
     var bg = r.poster ? 'background-image:url('+r.poster+')' : "background:linear-gradient(155deg,"+(r.c1||"#2a2a2a")+" 0%,"+(r.c2||"#555")+" 100%)";
     return '<button class="card rv" data-id="'+esc(r.id)+'">'+
@@ -1428,10 +1444,12 @@ function renderReviews(){
       '<div class="card-body"><span class="genre">'+esc(r.g)+"</span><p>"+esc(r.verdict)+'</p><span class="card-more">Прочети ревюто</span></div>'+
     "</button>";
   }).join("");
+  renderMore("reviews",total);
   reveal();
 }
 function renderEpisodes(){
-  dyn("episodes").innerHTML = (DATA.episodes||[]).map(function(e){
+  var elist=(DATA.episodes||[]); var etotal=elist.length; elist=elist.slice(0,limitOf("episodes"));
+  dyn("episodes").innerHTML = elist.map(function(e){
     var th=ytThumb(e.yt);
     return '<div class="ep rv">'+
       (th ? '<img class="ep-thumb" src="'+esc(th)+'" alt="" loading="lazy" onerror="this.onerror=null;this.src=\''+esc(ytThumbAlt(e.yt))+'\'">'
@@ -1441,10 +1459,13 @@ function renderEpisodes(){
         '<a class="btn btn-gold btn-sm" href="'+esc(e.yt||"#")+'"'+(e.yt?' target="_blank" rel="noopener"':"")+">Гледай</a>"+
       "</div></div>";
   }).join("");
+  renderMore("episodes",etotal);
   reveal();
 }
 function renderNews(){
-  var html = (DATA.news||[]).filter(visible).map(function(n){
+  var nlist=(DATA.news||[]).filter(visible);
+  var ntotal=nlist.length; nlist=nlist.slice(0,limitOf("news"));
+  var html = nlist.map(function(n){
     if(n.lead){
       var art = n.img ? 'style="background-image:url('+n.img+')"' : "";
       return '<button class="news-lead rv" data-id="'+esc(n.id)+'">'+
@@ -1459,10 +1480,13 @@ function renderNews(){
   var ad = adHTML("news");
   if(ad) html += '<div class="news ad-card" style="cursor:default;align-items:center;justify-content:center">'+ad+"</div>";
   dyn("news").innerHTML = html;
+  renderMore("news",ntotal);
   reveal();
 }
 function renderMerch(){
-  dyn("merch").innerHTML = (DATA.merch||[]).filter(function(m){return m.on!==false;}).map(function(m){
+  var mlist=(DATA.merch||[]).filter(function(m){return m.on!==false;});
+  var mtotal=mlist.length; mlist=mlist.slice(0,limitOf("merch"));
+  dyn("merch").innerHTML = mlist.map(function(m){
     var art = m.img ? 'style="background-image:url('+m.img+')"' : 'style="background:linear-gradient(150deg,'+(m.c1||"#141210")+","+(m.c2||"#3A3018")+')"';
     return '<div class="prod rv">'+
       '<div class="prod-art" '+art+">"+(m.img?"":'<span class="strip"></span><div class="mimlogo" style="width:44%;aspect-ratio:1.4"></div>')+"</div>"+
@@ -1472,6 +1496,7 @@ function renderMerch(){
         '<button class="btn btn-gold" data-buy="'+esc(m.id)+'">Поръчай</button>'+
       "</div></div>";
   }).join("");
+  renderMore("merch",mtotal);
   reveal();
 }
 
@@ -1539,7 +1564,9 @@ function craftKind(c){
 }
 function renderCraft(){
   var el=dyn("craft"); if(!el) return;
-  el.innerHTML = (DATA.craft||[]).filter(visible).filter(function(c){ return activeCraft==="Всички"||c.tag===activeCraft; }).map(function(c){
+  var clist=(DATA.craft||[]).filter(visible).filter(function(c){ return activeCraft==="Всички"||c.tag===activeCraft; });
+  var ctotal=clist.length; clist=clist.slice(0,limitOf("craft"));
+  el.innerHTML = clist.map(function(c){
     var art = c.img ? 'style="background-image:url('+c.img+')"' : 'style="background:linear-gradient(150deg,'+(c.c1||"#1E1B14")+","+(c.c2||"#6B5620")+')"';
     var who = [c.guest,c.role].filter(Boolean).join(", ");
     return '<button class="craft rv" data-craft="'+esc(c.id)+'">'+
@@ -1548,6 +1575,7 @@ function renderCraft(){
       '<div class="craft-body"><h3>'+esc(c.t)+"</h3><p>"+esc(c.p)+"</p>"+
         '<div class="meta">'+esc(craftKind(c))+" &nbsp;•&nbsp; "+esc(fmtDate(c.when))+(who?" &nbsp;•&nbsp; разказва "+esc(who):"")+"</div></div></button>";
   }).join("");
+  renderMore("craft",ctotal);
   reveal();
 }
 function openCraft(c){
@@ -1570,11 +1598,30 @@ function openCraft(c){
   }
   $("#modalBody").innerHTML = hero+
     md(c.body||c.p)+sig(c)+
-    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">'+shareBtn("craft",c)+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">'+likeBtn("craft",c)+shareBtn("craft",c)+
       '<button class="btn btn-ghost btn-sm" data-close>Затвори</button></div>';
+  countView("craft",c);
   openModal();
 }
 
+/* колко се показват в началото и с колко расте при „Виж още“ */
+var SHOW_FIRST={reviews:8,news:7,craft:6,merch:6,episodes:4};
+var SHOW_STEP={reviews:8,news:6,craft:6,merch:6,episodes:4};
+var shownN={reviews:0,news:0,craft:0,merch:0,episodes:0};
+function limitOf(kind){ return shownN[kind]||SHOW_FIRST[kind]; }
+function renderMore(kind,total){
+  var el=document.querySelector('[data-more="'+kind+'"]'); if(!el) return;
+  var n=limitOf(kind);
+  el.innerHTML = total>n
+    ? '<button class="btn btn-ghost btn-more" data-showmore="'+kind+'">Виж още <span>('+(total-n)+')</span></button>'
+    : "";
+}
+document.addEventListener("click",function(e){
+  var b=e.target.closest && e.target.closest("[data-showmore]"); if(!b) return;
+  var k=b.dataset.showmore;
+  shownN[k]=limitOf(k)+(SHOW_STEP[k]||6);
+  ({reviews:renderReviews,news:renderNews,craft:renderCraft,merch:renderMerch,episodes:renderEpisodes})[k]();
+});
 function renderSite(){ if(!DATA.craft) DATA.craft=[]; renderDraftBar(); renderSettings(); renderAds(); renderHero(); renderFilters(); renderReviews(); renderEpisodes(); renderCraftFilters(); renderCraft(); renderNews(); renderMerch(); }
 
 function renderDraftBar(){
@@ -1613,11 +1660,11 @@ document.addEventListener("click",function(e){
 /* ============================ ВЗАИМОДЕЙСТВИЯ ============================ */
 document.addEventListener("click",function(e){
   var f = e.target.closest && e.target.closest(".filter[data-g]");
-  if(f && f.parentNode===dyn("filters")){ activeGenre=f.dataset.g; renderFilters(); renderReviews(); return; }
+  if(f && f.parentNode===dyn("filters")){ activeGenre=f.dataset.g; shownN.reviews=0; renderFilters(); renderReviews(); return; }
   var c = e.target.closest && e.target.closest(".card[data-id]");
   if(c){ openReview((DATA.reviews||[]).filter(function(r){return r.id===c.dataset.id;})[0]); return; }
   var cf = e.target.closest && e.target.closest(".filter[data-cf]");
-  if(cf){ activeCraft=cf.dataset.cf; renderCraftFilters(); renderCraft(); return; }
+  if(cf){ activeCraft=cf.dataset.cf; shownN.craft=0; renderCraftFilters(); renderCraft(); return; }
   var cr = e.target.closest && e.target.closest("[data-craft]");
   if(cr){ openCraft((DATA.craft||[]).filter(function(x){return x.id===cr.dataset.craft;})[0]); return; }
   var nw = e.target.closest && e.target.closest(".news[data-id],.news-lead[data-id]");
@@ -1651,8 +1698,9 @@ function openReview(r){
   $("#modalMeta").innerHTML = (r.mins?'<span class="chip">'+r.mins+" мин</span>":"")+
     (r.tags||[]).map(function(t){return '<span class="chip">'+esc(t)+"</span>";}).join("");
   $("#modalBody").innerHTML = md(r.body||r.verdict)+sig(r)+
-    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">'+moreBtn(r)+imdbBtn(r)+shareBtn("reviews",r)+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">'+likeBtn("reviews",r)+moreBtn(r)+imdbBtn(r)+shareBtn("reviews",r)+
       '<button class="btn btn-ghost btn-sm" data-close>Затвори</button></div>';
+  countView("reviews",r);
   openModal();
 }
 function openNews(n){
@@ -1662,8 +1710,9 @@ function openNews(n){
   $("#modalScore").innerHTML=""; $("#modalScore").style.display="none";
   $("#modalMeta").innerHTML="";
   $("#modalBody").innerHTML = md(n.body||n.p)+sig(n)+
-    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">'+moreBtn(n)+shareBtn("news",n)+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">'+likeBtn("news",n)+moreBtn(n)+shareBtn("news",n)+
       '<button class="btn btn-ghost btn-sm" data-close>Затвори</button></div>';
+  countView("news",n);
   openModal();
 }
 
@@ -1780,6 +1829,59 @@ function reveal(){
 /* ==================================================================
    АДМИН ПАНЕЛ
    ================================================================== */
+/* ================= прегледи и харесвания ================= */
+var STATS={views:{},likes:{}}, statsReady=false;
+var SKEY={reviews:"r",news:"n",craft:"c",episodes:"e"};
+function statKey(kind,id){ return SKEY[kind]+":"+id; }
+function loadStats(){
+  if(!/^https?:$/.test(location.protocol)) return;
+  fetch("/api/stats",{cache:"no-store"}).then(function(r){ return r.ok?r.json():null; })
+    .then(function(j){ if(j){ STATS={views:j.views||{},likes:j.likes||{}}; statsReady=true; paintLikes(); } })
+    .catch(function(){});
+}
+function myLikes(){ try{ return JSON.parse(localStorage.getItem("mim-likes")||"{}"); }catch(e){ return {}; } }
+function setMyLike(k,on){ var m=myLikes(); if(on) m[k]=1; else delete m[k]; try{ localStorage.setItem("mim-likes",JSON.stringify(m)); }catch(e){} }
+function hit(kind,id,like){
+  if(SRV!==true) return Promise.resolve(null);
+  return fetch("/api/hit",{method:"POST",headers:{"content-type":"application/json"},
+    body:JSON.stringify({kind:SKEY[kind],id:id,like:like})})
+    .then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; });
+}
+/* един преглед на материал за посещение */
+function countView(kind,it){
+  if(!it||SRV!==true) return;
+  var k=statKey(kind,it.id), seen={};
+  try{ seen=JSON.parse(sessionStorage.getItem("mim-seen")||"{}"); }catch(e){}
+  if(seen[k]) return;
+  seen[k]=1; try{ sessionStorage.setItem("mim-seen",JSON.stringify(seen)); }catch(e){}
+  hit(kind,it.id).then(function(j){ if(j){ STATS.views[k]=j.views; } });
+}
+function likeBtn(kind,it){
+  if(SRV!==true||!it) return "";
+  var k=statKey(kind,it.id), mine=!!myLikes()[k], n=(STATS.likes[k]||0);
+  return '<button class="btn btn-ghost btn-sm like'+(mine?" on":"")+'" data-like="'+esc(kind)+'" data-id="'+esc(it.id)+'">'+
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="'+(mine?"currentColor":"none")+'" stroke="currentColor" stroke-width="2">'+
+    '<path d="M20.8 5.6a5.5 5.5 0 0 0-7.8 0L12 6.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 22l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>'+
+    '<span class="likeN">'+(n||"")+"</span></button>";
+}
+function paintLikes(){
+  $$("[data-like]").forEach(function(b){
+    var k=statKey(b.dataset.like,b.dataset.id), n=STATS.likes[k]||0, mine=!!myLikes()[k];
+    b.classList.toggle("on",mine);
+    var sp=b.querySelector(".likeN"); if(sp) sp.textContent=n||"";
+    var sv=b.querySelector("svg"); if(sv) sv.setAttribute("fill",mine?"currentColor":"none");
+  });
+}
+document.addEventListener("click",function(e){
+  var b=e.target.closest && e.target.closest("[data-like]"); if(!b) return;
+  var kind=b.dataset.like, id=b.dataset.id, k=statKey(kind,id);
+  var mine=!!myLikes()[k];
+  setMyLike(k,!mine);
+  STATS.likes[k]=Math.max(0,(STATS.likes[k]||0)+(mine?-1:1));
+  paintLikes();
+  hit(kind,id,!mine).then(function(j){ if(j){ STATS.likes[k]=j.likes; paintLikes(); } });
+});
+
 var HOST="static";           /* artifact | server | static */
 var SRV=null;                /* null = още не знаем, true/false = има ли сървър */
 var SRVKEY="";               /* стар ключ — пази се за съвместимост */
@@ -1812,9 +1914,9 @@ function sameContent(a,b){ try{ return JSON.stringify(stripKeys(a))===JSON.strin
 function apiGet(){
   if(!/^https?:$/.test(location.protocol)){ SRV=false; return; }
   fetch("/api/content",{cache:"no-store"}).then(function(r){
-    if(r.status===204){ SRV=true; HOST="server"; loadAuthMode(); afterServer(null); return; }
+    if(r.status===204){ SRV=true; HOST="server"; loadAuthMode(); loadStats(); afterServer(null); return; }
     if(!r.ok) throw 0;
-    return r.json().then(function(d){ SRV=true; HOST="server"; loadAuthMode(); afterServer(d); });
+    return r.json().then(function(d){ SRV=true; HOST="server"; loadAuthMode(); loadStats(); afterServer(d); });
   }).catch(function(){ SRV=false; });
 }
 function afterServer(d){
@@ -1926,6 +2028,37 @@ var MDBAR = '<div class="toolbar">'+
   '<button type="button" data-md="link">линк</button></div>';
 
 /* ---------- изгледи ---------- */
+/* най-четените материали — за таблото */
+function topList(){
+  if(SRV!==true) return '<div class="panel"><div class="panel-head"><h3>Най-четени</h3></div><div class="panel-body hint">Броенето работи само на истинския сайт.</div></div>';
+  var names={r:"Ревю",n:"Новина",c:"Зад кадър",e:"Епизод"};
+  var lists={r:DATA.reviews||[],n:DATA.news||[],c:DATA.craft||[],e:DATA.episodes||[]};
+  var rows=[];
+  Object.keys(STATS.views||{}).forEach(function(k){
+    var kind=k.slice(0,1), id=k.slice(2);
+    var it=(lists[kind]||[]).filter(function(x){ return String(x.id)===id; })[0];
+    if(it) rows.push({t:it.t,kind:names[kind]||"",v:STATS.views[k]||0,l:(STATS.likes||{})[k]||0});
+  });
+  Object.keys(STATS.likes||{}).forEach(function(k){
+    if((STATS.views||{})[k]!=null) return;
+    var kind=k.slice(0,1), id=k.slice(2);
+    var it=(lists[kind]||[]).filter(function(x){ return String(x.id)===id; })[0];
+    if(it) rows.push({t:it.t,kind:names[kind]||"",v:0,l:STATS.likes[k]||0});
+  });
+  rows.sort(function(a,b){ return b.v-a.v || b.l-a.l; });
+  var totalV=rows.reduce(function(n,r){return n+r.v;},0), totalL=rows.reduce(function(n,r){return n+r.l;},0);
+  var body = rows.length
+    ? rows.slice(0,15).map(function(r){
+        return '<div class="rowi"><div class="thumb">'+esc(String(r.v))+"</div>"+
+          "<div><h4>"+esc(r.t)+'</h4><div class="meta">'+esc(r.kind)+" • "+r.v+" отваряния • "+r.l+" харесвания</div></div></div>";
+      }).join("")
+    : '<div class="panel-body hint">Още няма отваряния. Числата тръгват, щом някой отвори материал на сайта.</div>';
+  return '<div class="panel"><div class="panel-head"><h3>Най-четени</h3>'+
+    '<span class="pill">'+totalV+' отваряния</span><span class="pill">'+totalL+' харесвания</span>'+
+    '<button class="btn btn-ghost btn-sm" data-act="reloadstats">Опресни</button></div>'+
+    '<div class="rows">'+body+"</div>"+
+    '<div class="panel-body hint">Броят се отварянията на материал, по едно на посещение. Числата са общи, без лични данни за никого.</div></div>';
+}
 function vDash(){
   var d=DATA;
   return '<div class="adm-cards">'+
@@ -1947,6 +2080,7 @@ function vDash(){
       : "Натискаш <b style=\"color:var(--brand)\">Изтегли обновения сайт</b> горе вдясно — сваляш нов <b>index.html</b> и го качваш при хостинга.")+"</p>"+
     "<p><b style=\"color:var(--ink)\">3.</b> Ако публикуването не е налично (отваряш страницата само за четене), запази резервно копие от Настройки → Резервно копие.</p>"+
   "</div></div>"+
+  topList()+
   '<div class="panel"><div class="panel-head"><h3>Последен епизод</h3><button class="btn btn-ghost btn-sm" data-act="tab" data-tab="episodes">Всички епизоди</button></div>'+
     '<div class="panel-body"><h4 style="font-size:20px;font-style:italic;text-transform:uppercase">'+esc((d.episodes[0]||{}).t||"—")+'</h4>'+
     '<p class="hint" style="margin-top:8px">'+esc((d.episodes[0]||{}).d||"")+" • "+esc((d.episodes[0]||{}).len||"")+"</p></div></div>";
@@ -2074,7 +2208,7 @@ function editView(){
       fldTa("Кратко (на картата)",'data-k="p"',e.p,{rows:2})+
       fldTa("Текст",'data-k="body" data-md-target="1"',e.body,{rows:10,toolbar:MDBAR,hint:"**удебелено**, *курсив*, ## подзаглавие, - списък, > акцент, [текст](линк)."})+
       '<div class="mdprev" data-prev="1">'+md(e.body)+"</div>"+
-      fldImg("Кадър от видеото","img",e.img,"16:9, препоръчано 800×450.")+
+      fldImg("Кадър от видеото","img",e.img,"16:9, препоръчано 1000×563. Показва се и голям в статията.")+
       '<div class="grid2">'+fldInp("Цвят 1",'data-k="c1"',e.c1,{type:"color"})+fldInp("Цвят 2",'data-k="c2"',e.c2,{type:"color"})+"</div>"+
       fldInp("Автор (подпис в края на текста)",'data-k="authorName"',e.authorName,{ph:"Име и фамилия",hint:"Показва се най-долу под текста. Празно поле = без подпис."});
   } else if(k==="news"){
@@ -2087,7 +2221,7 @@ function editView(){
       fldTa("Текст",'data-k="body" data-md-target="1"',e.body,{rows:10,toolbar:MDBAR,hint:"Същото форматиране като при ревютата."})+
       '<div class="mdprev" data-prev="1">'+md(e.body)+"</div>"+
       fldInp("Линк към видеото в YouTube (по избор)",'data-k="video"',e.video,{ph:"https://youtu.be/…",hint:"Ако има видео по темата, тук слагаш линка и в новината се появява бутон „Чуй повече“. Празно поле = без бутон."})+
-      fldImg("Изображение","img",e.img,"16:11, препоръчано 800×550.")+
+      fldImg("Изображение","img",e.img,"16:11, препоръчано 800×550. Вижда се на голямата карта и при споделяне.")+
       fldInp("Автор (подпис в края на текста)",'data-k="authorName"',e.authorName,{ph:"Име и фамилия",hint:"Показва се най-долу под текста. Празно поле = без подпис."});
   } else if(k==="episodes"){
     f = '<div class="grid3">'+fldInp("Номер",'data-k="n" data-type="num"',e.n,{type:"number"})+
@@ -2214,7 +2348,10 @@ function vAds(){
       fldTa("Код (AdSense / Ad Manager / друга мрежа)",'data-p="ads.'+key+'.code"',a.code,{rows:4,hint:"Работи на истински хостинг. В прегледа тук външните скриптове са блокирани."})+
       "</div></div></div>";
   }
-  return '<div class="panel"><div class="panel-head"><h3>Как да сложиш реклама</h3></div><div class="panel-body hint" style="display:flex;flex-direction:column;gap:9px">'+
+  return '<div class="panel"><div class="panel-head"><h3>Реклама в сайта</h3>'+
+    fldSw("Включена",'data-p="ads.enabled" data-type="bool"',ads.enabled!==false)+"</div>"+
+    '<div class="panel-body"><p class="hint">Изключиш ли я, от сайта изчезва всичко рекламно — банери, примерни рамки и редът със спонсора. Настройките по-долу остават запазени и се връщат, щом я включиш пак.</p></div></div>'+
+  '<div class="panel"><div class="panel-head"><h3>Как да сложиш реклама</h3></div><div class="panel-body hint" style="display:flex;flex-direction:column;gap:9px">'+
     "<p>Банери не се появяват сами. Има два начина: <b style=\"color:var(--ink)\">директна продажба</b> (сам качваш банера на спонсора и слагаш линк) или <b style=\"color:var(--ink)\">рекламна мрежа</b> (Google AdSense / Ad Manager), която сама пълни позицията, но иска сайтът да е на истински домейн.</p>"+
     "<p>Долу са петте позиции в сайта. Включи тази, която продаваш — изключените се показват като сива рамка само докато е включена опцията за примерни рамки.</p>"+
     "</div></div>"+
@@ -2265,7 +2402,7 @@ function vSettings(){
       fldInp("TikTok",'data-p="settings.links.tiktok"',L.tiktok,{ph:"https://tiktok.com/@…"})+"</div>"+
   "</div></div></div>"+
   '<div class="panel"><div class="panel-head"><h3>Лента „Не изпускай епизод“</h3></div><div class="panel-body"><div class="form">'+
-    fldSel("Какво да показва",'data-p="settings.subBand"',SUB_MODES,s.subBand,"„Скрита“ маха лентата от сайта. „Връзки към канала“ показва бутони към YouTube и Spotify. „Записване за бюлетин“ праща имейла на пощата ти през адреса на формата по-долу — без него няма къде да отиде.")+
+    fldSel("Какво да показва",'data-p="settings.subBand"',SUB_MODES,s.subBand,"„Скрита“ маха лентата от сайта. „Връзки към канала“ показва бутони към YouTube, Instagram и TikTok. „Записване за бюлетин“ праща имейла на пощата ти през адреса на формата по-долу — без него няма къде да отиде.")+
     '<div class="grid2">'+fldInp("Заглавие",'data-p="settings.subTitle"',s.subTitle)+fldInp("Текст",'data-p="settings.subText"',s.subText)+"</div>"+
   "</div></div></div>"+
   '<div class="panel"><div class="panel-head"><h3>Поръчки от мърча</h3></div><div class="panel-body"><div class="form">'+
@@ -2375,6 +2512,7 @@ admEl.addEventListener("click",function(ev){
   if(act==="del"){ A.confirmId=kind+i; admRender(); return; }
   if(act==="del2"){ DATA[kind].splice(i,1); A.confirmId=null; afterChange(); return; }
   if(act==="approve"){ DATA[kind][i].status="published"; A.msg="Одобрено"; A.msgType="ok"; afterChange(); return; }
+  if(act==="reloadstats"){ loadStats(); setTimeout(function(){ if(!admEl.hidden) admRender(); },900); return; }
   if(act==="cal"){
     var pk=admEl.querySelector('[data-pick="'+t.dataset.key+'"]');
     if(pk){ if(pk.showPicker){ try{ pk.showPicker(); }catch(e){ pk.focus(); } } else { pk.focus(); pk.click(); } }
@@ -2661,6 +2799,7 @@ function openAdmin(){
     if(ss){ var who = ss==="1" ? {role:"admin",id:"owner",name:"Администратор"} : JSON.parse(ss);
       if(who&&PERMS[who.role]){ A.unlocked=true; A.me=who; A.role=who.role; } } }catch(e){}
   if(A.unlocked&&A.role==="admin"&&A.users==null) loadUsers();
+  if(A.unlocked&&!statsReady) loadStats();
   siteEl.hidden=true; admEl.hidden=false; document.body.style.overflow="";
   A.msg=""; admRender(); renderDraftBar(); window.scrollTo(0,0);
 }
