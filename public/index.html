@@ -156,6 +156,7 @@ nav.main a:hover::after,nav.main a.active::after{right:0}
 .filters{display:flex;flex-wrap:wrap;gap:8px}
 .filter{font-family:var(--f-cond);text-transform:uppercase;font-size:13px;letter-spacing:.1em;font-weight:600;background:transparent;border:1px solid var(--line);color:var(--muted);padding:8px 15px;cursor:pointer;transition:all .18s ease}
 .filter:hover{color:var(--ink);border-color:var(--muted)}
+.filter small{opacity:.55;font-size:11px;margin-left:2px}
 .filter[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#000}
 .grid-reviews{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
 .card{background:var(--surface);border:1px solid var(--line);overflow:hidden;text-align:left;padding:0;cursor:pointer;display:flex;flex-direction:column;transition:transform .22s ease,border-color .22s ease}
@@ -455,6 +456,13 @@ html{scroll-behavior:smooth;scroll-padding-top:86px}
 .rowi{display:grid;grid-template-columns:56px 1fr auto;gap:14px;align-items:center;padding:12px 20px;border-bottom:1px solid var(--line-soft)}
 .rowi:last-child{border-bottom:0}
 .rowi:hover{background:rgba(255,255,255,.02)}
+.rowi.off{opacity:.42}
+.rowi.off .thumb{filter:grayscale(1)}
+.admbar{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.admbar .filters{gap:6px}
+.admbar .filter{padding:6px 12px;font-size:12px}
+.admbar input.calq{flex:1;min-width:180px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink);font:inherit;font-size:14px;padding:8px 12px}
+.admbar .sep{flex:1}
 .rowi .thumb{width:56px;height:56px;background:var(--surface-2);background-size:cover;background-position:center;display:grid;place-items:center;font-family:var(--f-hl);font-style:italic;font-weight:900;color:var(--brand);font-size:15px}
 .rowi h4{font-size:15.5px;font-family:var(--f-body);font-weight:700;text-transform:none;font-style:normal;line-height:1.3}
 .rowi .meta{font-family:var(--f-cond);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:3px}
@@ -1671,9 +1679,9 @@ function openCraft(c){
 }
 
 /* колко се показват в началото и с колко расте при „Виж още“ */
-var SHOW_FIRST={reviews:8,news:7,craft:6,merch:6,episodes:4};
-var SHOW_STEP={reviews:8,news:6,craft:6,merch:6,episodes:4};
-var shownN={reviews:0,news:0,craft:0,merch:0,episodes:0};
+var SHOW_FIRST={reviews:8,news:7,craft:6,merch:6,episodes:4,calendar:9};
+var SHOW_STEP={reviews:8,news:6,craft:6,merch:6,episodes:4,calendar:9};
+var shownN={reviews:0,news:0,craft:0,merch:0,episodes:0,calendar:0};
 function limitOf(kind){ return shownN[kind]||SHOW_FIRST[kind]; }
 function renderMore(kind,total){
   var el=document.querySelector('[data-more="'+kind+'"]'); if(!el) return;
@@ -1686,7 +1694,7 @@ document.addEventListener("click",function(e){
   var b=e.target.closest && e.target.closest("[data-showmore]"); if(!b) return;
   var k=b.dataset.showmore;
   shownN[k]=limitOf(k)+(SHOW_STEP[k]||6);
-  ({reviews:renderReviews,news:renderNews,craft:renderCraft,merch:renderMerch,episodes:renderEpisodes})[k]();
+  ({reviews:renderReviews,news:renderNews,craft:renderCraft,merch:renderMerch,episodes:renderEpisodes,calendar:renderCalendar})[k]();
 });
 function renderSite(){ if(!DATA.craft) DATA.craft=[]; if(!DATA.calendar) DATA.calendar=[]; renderDraftBar(); renderSettings(); renderAds(); renderHero(); renderFilters(); renderReviews(); renderEpisodes(); renderCraftFilters(); renderCraft(); renderCalFilters(); renderCalendar(); renderNews(); renderMerch(); }
 
@@ -1736,9 +1744,7 @@ document.addEventListener("click",function(e){
   var cl = e.target.closest && e.target.closest("[data-calid]");
   if(cl){ openCal((DATA.calendar||[]).filter(function(x){return x.id===cl.dataset.calid;})[0]); return; }
   var cfl = e.target.closest && e.target.closest("[data-cal]");
-  if(cfl){ activeCal=cfl.dataset.cal; calMonths=2; renderCalFilters(); renderCalendar(); return; }
-  var cmore = e.target.closest && e.target.closest("[data-calmore]");
-  if(cmore){ calMonths++; renderCalendar(); return; }
+  if(cfl){ activeCal=cfl.dataset.cal; shownN.calendar=0; renderCalFilters(); renderCalendar(); return; }
   var orv = e.target.closest && e.target.closest("[data-openrev]");
   if(orv){ openReview((DATA.reviews||[]).filter(function(x){return x.id===orv.dataset.openrev;})[0]); return; }
   var nw = e.target.closest && e.target.closest(".news[data-id],.news-lead[data-id]");
@@ -1927,11 +1933,16 @@ function calMonthGroups(list){
   list.forEach(function(c){ var k=monthKey(c.when); if(!by[k]){ by[k]=[]; order.push(k); } by[k].push(c); });
   return {order:order,by:by};
 }
+function calAll(){
+  var cm=thisMonth();
+  return (DATA.calendar||[]).filter(function(c){ return c && !c.hidden && monthKey(c.when)>=cm; });
+}
 function renderCalFilters(){
   var el=dyn("calFilters"); if(!el) return;
-  var opts=["Всичко","По кината","Стрийминг","Събития"];
-  el.innerHTML = opts.map(function(o){
-    return '<button class="filter'+(activeCal===o?" on":"")+'" data-cal="'+esc(o)+'">'+esc(o)+"</button>";
+  var all=calAll(), opts=["Всичко","По кината","Стрийминг","Събития"];
+  var n=function(o){ return o==="Всичко" ? all.length : all.filter(function(c){ return CAL_KINDS[c.kind]===o; }).length; };
+  el.innerHTML = opts.filter(function(o){ return o==="Всичко" || n(o)>0; }).map(function(o){
+    return '<button class="filter" data-cal="'+esc(o)+'" aria-pressed="'+(activeCal===o)+'">'+esc(o)+' <small>'+n(o)+'</small></button>';
   }).join("");
 }
 function calWhen(c){
@@ -1944,17 +1955,13 @@ function calWhen(c){
 }
 function renderCalendar(){
   var box=dyn("calendar"); if(!box) return;
-  var list=calList(), g=calMonthGroups(list);
-  var show=g.order.slice(0,calMonths);
-  box.innerHTML = show.length ? show.map(function(k){
+  var list=calList();
+  var g=calMonthGroups(list.slice(0,limitOf("calendar")));
+  box.innerHTML = g.order.length ? g.order.map(function(k){
     return '<div class="cal-month"><b>'+esc(monthName(k))+'</b><i></i><span>'+g.by[k].length+(g.by[k].length===1?" заглавие":" заглавия")+"</span></div>"+
       '<div class="grid-cal">'+g.by[k].map(calCard).join("")+"</div>";
-  }).join("") : '<div class="cal-empty">Още няма нищо в календара за напред. Влез в админа и натисни „Обнови сега“.</div>';
-  var next=g.order[calMonths];
-  var el=document.querySelector('[data-more="calendar"]');
-  if(el) el.innerHTML = next
-    ? '<button class="btn btn-ghost btn-more" data-calmore="1">Виж '+esc(monthName(next).toLowerCase())+" ("+g.by[next].length+")</button>"
-    : "";
+  }).join("") : '<div class="cal-empty">'+(calAll().length?"Няма заглавия в тази категория за напред.":"Още няма нищо в календара за напред. Влез в админа и натисни „Обнови сега“.")+"</div>";
+  renderMore("calendar", list.length);
   reveal();
 }
 function platClass(name){
@@ -2174,7 +2181,7 @@ function paintSrv(){
     }).catch(function(){}); }catch(e){}
   }
 })();
-var A = { tab:"dash", kind:null, edit:null, idx:-1, msg:"", msgType:"", confirmId:null, unlocked:false, gateBad:false, gateMail:"", me:null, role:null, prevBackup:null, authMail:"", authMsg:"", authMsgType:"", users:null, umsg:"", umsgType:"", uedit:null, calMsg:"", calMsgType:"" };
+var A = { tab:"dash", kind:null, edit:null, idx:-1, msg:"", msgType:"", confirmId:null, unlocked:false, gateBad:false, gateMail:"", me:null, role:null, prevBackup:null, authMail:"", authMsg:"", authMsgType:"", users:null, umsg:"", umsgType:"", uedit:null, calMsg:"", calMsgType:"", calFilter:"Всичко", calVis:"Всички", calQ:"", calShow:0 };
 function perm(){ return PERMS[A.role]||PERMS.author; }
 function canEdit(it){ return perm().all || (it.author===(A.me&&A.me.id) && it.status!=="published"); }
 var admEl = $("#admin"), siteEl = $("#site");
@@ -2286,6 +2293,66 @@ function calBar(){
     '<div class="panel-body hint">Премиерите по кината и сериалите по стрийминга се обновяват сами веднъж месечно. '+
     (at?"Последно: "+esc(new Date(at).toLocaleString("bg-BG"))+". ":"Още не е правено. ")+
     'Записите, които си пипал, и събитията остават непокътнати.</div></div>';
+}
+var CAL_SHOW_FIRST=20, CAL_SHOW_STEP=20;
+function calAdmAll(){ return DATA.calendar||[]; }
+function calAdmMatch(it){
+  var q=String(A.calQ||"").trim().toLowerCase();
+  if(A.calFilter!=="Всичко" && CAL_KINDS[it.kind]!==A.calFilter) return false;
+  if(A.calVis==="Видими" && it.hidden) return false;
+  if(A.calVis==="Скрити" && !it.hidden) return false;
+  if(q && String(it.t||"").toLowerCase().indexOf(q)<0) return false;
+  return true;
+}
+function calAdmList(){ return calAdmAll().filter(calAdmMatch); }
+function calAdmCount(kind){
+  return calAdmAll().filter(function(x){ return kind==="Всичко" || CAL_KINDS[x.kind]===kind; }).length;
+}
+function calAdmRow(it){
+  var i = calAdmAll().indexOf(it);
+  var th = it.poster?'style="background-image:url('+it.poster+')"':"";
+  var origin = it.src==="tmdb" ? (it.edited?"ПОПРАВЕН":"ОТ TMDB") : "РЪЧЕН";
+  var meta = (CAL_KINDS[it.kind]||"")+" • "+fmtDate(it.when)+" • "+origin+(it.platform?" • "+String(it.platform).toUpperCase():"");
+  return '<div class="rowi'+(it.hidden?" off":"")+'"><div class="thumb" '+th+">"+(th?"":"MIM")+"</div>"+
+    "<div><h4>"+esc(it.t||"—")+'</h4><div class="meta">'+esc(meta)+"</div></div>"+
+    '<div class="acts">'+
+      (it.hidden?'<span class="pill">Скрит</span>':"")+
+      '<button class="btn btn-'+(it.hidden?"gold":"ghost")+' btn-sm" data-act="calhide" data-i="'+i+'">'+(it.hidden?"Покажи":"Скрий")+"</button>"+
+      '<button class="btn btn-ghost btn-sm" data-act="edit" data-i="'+i+'">Редактирай</button>'+
+      (A.confirmId==="calendar"+i
+        ? '<button class="btn btn-sm" style="background:var(--bad);color:#000" data-act="del2" data-i="'+i+'">Изтрий?</button>'
+        : '<button class="ibtn danger" data-act="del" data-i="'+i+'" title="Изтрий">✕</button>')+
+    "</div></div>";
+}
+function calAdmRowsHTML(){
+  var list=calAdmList(), n=A.calShow||CAL_SHOW_FIRST;
+  if(!list.length) return '<div class="panel-body hint">Няма записи, които да отговарят на филтъра.</div>';
+  return list.slice(0,n).map(calAdmRow).join("")+
+    (list.length>n
+      ? '<div class="panel-body" style="text-align:center"><button class="btn btn-ghost btn-sm" data-act="calmoreadm">Виж още ('+(list.length-n)+")</button></div>"
+      : "");
+}
+function calListView(){
+  var all=calAdmAll(), list=calAdmList();
+  var hid=all.filter(function(x){return x.hidden;}).length;
+  var chip=function(o,cur,act){
+    return '<button class="filter" data-act="'+act+'" data-v="'+esc(o)+'" aria-pressed="'+(cur===o)+'">'+esc(o)+"</button>";
+  };
+  var kinds=["Всичко","По кината","Стрийминг","Събития"].map(function(o){
+    return '<button class="filter" data-act="calfilter" data-v="'+esc(o)+'" aria-pressed="'+(A.calFilter===o)+'">'+
+      esc(o)+' <small>'+calAdmCount(o)+"</small></button>";
+  }).join("");
+  var vis=["Всички","Видими","Скрити"].map(function(o){ return chip(o,A.calVis,"calvis"); }).join("");
+  return '<div class="panel"><div class="panel-head"><h3>Календар</h3>'+
+      '<span class="pill">'+all.length+" бр."+(hid?" • "+hid+" скрити":"")+"</span>"+
+      '<button class="btn btn-gold btn-sm" data-act="new" data-kind="calendar">+ Ново събитие</button></div>'+
+    '<div class="admbar"><div class="filters">'+kinds+'</div><div class="filters">'+vis+"</div></div>"+
+    '<div class="admbar"><input class="calq" id="calQ" type="search" placeholder="Търси по заглавие…" value="'+esc(A.calQ||"")+'">'+
+      '<span class="hint">'+list.length+" от "+all.length+"</span>"+
+      (list.length?'<button class="btn btn-ghost btn-sm" data-act="calbulk" data-v="hide">Скрий намерените</button>'+
+        '<button class="btn btn-ghost btn-sm" data-act="calbulk" data-v="show">Покажи намерените</button>':"")+
+    "</div>"+
+    '<div class="rows" id="calRows">'+calAdmRowsHTML()+"</div></div>";
 }
 function listView(kind){
   var all = DATA[kind]||[];
@@ -2693,7 +2760,7 @@ function admRender(){
     else if(A.tab==="ads") body = vAds();
     else if(A.tab==="settings") body = vSettings();
     else if(A.tab==="users") body = vUsers();
-      else if(A.tab==="calendar") body = calBar()+listView("calendar");
+      else if(A.tab==="calendar") body = calBar()+calListView();
     else body = listView(A.tab);
   }catch(err){
     body = '<div class="panel"><div class="panel-head"><h3>Нещо се обърка в този раздел</h3></div>'+
@@ -2742,6 +2809,21 @@ admEl.addEventListener("click",function(ev){
   if(act==="del"){ A.confirmId=kind+i; admRender(); return; }
   if(act==="del2"){ DATA[kind].splice(i,1); A.confirmId=null; afterChange(); return; }
   if(act==="approve"){ DATA[kind][i].status="published"; A.msg="Одобрено"; A.msgType="ok"; afterChange(); return; }
+  if(act==="calfilter"){ A.calFilter=t.dataset.v; A.calShow=0; admRender(); return; }
+  if(act==="calvis"){ A.calVis=t.dataset.v; A.calShow=0; admRender(); return; }
+  if(act==="calmoreadm"){ A.calShow=(A.calShow||CAL_SHOW_FIRST)+CAL_SHOW_STEP; admRender(); return; }
+  if(act==="calhide"){
+    var ci=+t.dataset.i, cit=(DATA.calendar||[])[ci];
+    if(cit){ cit.hidden=!cit.hidden; A.msg=cit.hidden?"Скрито от сайта":"Показано на сайта"; A.msgType="ok"; afterChange(); }
+    return;
+  }
+  if(act==="calbulk"){
+    var want = t.dataset.v==="hide";
+    var n=0;
+    calAdmList().forEach(function(x){ if(!!x.hidden!==want){ x.hidden=want; n++; } });
+    A.msg = n ? (want?n+" скрити":n+" показани") : "Нищо за промяна";
+    A.msgType="ok"; afterChange(); return;
+  }
   if(act==="calsync"){
     A.calMsg="Тегли от TMDB…"; A.calMsgType=""; admRender();
     fetch("/api/calendar/sync",{method:"POST",headers:authHeaders(),body:JSON.stringify({months:3})})
@@ -2796,6 +2878,13 @@ admEl.addEventListener("click",function(ev){
 
 admEl.addEventListener("input",function(ev){
   var el=ev.target, v=el.type==="checkbox"?el.checked:el.value, ty=el.dataset.type;
+  if(el.id==="calQ"){
+    A.calQ=v; A.calShow=0;
+    var box=admEl.querySelector("#calRows"); if(box) box.innerHTML=calAdmRowsHTML();
+    var lbl=el.parentNode&&el.parentNode.querySelector(".hint");
+    if(lbl) lbl.textContent = calAdmList().length+" от "+calAdmAll().length;
+    return;
+  }
   if(el.dataset.pick!=null&&A.edit){
     if(v){ A.edit[el.dataset.pick]=v;
       var tf=admEl.querySelector('input[data-k="'+el.dataset.pick+'"][data-type="bgdate"]');
