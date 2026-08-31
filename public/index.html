@@ -2747,8 +2747,14 @@ admEl.addEventListener("click",function(ev){
     fetch("/api/calendar/sync",{method:"POST",headers:authHeaders(),body:JSON.stringify({months:3})})
       .then(function(r){ return r.json().catch(function(){return {};}).then(function(j){ return {ok:r.ok,j:j}; }); })
       .then(function(res){
-        if(res.ok&&res.j.ok){ A.calMsg="Готово — "+res.j.count+" записа"; A.calMsgType="ok"; apiGet(); }
-        else { A.calMsg=res.j.message||"Не се получи."; A.calMsgType="err"; }
+        if(res.ok&&res.j.ok){
+          var m=res.j.movies, sr=res.j.series, nt=res.j.notes||[];
+          var txt="Готово — "+res.j.count+" записа";
+          if(typeof m==="number") txt+=" ("+m+" филма, "+sr+" сериала от TMDB)";
+          if(nt.length){ txt+=" — "+nt.join("; "); A.calMsgType="err"; } else A.calMsgType="ok";
+          A.calMsg=txt; apiGet();
+        }
+        else { A.calMsg=res.j.message||("Не се получи (код "+(res.j.error||"?")+")."); A.calMsgType="err"; }
         admRender();
       })
       .catch(function(){ A.calMsg="Няма връзка със сървъра."; A.calMsgType="err"; admRender(); });
