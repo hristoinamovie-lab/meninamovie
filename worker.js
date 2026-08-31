@@ -216,7 +216,126 @@ async function counters(env) {
   }
 }
 const saveCounters = (env, c) => env.MIM.put("stats", JSON.stringify(c));
-const COUNT_KINDS = { r: "reviews", n: "news", c: "craft", e: "episodes" };
+const COUNT_KINDS = { r: "reviews", n: "news", c: "craft", e: "episodes", k: "calendar" };
+
+/* Броячите се трупат тук и се записват рядко — иначе безплатният план
+   свършва записите си за деня при първия по-натоварен ден. */
+const FLUSH_MS = 5 * 60 * 1000;
+let buf = null;          // {views:{key:+n}, likes:{key:+n}}
+let bufAt = 0;
+function bump(key, field, delta) {
+  if (!buf) { buf = { views: {}, likes: {} }; bufAt = Date.now(); }
+  buf[field][key] = (buf[field][key] || 0) + delta;
+}
+function merged(c) {
+  if (!buf) return c;
+  for (const f of ["views", "likes"])
+    for (const k of Object.keys(buf[f])) c[f][k] = Math.max(0, (c[f][k] || 0) + buf[f][k]);
+  return c;
+}
+async function flushCounters(env, force) {
+  if (!buf) return;
+  if (!force && Date.now() - bufAt < FLUSH_MS) return;
+  const c = merged(await counters(env));
+  buf = null;
+  await saveCounters(env, c);
+}
+
+
+/* ---------- Movie calendar: премиери от TMDB ---------- */
+const TMDB = "https://api.themoviedb.org/3";
+const POSTER = "https://image.tmdb.org/t/p/w500";
+const DEF_PROVIDERS = [
+  { id: 8, name: "Netflix" },
+  { id: 1899, name: "HBO Max" },
+  { id: 337, name: "Disney+" },
+  { id: 119, name: "Prime Video" },
+];
+const ymd = (d) => d.toISOString().slice(0, 10);
+
+async function tmdbGet(env, path, params) {
+  const u = new URL(TMDB + path);
+  for (const k of Object.keys(params)) u.searchParams.set(k, params[k]);
+  u.searchParams.set("api_key", env.TMDB_KEY);
+  const r = await fetch(u.toString(), { headers: { accept: "application/json" } });
+  if (!r.ok) throw new Error("TMDB " + r.status);
+  return r.json();
+}
+
+/** Тегли премиерите и сериалите за следващите месеци и ги слива с наличните. */
+async function syncCalendar(env, months) {
+  if (!env.TMDB_KEY) return { error: "no_key", message: "Липсва ключът TMDB_KEY в Cloudflare." };
+  const data = (await stored(env)) || {};
+  const s = data.settings || (data.settings = {});
+  const providers = Array.isArray(s.calProviders) && s.calProviders.length ? s.calProviders : DEF_PROVIDERS;
+  const from = new Date();
+  from.setDate(1);
+  const to = new Date(from);
+  to.setMonth(to.getMonth() + (months || 3));
+
+  const fresh = [];
+  // филми по кината в България
+  try {
+    const mv = await tmdbGet(env, "/discover/movie", {
+      region: "BG", with_release_type: "2|3", language: "bg-BG",
+      "release_date.gte": ymd(from), "release_date.lte": ymd(to),
+      sort_by: "primary_release_date.asc", include_adult: "false", page: "1",
+    });
+    for (const m of (mv.results || []).slice(0, 40)) {
+      if (!m.release_date) continue;
+      fresh.push({
+        id: "tmdb-m-" + m.id, kind: "cinema", src: "tmdb", tmdbId: m.id,
+        t: m.title || m.original_title || "", when: m.release_date,
+        poster: m.poster_path ? POSTER + m.poster_path : "",
+        p: (m.overview || "").slice(0, 320), video: "", note: "",
+      });
+    }
+  } catch (e) {}
+  // сериали по стрийминга
+  for (const pv of providers.slice(0, 4)) {
+    try {
+      const tv = await tmdbGet(env, "/discover/tv", {
+        watch_region: "BG", with_watch_providers: String(pv.id), language: "bg-BG",
+        "air_date.gte": ymd(from), "air_date.lte": ymd(to),
+        sort_by: "popularity.desc", page: "1",
+      });
+      for (const t of (tv.results || []).slice(0, 8)) {
+        const when = t.first_air_date && t.first_air_date >= ymd(from) ? t.first_air_date : ymd(from);
+        fresh.push({
+          id: "tmdb-t-" + t.id, kind: "stream", src: "tmdb", tmdbId: t.id,
+          t: t.name || t.original_name || "", when: when,
+          poster: t.poster_path ? POSTER + t.poster_path : "",
+          p: (t.overview || "").slice(0, 320), platform: pv.name, video: "", note: "",
+        });
+      }
+    } catch (e) {}
+  }
+
+  const old = Array.isArray(data.calendar) ? data.calendar : [];
+  const byId = {};
+  for (const it of old) byId[it.id] = it;
+  const out = [];
+  // ръчните и събитията остават непокътнати
+  for (const it of old) if (it.src !== "tmdb") out.push(it);
+  // от миналия месец нататък се пази само това, което е пипано
+  const cut = ymd(from);
+  for (const it of old)
+    if (it.src === "tmdb" && it.when < cut && (it.edited || it.hidden)) out.push(it);
+
+  const seen = {};
+  for (const f of fresh) {
+    if (seen[f.id]) continue;
+    seen[f.id] = 1;
+    const o = byId[f.id];
+    if (o && (o.edited || o.hidden)) { if (!out.some((x) => x.id === o.id)) out.push(o); continue; }
+    out.push(o ? Object.assign({}, o, f) : f);
+  }
+  out.sort((a, b) => String(a.when).localeCompare(String(b.when)));
+  data.calendar = out;
+  data.settings.calSyncedAt = Date.now();
+  await env.MIM.put("content", JSON.stringify(data));
+  return { ok: true, count: out.length, added: fresh.length, at: data.settings.calSyncedAt };
+}
 
 /* ---------- споделяне: страница с картинка за Facebook, Viber и т.н. ---------- */
 const KINDS = { r: "reviews", n: "news", c: "craft", e: "episodes", m: "merch" };
@@ -256,7 +375,7 @@ function dataUriToResponse(uri) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
 
@@ -468,6 +587,18 @@ export default {
       return json({ error: "method" }, 405);
     }
 
+    /* обновяване на календара — ръчно от админа */
+    if (path === "/api/calendar/sync" && request.method === "POST") {
+      const data = await stored(env);
+      const who = await whoIs(request, env, data);
+      if (!who || (who.role !== "admin" && who.role !== "moderator"))
+        return json({ error: "forbidden", message: "Само администратор и модератор обновяват календара." }, 403);
+      let body = {};
+      try { body = await request.json(); } catch (e) {}
+      const res = await syncCalendar(env, +body.months || 3);
+      return json(res, res.error ? 400 : 200);
+    }
+
     /* брои преглед или харесване: POST /api/hit {kind,id,like} */
     if (path === "/api/hit" && request.method === "POST") {
       let body = {};
@@ -476,17 +607,17 @@ export default {
       const id = String(body.id || "").slice(0, 64);
       if (!COUNT_KINDS[kind] || !id) return json({ error: "bad" }, 400);
       const key = kind + ":" + id;
-      const c = await counters(env);
-      if (body.like === true) c.likes[key] = (c.likes[key] || 0) + 1;
-      else if (body.like === false) c.likes[key] = Math.max(0, (c.likes[key] || 0) - 1);
-      else c.views[key] = (c.views[key] || 0) + 1;
-      await saveCounters(env, c);
+      if (body.like === true) bump(key, "likes", 1);
+      else if (body.like === false) bump(key, "likes", -1);
+      else bump(key, "views", 1);
+      ctx.waitUntil(flushCounters(env, false));
+      const c = merged(await counters(env));
       return json({ ok: true, views: c.views[key] || 0, likes: c.likes[key] || 0 });
     }
 
     /* всички броячи наведнъж — сайтът ги ползва за сърцата, админът за таблото */
     if (path === "/api/stats" && request.method === "GET") {
-      const c = await counters(env);
+      const c = merged(await counters(env));
       return new Response(JSON.stringify(c), {
         headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=60" },
       });
@@ -494,6 +625,10 @@ export default {
 
     /* картинката на един материал — за визитката при споделяне */
     if (path.startsWith("/img/")) {
+      if (url.searchParams.get("v")) {
+        const hit = await caches.default.match(request);
+        if (hit) return hit;
+      }
       const parts = path.split("/").filter(Boolean); // img, kind, id
       const kindKey = parts[1], id = decodeURIComponent(parts[2] || "");
       if (!KINDS[kindKey]) return new Response("no", { status: 404 });
@@ -505,7 +640,10 @@ export default {
       if (!img && yt) return Response.redirect("https://i.ytimg.com/vi/" + yt + "/maxresdefault.jpg", 302);
       const resp = img && dataUriToResponse(img);
       if (resp) {
-        if (url.searchParams.get("v")) resp.headers.set("cache-control", "public, max-age=31536000, immutable");
+        if (url.searchParams.get("v")) {
+          resp.headers.set("cache-control", "public, max-age=31536000, immutable");
+          ctx.waitUntil(caches.default.put(request, resp.clone()));
+        }
         return resp;
       }
       if (img) return Response.redirect(img, 302);
@@ -561,5 +699,15 @@ export default {
       return out;
     }
     return res;
+  },
+
+  /* по график: веднъж месечно обновяваме календара и записваме броячите */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      (async () => {
+        await flushCounters(env, true);
+        try { await syncCalendar(env, 3); } catch (e) {}
+      })()
+    );
   },
 };
