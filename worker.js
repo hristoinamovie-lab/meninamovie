@@ -256,9 +256,18 @@ const ymd = (d) => d.toISOString().slice(0, 10);
 async function tmdbGet(env, path, params) {
   const u = new URL(TMDB + path);
   for (const k of Object.keys(params)) u.searchParams.set(k, params[k]);
-  u.searchParams.set("api_key", env.TMDB_KEY);
-  const r = await fetch(u.toString(), { headers: { accept: "application/json" } });
-  if (!r.ok) throw new Error("TMDB " + r.status);
+  const key = String(env.TMDB_KEY || "").trim();
+  const headers = { accept: "application/json" };
+  // v4 талонът е дълъг и започва с eyJ — той върви в заглавната част, не в адреса
+  if (key.length > 60 || key.slice(0, 3) === "eyJ") headers.authorization = "Bearer " + key;
+  else u.searchParams.set("api_key", key);
+  const r = await fetch(u.toString(), { headers: headers });
+  if (!r.ok) {
+    let detail = "";
+    try { const j = await r.json(); detail = j && j.status_message ? j.status_message : ""; } catch (e) {}
+    if (r.status === 401) detail = "ключът не се приема от TMDB" + (detail ? " (" + detail + ")" : "");
+    throw new Error("TMDB " + r.status + (detail ? " — " + detail : ""));
+  }
   return r.json();
 }
 
@@ -274,6 +283,8 @@ async function syncCalendar(env, months) {
   to.setMonth(to.getMonth() + (months || 3));
 
   const fresh = [];
+  const notes = [];
+  let nMovies = 0, nSeries = 0;
   // филми по кината в България
   try {
     const mv = await tmdbGet(env, "/discover/movie", {
@@ -289,8 +300,10 @@ async function syncCalendar(env, months) {
         poster: m.poster_path ? POSTER + m.poster_path : "",
         p: (m.overview || "").slice(0, 320), video: "", note: "",
       });
+      nMovies++;
     }
-  } catch (e) {}
+    if (!nMovies) notes.push("TMDB няма премиери за България в този период.");
+  } catch (e) { notes.push("Филми: " + e.message); }
   // сериали по стрийминга
   for (const pv of providers.slice(0, 4)) {
     try {
@@ -307,9 +320,12 @@ async function syncCalendar(env, months) {
           poster: t.poster_path ? POSTER + t.poster_path : "",
           p: (t.overview || "").slice(0, 320), platform: pv.name, video: "", note: "",
         });
+        nSeries++;
       }
-    } catch (e) {}
+    } catch (e) { notes.push(pv.name + ": " + e.message); }
   }
+  if (!nSeries && !notes.some((x) => x.indexOf("TMDB 4") >= 0))
+    notes.push("TMDB не върна сериали за България.");
 
   const old = Array.isArray(data.calendar) ? data.calendar : [];
   const byId = {};
@@ -334,7 +350,10 @@ async function syncCalendar(env, months) {
   data.calendar = out;
   data.settings.calSyncedAt = Date.now();
   await env.MIM.put("content", JSON.stringify(data));
-  return { ok: true, count: out.length, added: fresh.length, at: data.settings.calSyncedAt };
+  return {
+    ok: true, count: out.length, added: fresh.length,
+    movies: nMovies, series: nSeries, notes: notes, at: data.settings.calSyncedAt,
+  };
 }
 
 /* ---------- споделяне: страница с картинка за Facebook, Viber и т.н. ---------- */
@@ -589,7 +608,7 @@ export default {
 
     /* обновяване на календара — ръчно от админа */
     if (path === "/api/calendar/sync" && request.method === "POST") {
-      const data = await stored(env);
+      const data = (await stored(env)) || {};
       const who = await whoIs(request, env, data);
       if (!who || (who.role !== "admin" && who.role !== "moderator"))
         return json({ error: "forbidden", message: "Само администратор и модератор обновяват календара." }, 403);
