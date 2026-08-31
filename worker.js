@@ -203,6 +203,21 @@ function keepImages(incoming, prev) {
   return incoming;
 }
 
+
+/* ---------- броячи: прегледи и харесвания ---------- */
+async function counters(env) {
+  const raw = await env.MIM.get("stats");
+  if (!raw) return { views: {}, likes: {} };
+  try {
+    const c = JSON.parse(raw);
+    return { views: c.views || {}, likes: c.likes || {} };
+  } catch (e) {
+    return { views: {}, likes: {} };
+  }
+}
+const saveCounters = (env, c) => env.MIM.put("stats", JSON.stringify(c));
+const COUNT_KINDS = { r: "reviews", n: "news", c: "craft", e: "episodes" };
+
 /* ---------- споделяне: страница с картинка за Facebook, Viber и т.н. ---------- */
 const KINDS = { r: "reviews", n: "news", c: "craft", e: "episodes", m: "merch" };
 const SECTION = { reviews: "revyuta", news: "novini", craft: "zad-kadar", episodes: "podcast", merch: "merch" };
@@ -451,6 +466,30 @@ export default {
       }
 
       return json({ error: "method" }, 405);
+    }
+
+    /* брои преглед или харесване: POST /api/hit {kind,id,like} */
+    if (path === "/api/hit" && request.method === "POST") {
+      let body = {};
+      try { body = await request.json(); } catch (e) {}
+      const kind = String(body.kind || "");
+      const id = String(body.id || "").slice(0, 64);
+      if (!COUNT_KINDS[kind] || !id) return json({ error: "bad" }, 400);
+      const key = kind + ":" + id;
+      const c = await counters(env);
+      if (body.like === true) c.likes[key] = (c.likes[key] || 0) + 1;
+      else if (body.like === false) c.likes[key] = Math.max(0, (c.likes[key] || 0) - 1);
+      else c.views[key] = (c.views[key] || 0) + 1;
+      await saveCounters(env, c);
+      return json({ ok: true, views: c.views[key] || 0, likes: c.likes[key] || 0 });
+    }
+
+    /* всички броячи наведнъж — сайтът ги ползва за сърцата, админът за таблото */
+    if (path === "/api/stats" && request.method === "GET") {
+      const c = await counters(env);
+      return new Response(JSON.stringify(c), {
+        headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=60" },
+      });
     }
 
     /* картинката на един материал — за визитката при споделяне */
