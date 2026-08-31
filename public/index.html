@@ -227,6 +227,8 @@ nav.main a:hover::after,nav.main a.active::after{right:0}
 .dpick{position:absolute;right:0;bottom:0;width:46px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
 .btn.imdb{font-weight:700;letter-spacing:.08em}
 .btn.imdb:hover{color:#000;background:#F5C518;border-color:#F5C518}
+.btn-cal{background:#000;color:var(--brand);border:0}
+.btn-cal:hover{background:#1a1a1a;color:var(--brand-hi)}
 .btn.like{gap:7px}
 .btn.like.on{color:var(--brand);border-color:var(--brand)}
 .btn.like .likeN{font-variant-numeric:tabular-nums}
@@ -234,6 +236,42 @@ nav.main a:hover::after,nav.main a.active::after{right:0}
 .craft-hero{width:100%;aspect-ratio:16/9;background-size:cover;background-position:center;display:grid;place-items:center;position:relative;border:1px solid var(--line)}
 
 /* ================= НОВИНИ ================= */
+
+/* ---------- Movie calendar ---------- */
+.cal-month{display:flex;align-items:center;gap:16px;margin:34px 0 18px}
+.cal-month:first-child{margin-top:0}
+.cal-month b{font-family:var(--f-hl);font-style:italic;font-weight:900;font-size:22px;text-transform:uppercase}
+.cal-month i{flex:1;height:1px;background:var(--line)}
+.cal-month span{font-family:var(--f-cond);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.grid-cal{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.cal{background:var(--surface);border:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden;
+  text-align:left;padding:0;cursor:pointer;color:inherit;font:inherit;transition:transform .22s ease,border-color .22s ease}
+.cal:hover{transform:translateY(-5px);border-color:var(--brand)}
+.cal-art{aspect-ratio:2/3;position:relative;background-size:cover;background-position:center;background-color:var(--surface-2);display:grid;place-items:center}
+.cal-art.noart{background:linear-gradient(155deg,#1E1B16,#3A3018)}
+.cal-art .mimlogo{opacity:.5;z-index:1}
+.cal-art::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.78),transparent 46%)}
+.cal-b{position:absolute;top:0;left:0;z-index:2;font-family:var(--f-cond);font-weight:600;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;padding:7px 22px 7px 12px;clip-path:polygon(0 0,100% 0,calc(100% - 13px) 100%,0 100%);background:var(--brand);color:#000}
+.cal-b.str{background:#444;color:#fff}
+.cal-b.p-netflix{background:#E50914;color:#fff}
+.cal-b.p-hbo{background:#7B2FF7;color:#fff}
+.cal-b.p-disney{background:#0C3FC4;color:#fff}
+.cal-b.p-prime{background:#00A8E1;color:#000}
+.cal-b.ev{background:#fff;color:#000}
+.cal-when{position:absolute;left:12px;bottom:12px;z-index:2;font-family:var(--f-cond);font-weight:700;font-size:12.5px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--brand)}
+.cal-when small{display:block;color:#fff;opacity:.72;font-size:10px;letter-spacing:.14em;margin-top:3px;font-weight:500}
+.cal-body{padding:15px 16px 17px;display:flex;flex-direction:column;gap:8px;flex:1}
+.cal-body h3{font-size:17px;text-transform:uppercase;font-style:italic;line-height:1.1}
+.cal-body p{font-size:14px;color:var(--muted)}
+.cal-who{font-family:var(--f-cond);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--brand);font-weight:600}
+.cal-foot{margin-top:auto;padding-top:9px;font-family:var(--f-cond);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.cal.ev{border-color:var(--brand)}
+.cal.ev .cal-body{background:rgba(246,201,43,.05)}
+.cal-empty{border:1px dashed var(--line);padding:26px;color:var(--muted);font-size:15px;text-align:center}
+@media (max-width:1040px){.grid-cal{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:760px){.grid-cal{grid-template-columns:repeat(2,1fr)}}
 .more-wrap{display:flex;justify-content:center;margin-top:26px}
 .more-wrap:empty{display:none}
 .btn-more{min-width:220px;justify-content:center}
@@ -335,6 +373,8 @@ footer.site .brand span i{color:rgba(0,0,0,.6)}
 .foot-links a{text-decoration:none;font-size:15px;color:#000;opacity:.85;width:max-content;border-bottom:1px solid transparent}
 .foot-links a:hover{color:#000;opacity:1;border-color:#000}
 .foot-brand p{color:rgba(0,0,0,.72);font-size:15px;margin-top:14px;max-width:38ch}
+.tmdb-credit{margin-top:26px;font-size:12px;line-height:1.6;color:rgba(0,0,0,.6)}
+.tmdb-credit a{color:#000;font-weight:600}
 .foot-bottom{margin-top:44px;padding-top:20px;border-top:1px solid rgba(0,0,0,.25);display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;font-family:var(--f-cond);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(0,0,0,.65);font-weight:600}
 
 .rv{opacity:0;transform:translateY(16px);transition:opacity .55s ease,transform .55s ease}
@@ -1015,15 +1055,15 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
       <span><b>Men In A Movie</b><i data-dyn="tagline"></i></span>
     </a>
     <nav class="main" id="nav">
+      <a href="#novini">Новини</a>
       <a href="#revyuta">Ревюта</a>
       <a href="#podcast">Подкаст</a>
       <a href="#zad-kadar">Зад кадър</a>
-      <a href="#novini">Новини</a>
       <a href="#merch">Мърч</a>
       <a href="#za-nas">За нас</a>
     </nav>
     <div class="hbtns">
-      <a class="btn btn-gold btn-sm" href="#podcast">Нов епизод</a>
+      <a class="btn btn-cal btn-sm" href="#kalendar">Movie calendar</a>
       <button class="burger" id="burger" aria-label="Меню" aria-expanded="false"><span></span><span></span><span></span></button>
     </div>
   </div>
@@ -1034,6 +1074,20 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
 
 <section class="hero">
   <div class="wrap hero-grid" data-dyn="hero"></div>
+</section>
+
+<section class="section" id="novini">
+  <div class="wrap">
+    <div class="section-head rv">
+      <div>
+        <p class="eyebrow">Новини</p>
+        <h2>Какво става в голямото кино</h2>
+        <p class="lede">Индустрията, боксофисът и решенията на студиата — обяснени на човешки език.</p>
+      </div>
+    </div>
+    <div class="grid-news" data-dyn="news"></div>
+    <div class="more-wrap" data-more="news"></div>
+  </div>
 </section>
 
 <section class="section" id="revyuta">
@@ -1083,19 +1137,22 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
   </div>
 </section>
 
-<section class="section" id="novini">
+<section class="section" id="kalendar">
   <div class="wrap">
     <div class="section-head rv">
       <div>
-        <p class="eyebrow">Новини</p>
-        <h2>Какво става в голямото кино</h2>
-        <p class="lede">Индустрията, боксофисът и решенията на студиата — обяснени на човешки език.</p>
+        <p class="eyebrow">Movie calendar</p>
+        <h2>Какво идва по екраните</h2>
+        <p class="lede">Премиерите по кината в България, новите сезони по стрийминга и прожекциите на партньори — подредени по дата.</p>
       </div>
+      <div class="filters" data-dyn="calFilters"></div>
     </div>
-    <div class="grid-news" data-dyn="news"></div>
-    <div class="more-wrap" data-more="news"></div>
+    <div data-dyn="calendar"></div>
+    <div class="more-wrap" data-more="calendar"></div>
   </div>
 </section>
+
+
 
 <section class="section" id="merch">
   <div class="wrap">
@@ -1156,6 +1213,10 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
         <div class="foot-links" data-dyn="contacts"></div>
       </div>
     </div>
+    <p class="tmdb-credit" id="tmdbCredit" hidden>
+      Данните за премиерите идват от <a href="https://www.themoviedb.org/" target="_blank" rel="noopener">TMDB</a>.
+      This product uses the TMDB API but is not endorsed or certified by TMDB.
+    </p>
     <div class="foot-bottom">
       <span data-dyn="copyText"></span>
       <span data-dyn="footNote"></span>
@@ -1239,9 +1300,9 @@ function claps(n,size,extra){
 
 /* ---------- роли ---------- */
 var PERMS={
-  admin:{tabs:["dash","reviews","craft","news","episodes","merch","ads","users","settings"],publish:true,approve:true,all:true},
-  moderator:{tabs:["dash","reviews","craft","news","episodes"],publish:false,approve:true,all:true},
-  author:{tabs:["dash","reviews","craft","news"],publish:false,approve:false,all:false}
+  admin:{tabs:["dash","news","reviews","calendar","craft","episodes","merch","ads","users","settings"],publish:true,approve:true,all:true},
+  moderator:{tabs:["dash","news","reviews","calendar","craft","episodes"],publish:false,approve:true,all:true},
+  author:{tabs:["dash","news","reviews","craft"],publish:false,approve:false,all:false}
 };
 var ROLE_LABEL={admin:"Администратор",moderator:"Модератор",author:"Автор"};
 function visible(it){ return !it.status || it.status==="published"; }
@@ -1253,6 +1314,8 @@ function migrate(){
   if(!s.genres) s.genres=["Екшън","Комедия","Драма","Sci-Fi","Хорър","Трилър","Анимация","Документален"];
   var ad=DATA.ads||(DATA.ads={});
   if(ad.enabled==null) ad.enabled=true;
+  if(!s.calProviders) s.calProviders=[{id:8,name:"Netflix"},{id:1899,name:"HBO Max"},{id:337,name:"Disney+"},{id:119,name:"Prime Video"}];
+  if(!DATA.calendar) DATA.calendar=[];
   if(!s.newsTags) s.newsTags=["Индустрия","Боксофис","Премиери","Трейлъри","Кастинг","Награди","Стрийминг","Продукция","Сериали","Фестивали","Слухове"];
   if(!s.sizesList) s.sizesList=["XS","S","M","L","XL","XXL","3XL","Универсален","Комплект","A2","350 мл"];
   if(s.formEndpoint==null) s.formEndpoint="";
@@ -1264,6 +1327,7 @@ function migrate(){
   if(s.footerNote==="Демо съдържание — текстовете са примерни") s.footerNote="";
   if(!s.users) s.users=[];
   if(!DATA.craft) DATA.craft=[];
+  if(!DATA.calendar) DATA.calendar=[];
   (DATA.reviews||[]).forEach(function(r){
     if(r.s>5) r.s=Math.max(1,Math.min(5,Math.round(r.s/2)));
     if(r.mins==null) r.mins=0;
@@ -1361,6 +1425,8 @@ function renderSettings(){
   if(String(s.contactEmail||"").trim()) mails.push('<a href="mailto:'+esc(s.contactEmail)+'?subject=Реклама">Реклама и партньорства</a>');
   dyn("contacts").innerHTML = mails.join("");
   var conBox=dyn("contacts"); if(conBox&&conBox.closest("div")) conBox.closest("div").hidden = !mails.length;
+  var tm=$("#tmdbCredit");
+  if(tm) tm.hidden = !((DATA.calendar||[]).length);
   var cp=dyn("copyText"), fn=dyn("footNote");
   if(cp) cp.textContent = s.copyright||"";
   if(fn) fn.textContent = s.footerNote||"";
@@ -1491,7 +1557,7 @@ function renderMerch(){
     return '<div class="prod rv">'+
       '<div class="prod-art" '+art+">"+(m.img?"":'<span class="strip"></span><div class="mimlogo" style="width:44%;aspect-ratio:1.4"></div>')+"</div>"+
       '<div class="prod-body"><h3>'+esc(m.t)+'</h3><p class="desc">'+esc(m.d)+"</p>"+
-        '<div class="price">'+esc(m.p)+" €<small>"+bgn(m.p)+' лв.</small></div>'+
+        '<div class="price">'+esc(m.p)+" €</div>"+
         '<div class="sizes">'+(m.sizes||[]).map(function(s){return "<span>"+esc(s)+"</span>";}).join("")+"</div>"+
         '<button class="btn btn-gold" data-buy="'+esc(m.id)+'">Поръчай</button>'+
       "</div></div>";
@@ -1508,7 +1574,7 @@ function renderCraftFilters(){
     return '<button class="filter" data-cf="'+esc(g)+'" aria-pressed="'+(g===activeCraft)+'">'+esc(g)+"</button>";
   }).join("");
 }
-var SHARE_KEY={reviews:"r",news:"n",craft:"c",episodes:"e",merch:"m"};
+var SHARE_KEY={reviews:"r",news:"n",craft:"c",episodes:"e",merch:"m",calendar:"k"};
 function shareUrl(kind,id){
   if(!/^https?:$/.test(location.protocol)) return "";
   return location.origin+"/s/"+SHARE_KEY[kind]+"/"+encodeURIComponent(id);
@@ -1622,7 +1688,7 @@ document.addEventListener("click",function(e){
   shownN[k]=limitOf(k)+(SHOW_STEP[k]||6);
   ({reviews:renderReviews,news:renderNews,craft:renderCraft,merch:renderMerch,episodes:renderEpisodes})[k]();
 });
-function renderSite(){ if(!DATA.craft) DATA.craft=[]; renderDraftBar(); renderSettings(); renderAds(); renderHero(); renderFilters(); renderReviews(); renderEpisodes(); renderCraftFilters(); renderCraft(); renderNews(); renderMerch(); }
+function renderSite(){ if(!DATA.craft) DATA.craft=[]; if(!DATA.calendar) DATA.calendar=[]; renderDraftBar(); renderSettings(); renderAds(); renderHero(); renderFilters(); renderReviews(); renderEpisodes(); renderCraftFilters(); renderCraft(); renderCalFilters(); renderCalendar(); renderNews(); renderMerch(); }
 
 function renderDraftBar(){
   var el=dyn("draftbar"); if(!el) return;
@@ -1667,6 +1733,14 @@ document.addEventListener("click",function(e){
   if(cf){ activeCraft=cf.dataset.cf; shownN.craft=0; renderCraftFilters(); renderCraft(); return; }
   var cr = e.target.closest && e.target.closest("[data-craft]");
   if(cr){ openCraft((DATA.craft||[]).filter(function(x){return x.id===cr.dataset.craft;})[0]); return; }
+  var cl = e.target.closest && e.target.closest("[data-calid]");
+  if(cl){ openCal((DATA.calendar||[]).filter(function(x){return x.id===cl.dataset.calid;})[0]); return; }
+  var cfl = e.target.closest && e.target.closest("[data-cal]");
+  if(cfl){ activeCal=cfl.dataset.cal; calMonths=2; renderCalFilters(); renderCalendar(); return; }
+  var cmore = e.target.closest && e.target.closest("[data-calmore]");
+  if(cmore){ calMonths++; renderCalendar(); return; }
+  var orv = e.target.closest && e.target.closest("[data-openrev]");
+  if(orv){ openReview((DATA.reviews||[]).filter(function(x){return x.id===orv.dataset.openrev;})[0]); return; }
   var nw = e.target.closest && e.target.closest(".news[data-id],.news-lead[data-id]");
   if(nw){ openNews((DATA.news||[]).filter(function(n){return n.id===nw.dataset.id;})[0]); return; }
   var b = e.target.closest && e.target.closest("[data-buy]");
@@ -1731,7 +1805,7 @@ function renderOrderForm(){
   var art = m.img ? 'style="width:76px;height:76px;background:url('+m.img+') center/cover"' : 'style="width:76px;height:76px;display:grid;place-items:center;background:linear-gradient(150deg,'+(m.c1||"#141210")+","+(m.c2||"#3A3018")+')"';
   $("#drawerBody").innerHTML =
     '<div style="display:flex;gap:14px;align-items:center"><div '+art+">"+(m.img?"":'<div class="mimlogo" style="width:64%;aspect-ratio:1.4"></div>')+"</div>"+
-    '<div><h3 style="font-size:17px;text-transform:uppercase;font-style:italic">'+esc(m.t)+'</h3><div class="price" style="font-size:19px;margin-top:6px">'+esc(m.p)+" €<small>"+bgn(m.p)+" лв.</small></div></div></div>"+
+    '<div><h3 style="font-size:17px;text-transform:uppercase;font-style:italic">'+esc(m.t)+'</h3><div class="price" style="font-size:19px;margin-top:6px">'+esc(m.p)+" €</div></div></div>"+
     '<div class="row2"><div class="field"><label for="oSize">Размер</label><select id="oSize">'+(m.sizes||[]).map(function(s){return "<option>"+esc(s)+"</option>";}).join("")+"</select></div>"+
     '<div class="field"><label>Количество</label><div class="qty"><button type="button" id="qMinus" aria-label="По-малко">−</button><span id="qVal">1</span><button type="button" id="qPlus" aria-label="Повече">+</button></div></div></div>'+
     '<div class="field"><label for="oName">Име и фамилия</label><input id="oName" autocomplete="name"><span class="err">Моля, въведи име.</span></div>'+
@@ -1754,7 +1828,7 @@ function renderSum(){
   $("#oSum").innerHTML =
     '<div class="line"><span>'+esc(order.item.t)+" × "+order.qty+"</span><span>"+t.sum+" €</span></div>"+
     '<div class="line"><span>Доставка</span><span>'+t.ship+" €</span></div>"+
-    '<div class="line total"><span>Общо</span><span>'+t.all+" € / "+bgn(t.all)+" лв.</span></div>";
+    '<div class="line total"><span>Общо</span><span>'+t.all+" €</span></div>";
 }
 function bad(id,cond){ var f=$("#"+id).closest(".field"); f.classList.toggle("bad",!!cond); return !!cond; }
 function submitOrder(){
@@ -1765,12 +1839,12 @@ function submitOrder(){
   if(e1||e2||e3||e4){ $("#drawerBody").querySelector(".field.bad input").focus(); return; }
   var t=totals(), num="MIM-"+String(Date.now()).slice(-6);
   var txt="ПОРЪЧКА "+num+"\nПродукт: "+order.item.t+"\nРазмер: "+$("#oSize").value+"\nКоличество: "+order.qty+
-    "\nСума: "+t.sum+" € + доставка "+t.ship+" € = "+t.all+" € ("+bgn(t.all)+" лв.)\n---\nИме: "+name+
+    "\nСума: "+t.sum+" € + доставка "+t.ship+" € = "+t.all+" €\n---\nИме: "+name+
     "\nИмейл: "+mail+"\nТелефон: "+phone+"\nГрад: "+city+(office?("\nКуриер: "+office):"")+(note?("\nБележка: "+note):"");
   var ep=(DATA.settings.formEndpoint||"").trim();
   if(ep){
     var payload={_subject:"Поръчка "+num,"Поръчка":num,"Продукт":order.item.t,"Размер":$("#oSize").value,
-      "Количество":order.qty,"Сума":t.all+" € ("+bgn(t.all)+" лв.)","Име":name,"Имейл":mail,
+      "Количество":order.qty,"Сума":t.all+" €","Име":name,"Имейл":mail,
       "Телефон":phone,"Град":city,"Куриер":office,"Бележка":note,email:mail};
     try{
       fetch(ep,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(payload)})
@@ -1829,9 +1903,122 @@ function reveal(){
 /* ==================================================================
    АДМИН ПАНЕЛ
    ================================================================== */
+
+/* ================= Movie calendar ================= */
+var CAL_KINDS={cinema:"По кината",stream:"Стрийминг",event:"Събития"};
+var activeCal="Всичко", calMonths=2;
+var MONTHS_BG=["януари","февруари","март","април","май","юни","юли","август","септември","октомври","ноември","декември"];
+function monthKey(d){ return String(d||"").slice(0,7); }
+function monthName(k){
+  var p=String(k||"").split("-"); if(p.length<2) return "";
+  var n=MONTHS_BG[(+p[1]||1)-1]||""; return n.charAt(0).toUpperCase()+n.slice(1)+" "+p[0];
+}
+function thisMonth(){ var d=new Date(); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2); }
+/* каквото е минало преди този месец, отпада само */
+function calList(){
+  var cm=thisMonth();
+  return (DATA.calendar||[])
+    .filter(function(c){ return c && !c.hidden && monthKey(c.when)>=cm; })
+    .filter(function(c){ return activeCal==="Всичко" || CAL_KINDS[c.kind]===activeCal; })
+    .sort(function(a,b){ return String(a.when).localeCompare(String(b.when)); });
+}
+function calMonthGroups(list){
+  var order=[], by={};
+  list.forEach(function(c){ var k=monthKey(c.when); if(!by[k]){ by[k]=[]; order.push(k); } by[k].push(c); });
+  return {order:order,by:by};
+}
+function renderCalFilters(){
+  var el=dyn("calFilters"); if(!el) return;
+  var opts=["Всичко","По кината","Стрийминг","Събития"];
+  el.innerHTML = opts.map(function(o){
+    return '<button class="filter'+(activeCal===o?" on":"")+'" data-cal="'+esc(o)+'">'+esc(o)+"</button>";
+  }).join("");
+}
+function calWhen(c){
+  var d=fmtDate(c.when), extra="";
+  if(c.kind==="event") extra=[c.time,c.place].filter(Boolean).join(" · ");
+  else if(c.kind==="stream") extra=c.note||"Ново";
+  else extra=c.note||"";
+  var past = String(c.when) < todayISO();
+  return '<span class="cal-when">'+esc(past?"Вече е налично":d)+(extra?"<small>"+esc(extra)+"</small>":"")+"</span>";
+}
+function renderCalendar(){
+  var box=dyn("calendar"); if(!box) return;
+  var list=calList(), g=calMonthGroups(list);
+  var show=g.order.slice(0,calMonths);
+  box.innerHTML = show.length ? show.map(function(k){
+    return '<div class="cal-month"><b>'+esc(monthName(k))+'</b><i></i><span>'+g.by[k].length+(g.by[k].length===1?" заглавие":" заглавия")+"</span></div>"+
+      '<div class="grid-cal">'+g.by[k].map(calCard).join("")+"</div>";
+  }).join("") : '<div class="cal-empty">Още няма нищо в календара за напред. Влез в админа и натисни „Обнови сега“.</div>';
+  var next=g.order[calMonths];
+  var el=document.querySelector('[data-more="calendar"]');
+  if(el) el.innerHTML = next
+    ? '<button class="btn btn-ghost btn-more" data-calmore="1">Виж '+esc(monthName(next).toLowerCase())+" ("+g.by[next].length+")</button>"
+    : "";
+  reveal();
+}
+function platClass(name){
+  var n=String(name||"").toLowerCase();
+  if(n.indexOf("netflix")>=0) return "p-netflix";
+  if(n.indexOf("hbo")>=0||n.indexOf("max")>=0) return "p-hbo";
+  if(n.indexOf("disney")>=0) return "p-disney";
+  if(n.indexOf("prime")>=0||n.indexOf("amazon")>=0) return "p-prime";
+  return "";
+}
+function calCard(c){
+  var art = c.poster ? 'style="background-image:url('+esc(c.poster)+')"' : 'class="cal-art noart"';
+  var artAttr = c.poster ? 'class="cal-art" '+art : art;
+  var badge = c.kind==="event" ? '<span class="cal-b ev">Събитие</span>'
+    : c.kind==="stream" ? '<span class="cal-b str '+platClass(c.platform)+'">'+esc(c.platform||"Стрийминг")+"</span>"
+    : '<span class="cal-b">По кината</span>';
+  return '<button class="cal rv'+(c.kind==="event"?" ev":"")+'" data-calid="'+esc(c.id)+'">'+
+    "<div "+artAttr+">"+(c.poster?"":'<span class="mimlogo" style="width:46%;aspect-ratio:1.4"></span>')+badge+calWhen(c)+"</div>"+
+    '<div class="cal-body">'+
+      (c.kind==="event"&&c.organizer?'<span class="cal-who">'+esc(c.organizer)+"</span>":"")+
+      "<h3>"+esc(c.t)+"</h3>"+
+      (c.p?"<p>"+esc(shorten(c.p,120))+"</p>":"")+
+      '<div class="cal-foot">'+esc(calFoot(c))+"</div>"+
+    "</div></button>";
+}
+function shorten(t,n){ t=String(t||""); return t.length>n ? t.slice(0,n-1).replace(/\s+\S*$/,"")+"…" : t; }
+function calFoot(c){
+  if(c.kind==="event") return [c.price?("от "+c.price+" €"):"", c.place].filter(Boolean).join(" • ")||"Прожекция";
+  if(c.kind==="stream") return [c.platform,"Сериал"].filter(Boolean).join(" • ");
+  return [c.genre,c.mins?(c.mins+" мин"):""].filter(Boolean).join(" • ")||"Филм";
+}
+/* ревюто ни за същия филм, ако има */
+function reviewFor(c){
+  var t=String(c.t||"").trim().toLowerCase(); if(!t) return null;
+  return (DATA.reviews||[]).filter(function(r){ return String(r.t||"").trim().toLowerCase()===t; })[0]||null;
+}
+function openCal(c){
+  if(!c) return; lastFocus=document.activeElement;
+  var past = String(c.when) < todayISO();
+  $("#modalGenre").textContent = (c.kind==="event"?(c.organizer||"Събитие"):c.kind==="stream"?(c.platform||"Стрийминг"):"По кината")+" • "+(past?"вече е налично":fmtDate(c.when));
+  $("#modalTitle").textContent = c.t;
+  $("#modalScore").innerHTML=""; $("#modalScore").style.display="none";
+  $("#modalMeta").innerHTML = [c.time,c.place,c.genre,c.mins?(c.mins+" мин"):"",c.note]
+    .filter(Boolean).map(function(x){ return '<span class="chip">'+esc(x)+"</span>"; }).join("");
+  var emb=videoEmbed(c.video), hero="";
+  if(emb) hero='<div class="vwrap"><iframe src="'+esc(emb)+'" title="'+esc(c.t)+'" loading="lazy" allowfullscreen '+
+    'allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture"></iframe></div>';
+  else if(c.poster) hero='<div class="craft-hero" style="background-image:url('+esc(c.poster)+');aspect-ratio:16/9"></div>';
+  var rv=reviewFor(c);
+  var links="";
+  if(c.kind==="event"&&c.ticketUrl) links+='<a class="btn btn-gold btn-sm" href="'+esc(c.ticketUrl)+'" target="_blank" rel="noopener">Билети</a>';
+  if(c.kind==="stream"&&c.watchUrl) links+='<a class="btn btn-gold btn-sm" href="'+esc(c.watchUrl)+'" target="_blank" rel="noopener">Гледай в '+esc(c.platform||"платформата")+"</a>";
+  if(c.kind==="cinema") links+='<a class="btn btn-ghost btn-sm" href="https://www.cinefish.bg/kino_programa.php" target="_blank" rel="noopener">Програма по кината</a>';
+  if(rv) links+='<button class="btn btn-ghost btn-sm" data-openrev="'+esc(rv.id)+'">Прочети ревюто</button>';
+  $("#modalBody").innerHTML = hero+md(c.body||c.p||"")+sig(c)+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">'+likeBtn("calendar",c)+links+shareBtn("calendar",c)+
+      '<button class="btn btn-ghost btn-sm" data-close>Затвори</button></div>';
+  countView("calendar",c);
+  openModal();
+}
+
 /* ================= прегледи и харесвания ================= */
 var STATS={views:{},likes:{}}, statsReady=false;
-var SKEY={reviews:"r",news:"n",craft:"c",episodes:"e"};
+var SKEY={reviews:"r",news:"n",craft:"c",episodes:"e",calendar:"k"};
 function statKey(kind,id){ return SKEY[kind]+":"+id; }
 function loadStats(){
   if(!/^https?:$/.test(location.protocol)) return;
@@ -1914,9 +2101,9 @@ function sameContent(a,b){ try{ return JSON.stringify(stripKeys(a))===JSON.strin
 function apiGet(){
   if(!/^https?:$/.test(location.protocol)){ SRV=false; return; }
   fetch("/api/content",{cache:"no-store"}).then(function(r){
-    if(r.status===204){ SRV=true; HOST="server"; loadAuthMode(); loadStats(); afterServer(null); return; }
+    if(r.status===204){ SRV=true; HOST="server"; loadStats(); afterServer(null); return; }
     if(!r.ok) throw 0;
-    return r.json().then(function(d){ SRV=true; HOST="server"; loadAuthMode(); loadStats(); afterServer(d); });
+    return r.json().then(function(d){ SRV=true; HOST="server"; loadStats(); afterServer(d); });
   }).catch(function(){ SRV=false; });
 }
 function afterServer(d){
@@ -1987,7 +2174,7 @@ function paintSrv(){
     }).catch(function(){}); }catch(e){}
   }
 })();
-var A = { tab:"dash", kind:null, edit:null, idx:-1, msg:"", msgType:"", confirmId:null, unlocked:false, gateBad:false, gateMail:"", me:null, role:null, prevBackup:null, authMail:"", authMsg:"", authMsgType:"", users:null, umsg:"", umsgType:"", uedit:null };
+var A = { tab:"dash", kind:null, edit:null, idx:-1, msg:"", msgType:"", confirmId:null, unlocked:false, gateBad:false, gateMail:"", me:null, role:null, prevBackup:null, authMail:"", authMsg:"", authMsgType:"", users:null, umsg:"", umsgType:"", uedit:null, calMsg:"", calMsgType:"" };
 function perm(){ return PERMS[A.role]||PERMS.author; }
 function canEdit(it){ return perm().all || (it.author===(A.me&&A.me.id) && it.status!=="published"); }
 var admEl = $("#admin"), siteEl = $("#site");
@@ -2089,6 +2276,17 @@ function stat(n,l){ return '<div class="stat"><b>'+n+"</b><span>"+esc(l)+"</span
 
 var STATUS={draft:["Чернова",""],review:["За одобрение","warn"],published:["Публикувано","ok"]};
 
+function calBar(){
+  if(SRV!==true) return '<div class="panel"><div class="panel-head"><h3>Обновяване от TMDB</h3></div>'+
+    '<div class="panel-body hint">Работи само на истинския сайт.</div></div>';
+  var at=(DATA.settings||{}).calSyncedAt;
+  return '<div class="panel"><div class="panel-head"><h3>Обновяване от TMDB</h3>'+
+    (A.calMsg?'<span class="pill '+A.calMsgType+'">'+esc(A.calMsg)+"</span>":"")+
+    '<button class="btn btn-gold btn-sm" data-act="calsync">Обнови сега</button></div>'+
+    '<div class="panel-body hint">Премиерите по кината и сериалите по стрийминга се обновяват сами веднъж месечно. '+
+    (at?"Последно: "+esc(new Date(at).toLocaleString("bg-BG"))+". ":"Още не е правено. ")+
+    'Записите, които си пипал, и събитията остават непокътнати.</div></div>';
+}
 function listView(kind){
   var all = DATA[kind]||[];
   var items = perm().all ? all : all.filter(function(it){ return it.author===(A.me&&A.me.id); });
@@ -2098,6 +2296,8 @@ function listView(kind){
     var i = all.indexOf(it), th, title, meta;
     if(kind==="reviews"){ th = it.poster?'style="background-image:url('+it.poster+')"':'style="background:linear-gradient(150deg,'+(it.c1||"#333")+","+(it.c2||"#666")+')"';
       title=it.t; meta=it.y+" • "+it.g+" • "+it.s+"/5 клапи"+(String(it.video||"").trim()?" • С ВИДЕО":""); }
+    else if(kind==="calendar"){ th = it.poster?'style="background-image:url('+it.poster+')"':"";
+      title=it.t; meta=(CAL_KINDS[it.kind]||"")+" • "+fmtDate(it.when)+(it.hidden?" • СКРИТ":"")+(it.src==="tmdb"?(it.edited?" • ПОПРАВЕН":" • ОТ TMDB"):" • РЪЧЕН"); }
     else if(kind==="craft"){ th = it.img?'style="background-image:url('+it.img+')"':'style="background:linear-gradient(150deg,'+(it.c1||"#333")+","+(it.c2||"#666")+')"';
       title=it.t; meta=it.tag+" • "+fmtDate(it.when)+" • "+craftKind(it).toUpperCase(); }
     else if(kind==="news"){ th = it.img?'style="background-image:url('+it.img+')"':""; title=it.t; meta=it.tag+" • "+fmtDate(it.when)+(it.lead?" • ВОДЕЩА":"")+(String(it.video||"").trim()?" • С ВИДЕО":""); }
@@ -2223,6 +2423,31 @@ function editView(){
       fldInp("Линк към видеото в YouTube (по избор)",'data-k="video"',e.video,{ph:"https://youtu.be/…",hint:"Ако има видео по темата, тук слагаш линка и в новината се появява бутон „Чуй повече“. Празно поле = без бутон."})+
       fldImg("Изображение","img",e.img,"16:11, препоръчано 800×550. Вижда се на голямата карта и при споделяне.")+
       fldInp("Автор (подпис в края на текста)",'data-k="authorName"',e.authorName,{ph:"Име и фамилия",hint:"Показва се най-долу под текста. Празно поле = без подпис."});
+  } else if(k==="calendar"){
+    f = '<div class="grid3">'+
+      fldSel("Вид",'data-k="kind"',["По кината","Стрийминг","Събитие"],CAL_KINDS[e.kind]||"По кината")+
+      fldDate("Дата","when",e.when)+
+      fldInp("Час (за събития)",'data-k="time"',e.time,{ph:"20:00"})+"</div>"+
+      fldInp("Заглавие",'data-k="t"',e.t)+
+      '<div class="grid3">'+
+        fldInp("Организатор",'data-k="organizer"',e.organizer,{ph:"Дом на киното"})+
+        fldInp("Място",'data-k="place"',e.place,{ph:"София, зала 1"})+
+        fldInp("Цена в евро",'data-k="price" data-type="num"',e.price,{type:"number",step:"0.5"})+"</div>"+
+      '<div class="grid3">'+
+        fldInp("Платформа",'data-k="platform"',e.platform,{ph:"Netflix"})+
+        fldInp("Жанр",'data-k="genre"',e.genre)+
+        fldInp("Времетраене (минути)",'data-k="mins" data-type="num"',e.mins,{type:"number"})+"</div>"+
+      fldInp("Пояснение под датата",'data-k="note"',e.note,{ph:"Сезон 2 · 8 епизода"})+
+      '<div class="grid2">'+
+        fldInp("Линк за билети",'data-k="ticketUrl"',e.ticketUrl,{ph:"https://…"})+
+        fldInp("Линк за гледане",'data-k="watchUrl"',e.watchUrl,{ph:"https://netflix.com/…"})+"</div>"+
+      fldInp("Трейлър в YouTube",'data-k="video"',e.video,{ph:"https://youtu.be/…",hint:"Пуска се вътре в прозореца."})+
+      fldTa("Кратко (на картата)",'data-k="p"',e.p,{rows:2})+
+      fldTa("Дълъг текст (по избор)",'data-k="body" data-md-target="1"',e.body,{rows:6,toolbar:MDBAR})+
+      '<div class="mdprev" data-prev="1">'+md(e.body)+"</div>"+
+      fldInp("Адрес на постера",'data-k="poster"',e.poster,{ph:"https://image.tmdb.org/…",hint:"При премиерите се попълва сам от TMDB."})+
+      fldSw("Скрит от сайта",'data-k="hidden" data-type="bool"',e.hidden)+
+      (e.src==="tmdb"?'<p class="hint">Този запис идва от TMDB. Щом го запазиш, обновяването спира да го пипа.</p>':"");
   } else if(k==="episodes"){
     f = '<div class="grid3">'+fldInp("Номер",'data-k="n" data-type="num"',e.n,{type:"number"})+
       fldDate("Дата","d",e.d)+
@@ -2413,6 +2638,9 @@ function vSettings(){
   "</div></div></div>"+
   '<div class="panel"><div class="panel-head"><h3>Списъци за избор</h3></div><div class="panel-body"><div class="form">'+
     fldTa("Жанрове (по един на ред)",'data-p="settings.genres" data-type="lines"',(s.genres||[]).join("\n"),{rows:7,hint:"Появяват се в падащото меню при ревютата."})+
+    fldTa("Стрийминг платформи за календара (по една на ред: име и номер в TMDB)",'data-p="settings.calProvidersText" data-type="lines"',
+      ((s.calProviders||[]).map(function(x){return x.name+" | "+x.id;})).join("\n"),
+      {rows:5,hint:"Номерата са на TMDB. По подразбиране: Netflix | 8, HBO Max | 1899, Disney+ | 337, Prime Video | 119."})+
     fldTa("Рубрики за новините (по една на ред)",'data-p="settings.newsTags" data-type="lines"',(s.newsTags||[]).join("\n"),{rows:7,hint:"Появяват се в падащото меню при новините."})+
     fldTa("Размери за мърч (по един на ред)",'data-p="settings.sizesList" data-type="lines"',(s.sizesList||[]).join("\n"),{rows:6})+
   "</div></div></div>"+
@@ -2454,6 +2682,7 @@ function admRender(){
     return;
   }
   var allTabs = {dash:["Табло",""],reviews:["Ревюта",DATA.reviews.length],craft:["Зад кадър",(DATA.craft||[]).length],
+    calendar:["Календар",(DATA.calendar||[]).length],
     news:["Новини",DATA.news.length],episodes:["Епизоди",DATA.episodes.length],merch:["Мърч",DATA.merch.length],
     ads:["Реклама",""],users:["Потребители",(A.users||[]).length||""],settings:["Настройки",""]};
   var tabs = perm().tabs.map(function(k){ return [k,allTabs[k][0],allTabs[k][1]]; });
@@ -2464,6 +2693,7 @@ function admRender(){
     else if(A.tab==="ads") body = vAds();
     else if(A.tab==="settings") body = vSettings();
     else if(A.tab==="users") body = vUsers();
+      else if(A.tab==="calendar") body = calBar()+listView("calendar");
     else body = listView(A.tab);
   }catch(err){
     body = '<div class="panel"><div class="panel-head"><h3>Нещо се обърка в този раздел</h3></div>'+
@@ -2512,6 +2742,18 @@ admEl.addEventListener("click",function(ev){
   if(act==="del"){ A.confirmId=kind+i; admRender(); return; }
   if(act==="del2"){ DATA[kind].splice(i,1); A.confirmId=null; afterChange(); return; }
   if(act==="approve"){ DATA[kind][i].status="published"; A.msg="Одобрено"; A.msgType="ok"; afterChange(); return; }
+  if(act==="calsync"){
+    A.calMsg="Тегли от TMDB…"; A.calMsgType=""; admRender();
+    fetch("/api/calendar/sync",{method:"POST",headers:authHeaders(),body:JSON.stringify({months:3})})
+      .then(function(r){ return r.json().catch(function(){return {};}).then(function(j){ return {ok:r.ok,j:j}; }); })
+      .then(function(res){
+        if(res.ok&&res.j.ok){ A.calMsg="Готово — "+res.j.count+" записа"; A.calMsgType="ok"; apiGet(); }
+        else { A.calMsg=res.j.message||"Не се получи."; A.calMsgType="err"; }
+        admRender();
+      })
+      .catch(function(){ A.calMsg="Няма връзка със сървъра."; A.calMsgType="err"; admRender(); });
+    return;
+  }
   if(act==="reloadstats"){ loadStats(); setTimeout(function(){ if(!admEl.hidden) admRender(); },900); return; }
   if(act==="cal"){
     var pk=admEl.querySelector('[data-pick="'+t.dataset.key+'"]');
@@ -2574,6 +2816,12 @@ admEl.addEventListener("input",function(ev){
     return;
   }
   if(el.dataset.k!=null&&A.edit){ A.edit[el.dataset.k]=v; if(el.dataset.mdTarget){ var p=admEl.querySelector("[data-prev]"); if(p) p.innerHTML=md(v); } return; }
+  if(el.dataset.p==="settings.calProvidersText"){
+    DATA.settings.calProviders = (Array.isArray(v)?v:[]).map(function(line){
+      var m=/^(.*?)\s*\|\s*(\d+)\s*$/.exec(String(line)); return m?{name:m[1].trim(),id:+m[2]}:null;
+    }).filter(Boolean);
+    markDirty(); return;
+  }
   if(el.dataset.p){ setP(DATA,el.dataset.p,v); markDirty(); renderSite(); updatePills(); }
 });
 
@@ -2587,12 +2835,18 @@ function blank(kind){
   if(kind==="reviews") return {id:uid("r"),t:"",y:new Date().getFullYear(),g:(DATA.settings.genres||["Екшън"])[0],s:4,mins:0,c1:"#1F1B14",c2:"#6B5620",poster:"",video:"",imdb:"",tags:[],verdict:"",body:"",status:"published",author:"",authorName:""};
   if(kind==="craft") return {id:uid("c"),tag:"Камера",t:"",when:todayISO(),role:"",guest:"",video:"",img:"",c1:"#1E1B14",c2:"#6B5620",p:"",body:"",status:"published",author:"",authorName:""};
   if(kind==="news") return {id:uid("n"),tag:"Индустрия",t:"",when:todayISO(),lead:false,img:"",video:"",p:"",body:"",status:"published",author:"",authorName:""};
+  if(kind==="calendar") return {id:uid("k"),kind:"event",src:"manual",t:"",when:todayISO(),time:"",organizer:"",place:"",price:0,platform:"",genre:"",mins:0,note:"",ticketUrl:"",watchUrl:"",video:"",poster:"",p:"",body:"",hidden:false,authorName:""};
   if(kind==="episodes"){ var top=(DATA.episodes[0]||{}).n||0; return {id:uid("e"),n:top+1,t:"",d:todayISO(),len:45,tag:"Сезон 3",desc:"",yt:"",sp:""}; }
   return {id:uid("m"),t:"",d:"",p:20,sizes:["S","M","L","XL"],c1:"#141210",c2:"#3A3018",img:"",on:true};
 }
 function saveEdit(){
   var e=A.edit;
   if(A.kind==="reviews"){ e.mins=(+e._h||0)*60+(+e._m||0); delete e._h; delete e._m; }
+  if(A.kind==="calendar"){
+    var lbl={"По кината":"cinema","Стрийминг":"stream","Събитие":"event"};
+    if(lbl[e.kind]) e.kind=lbl[e.kind];
+    if(e.src==="tmdb") e.edited=true;          /* оттук нататък обновяването не го пипа */
+  }
   if(["reviews","craft","news"].indexOf(A.kind)>=0){
     if(!e.author) e.author=(A.me&&A.me.id)||"";
     if(!String(e.authorName||"").trim()) e.authorName=(A.me&&A.me.name)||"";
@@ -2779,21 +3033,23 @@ function tryGate(){
 /* адрес от споделен линк: #/n/<id> отваря точно този материал */
 var hashDone="";
 function openFromHash(){
-  var m=/^#\/([rncem])\/(.+)$/.exec(location.hash||"");
+  var m=/^#\/([rncemk])\/(.+)$/.exec(location.hash||"");
   if(!m){ hashDone=""; return; }
   if(hashDone===location.hash) return;
-  var kind={r:"reviews",n:"news",c:"craft",e:"episodes",m:"merch"}[m[1]];
+  var kind={r:"reviews",n:"news",c:"craft",e:"episodes",m:"merch",k:"calendar"}[m[1]];
   var id=decodeURIComponent(m[2]);
   var it=(DATA[kind]||[]).filter(function(x){ return String(x.id)===id; })[0];
   if(!it) return;                       /* съдържанието още не е дошло — пробваме пак после */
   hashDone=location.hash;
-  var sec={reviews:"revyuta",news:"novini",craft:"zad-kadar",episodes:"podcast",merch:"merch"}[kind];
+  var sec={reviews:"revyuta",news:"novini",craft:"zad-kadar",episodes:"podcast",merch:"merch",calendar:"kalendar"}[kind];
   var el=document.getElementById(sec); if(el) el.scrollIntoView();
   if(kind==="reviews") openReview(it);
   else if(kind==="news") openNews(it);
   else if(kind==="craft") openCraft(it);
+  else if(kind==="calendar") openCal(it);
 }
 function openAdmin(){
+  if(SRV===true&&AUTHMODE==null) loadAuthMode();
   if(!dirty){ try{ var d=localStorage.getItem(DRAFT_KEY); if(d){ DATA=JSON.parse(d); dirty=true; renderSite(); } }catch(e){} }
   try{ var ss=sessionStorage.getItem("mim-admin-ok");
     if(ss){ var who = ss==="1" ? {role:"admin",id:"owner",name:"Администратор"} : JSON.parse(ss);
