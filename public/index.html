@@ -117,6 +117,9 @@ nav.main a:hover::after,nav.main a.active::after{right:0}
 .about-text h4{font-family:var(--f-hl);font-style:italic;font-weight:800;text-transform:uppercase;font-size:17px;color:var(--ink);margin:20px 0 8px}
 .about-text ul{margin:0 0 14px;padding-left:20px}.about-text li{margin:4px 0}
 .about-text b,.about-text strong{color:var(--ink)}
+.headset{padding:0 0 22px;margin-bottom:22px;border-bottom:1px solid var(--line-soft)}
+.headset:last-child{border-bottom:0;margin-bottom:0;padding-bottom:0}
+.headset h4{font-family:var(--f-hl);font-style:italic;font-weight:800;text-transform:uppercase;font-size:15px;color:var(--brand);margin:0 0 12px}
 .about-cta[hidden]{display:none}
 .about-cta{margin-top:26px;padding-top:22px;border-top:1px solid var(--line);display:flex;align-items:center;gap:16px;flex-wrap:wrap;max-width:62ch}
 .about-cta p{font-family:var(--f-hl);font-style:italic;font-weight:800;text-transform:uppercase;font-size:clamp(17px,2.4vw,22px);line-height:1.2;margin:0}
@@ -1100,10 +1103,10 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
 <section class="section" id="novini">
   <div class="wrap">
     <div class="section-head rv">
-      <div>
-        <p class="eyebrow">Новини</p>
-        <h2>Какво става в голямото кино</h2>
-        <p class="lede">Индустрията, боксофисът и решенията на студиата — обяснени на човешки език.</p>
+      <div data-head="news">
+        <p class="eyebrow"></p>
+        <h2></h2>
+        <p class="lede"></p>
       </div>
     </div>
     <div class="grid-news" data-dyn="news"></div>
@@ -1114,10 +1117,10 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
 <section class="section" id="revyuta">
   <div class="wrap">
     <div class="section-head rv">
-      <div>
-        <p class="eyebrow">Ревюта</p>
-        <h2>Гледано, преживяно, оценено</h2>
-        <p class="lede">Без академични глезотии. Големите заглавия, оценени по единствения важен критерий — струва ли си билетът.</p>
+      <div data-head="reviews">
+        <p class="eyebrow"></p>
+        <h2></h2>
+        <p class="lede"></p>
       </div>
       <div class="filters" data-dyn="filters"></div>
     </div>
@@ -1131,8 +1134,8 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
 <section class="section" id="podcast">
   <div class="wrap">
     <div class="section-head rv">
-      <div>
-        <p class="eyebrow">Подкастът</p>
+      <div data-head="podcast">
+        <p class="eyebrow"></p>
         <h2 data-dyn="podcastDay"></h2>
         <p class="lede" data-dyn="podcastLede"></p>
       </div>
@@ -1146,10 +1149,10 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
 <section class="section" id="zad-kadar">
   <div class="wrap">
     <div class="section-head rv">
-      <div>
-        <p class="eyebrow">Зад кадър</p>
-        <h2>Как всъщност се прави</h2>
-        <p class="lede">Оператори, монтажисти, звукари и каскадьори обясняват решенията зад кадрите, които помним. Видео и текст към него.</p>
+      <div data-head="craft">
+        <p class="eyebrow"></p>
+        <h2></h2>
+        <p class="lede"></p>
       </div>
       <div class="filters" data-dyn="craftFilters"></div>
     </div>
@@ -1161,10 +1164,10 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
 <section class="section" id="kalendar">
   <div class="wrap">
     <div class="section-head rv">
-      <div>
-        <p class="eyebrow">Movie calendar</p>
-        <h2>Какво идва по екраните</h2>
-        <p class="lede">Премиерите по кината в България, новите сезони по стрийминга и прожекциите на партньори — подредени по дата.</p>
+      <div data-head="calendar">
+        <p class="eyebrow"></p>
+        <h2></h2>
+        <p class="lede"></p>
       </div>
       <div class="filters" data-dyn="calFilters"></div>
     </div>
@@ -1178,12 +1181,12 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
 <section class="section" id="merch">
   <div class="wrap">
     <div class="section-head rv">
-      <div>
-        <p class="eyebrow">Мърч</p>
-        <h2>Носи си каузата</h2>
-        <p class="lede">Малки серии, добри материали, логото, което всички разпознават. Поръчката минава през формата — потвърждаваме по имейл до 24 часа.</p>
+      <div data-head="merch">
+        <p class="eyebrow"></p>
+        <h2></h2>
+        <p class="lede"></p>
       </div>
-      <span class="chip">Доставка в цялата страна</span>
+      <span class="chip" data-headnote="merch"></span>
     </div>
     <div class="grid-merch" data-dyn="merch"></div>
     <div class="more-wrap" data-more="merch"></div>
@@ -1196,8 +1199,8 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
 
 <section class="section" id="za-nas">
   <div class="wrap section-head rv" style="margin-bottom:0">
-    <div>
-      <p class="eyebrow">За нас</p>
+    <div data-head="about">
+      <p class="eyebrow"></p>
       <h2 data-dyn="aboutTitle"></h2>
       <div class="about-text" data-dyn="about"></div>
       <div class="about-cta" data-dyn="aboutCta"></div>
@@ -1347,6 +1350,7 @@ function migrate(){
   if(s.cinemaProgramUrl==null) s.cinemaProgramUrl="";
   if(s.joinText==null) s.joinText="Ако искаш и ти да си част от нас, пиши ни!";
   if(s.joinBtn==null) s.joinBtn="Пиши ни";
+  if(!s.heads||typeof s.heads!=="object") s.heads={};
   if(s.stats) delete s.stats;
   if(s.footerNote==="Демо съдържание — текстовете са примерни") s.footerNote="";
   if(!s.users) s.users=[];
@@ -1425,6 +1429,67 @@ function renderAds(){
 }
 
 /* ============================ САЙТ ============================ */
+/* Заглавията в началото на всяка секция — по подразбиране и от настройките */
+var HEADS = {
+  news:{name:"Новини",eyebrow:"Новини",title:"Какво става в голямото кино",
+    lede:"Индустрията, боксофисът и решенията на студиата — обяснени на човешки език."},
+  reviews:{name:"Ревюта",eyebrow:"Ревюта",title:"Гледано, преживяно, оценено",
+    lede:"Без академични глезотии. Големите заглавия, оценени по единствения важен критерий — струва ли си билетът."},
+  podcast:{name:"Подкаст",eyebrow:"Подкастът",
+    hint:"Заглавието и текстът тук се взимат от „Ден и час на подкаста“ и „Текст в секция Подкаст“."},
+  craft:{name:"Зад кадър",eyebrow:"Зад кадър",title:"Как всъщност се прави",
+    lede:"Оператори, монтажисти, звукари и каскадьори обясняват решенията зад кадрите, които помним. Видео и текст към него."},
+  calendar:{name:"Movie calendar",eyebrow:"Movie calendar",title:"Какво идва по екраните",
+    lede:"Премиерите по кината в България, новите сезони по стрийминга и прожекциите на партньори — подредени по дата."},
+  merch:{name:"Мърч",eyebrow:"Мърч",title:"Носи си каузата",
+    lede:"Малки серии, добри материали, логото, което всички разпознават. Поръчката минава през формата — потвърждаваме по имейл до 24 часа.",
+    note:"Доставка в цялата страна"},
+  about:{name:"За нас",eyebrow:"За нас",
+    hint:"Заглавието и текстът тук се взимат от „Заглавие За нас“ и „Текст За нас“."}
+};
+function headVal(k,f){
+  var set=((DATA.settings||{}).heads||{})[k]||{};
+  return set[f]!=null ? String(set[f]) : (HEADS[k][f]!=null ? HEADS[k][f] : "");
+}
+function renderHeads(){
+  Object.keys(HEADS).forEach(function(k){
+    var box=document.querySelector('[data-head="'+k+'"]'); if(!box) return;
+    var d=HEADS[k];
+    var eb=box.querySelector(".eyebrow");
+    if(eb){ var e=headVal(k,"eyebrow"); eb.textContent=e; eb.hidden=!e.trim(); }
+    if(d.title!=null){
+      var h=box.querySelector("h2");
+      if(h){ var t=headVal(k,"title"); h.innerHTML=esc(t).replace(/\n/g,"<br>"); h.hidden=!t.trim(); }
+    }
+    if(d.lede!=null){
+      var lp=box.querySelector(".lede");
+      if(lp){ var l=headVal(k,"lede"); lp.textContent=l; lp.hidden=!l.trim(); }
+    }
+    if(d.note!=null){
+      var n=document.querySelector('[data-headnote="'+k+'"]');
+      if(n){ var nv=headVal(k,"note"); n.textContent=nv; n.hidden=!nv.trim(); }
+    }
+  });
+}
+
+/* Заглавията в началото на всяка секция */
+function headsPanel(){
+  var body = Object.keys(HEADS).map(function(k){
+    var d=HEADS[k], f='data-p="settings.heads.'+k+'.';
+    return '<div class="headset"><h4>'+esc(d.name)+"</h4>"+
+      (d.hint?'<p class="hint" style="margin:-4px 0 10px">'+d.hint+"</p>":"")+
+      '<div class="form">'+
+      fldInp("Малкият надпис отгоре",f+'eyebrow"',headVal(k,"eyebrow"),{ph:"празно = не се показва"})+
+      (d.title!=null?fldTa("Заглавие",f+'title"',headVal(k,"title"),{rows:2,hint:"Нов ред = нов ред в заглавието."}):"")+
+      (d.lede!=null?fldTa("Текст под заглавието",f+'lede"',headVal(k,"lede"),{rows:3}):"")+
+      (d.note!=null?fldInp("Надпис отстрани",f+'note"',headVal(k,"note"),{ph:"празно = не се показва"}):"")+
+      "</div></div>";
+  }).join("");
+  return '<div class="panel"><div class="panel-head"><h3>Заглавия на секциите</h3>'+
+    '<span class="hint">Текстовете в началото на всяка рубрика.</span></div>'+
+    '<div class="panel-body">'+body+"</div></div>";
+}
+
 function renderSettings(){
   var s = DATA.settings;
   var t1=dyn("tagline"), t2=dyn("tagline2");
@@ -1732,7 +1797,7 @@ document.addEventListener("click",function(e){
   shownN[k]=limitOf(k)+(SHOW_STEP[k]||6);
   ({reviews:renderReviews,news:renderNews,craft:renderCraft,merch:renderMerch,episodes:renderEpisodes,calendar:renderCalendar})[k]();
 });
-function renderSite(){ if(!DATA.craft) DATA.craft=[]; if(!DATA.calendar) DATA.calendar=[]; renderDraftBar(); renderSettings(); renderAds(); renderHero(); renderFilters(); renderReviews(); renderEpisodes(); renderCraftFilters(); renderCraft(); renderCalFilters(); renderCalendar(); renderNews(); renderMerch(); }
+function renderSite(){ if(!DATA.craft) DATA.craft=[]; if(!DATA.calendar) DATA.calendar=[]; renderDraftBar(); renderSettings(); renderHeads(); renderAds(); renderHero(); renderFilters(); renderReviews(); renderEpisodes(); renderCraftFilters(); renderCraft(); renderCalFilters(); renderCalendar(); renderNews(); renderMerch(); }
 
 function renderDraftBar(){
   var el=dyn("draftbar"); if(!el) return;
@@ -2724,6 +2789,7 @@ function vSettings(){
       fldInp("Ред долу вдясно",'data-p="settings.footerNote"',s.footerNote,{ph:"празно = нищо не се показва"})+"</div>"+
     fldTa("Бягаща лента (по един ред)",'data-p="settings.ticker" data-type="lines"',(s.ticker||[]).join("\n"),{rows:6})+
   "</div></div></div>"+
+  headsPanel()+
   '<div class="panel"><div class="panel-head"><h3>Контакти и мрежи</h3></div><div class="panel-body"><div class="form">'+
     '<div class="grid2">'+fldInp("Имейл за контакт",'data-p="settings.contactEmail"',s.contactEmail)+fldInp("Имейл за поръчки",'data-p="settings.orderEmail"',s.orderEmail)+"</div>"+
     '<p class="hint">Празно поле = нищо не се показва във футъра.</p>'+
