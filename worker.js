@@ -315,6 +315,18 @@ async function tmdbGet(env, path, params) {
   return r.json();
 }
 
+/** Един ред за календара от сериал: sub = series | season | episode */
+function tvItem(t, pv, sub, when, season, episode) {
+  return {
+    id: "tmdb-t-" + t.id, kind: "stream", src: "tmdb", tmdbId: t.id,
+    t: t.name || t.original_name || "", when: when,
+    poster: t.poster_path ? POSTER + t.poster_path : "",
+    p: (t.overview || "").slice(0, 320), platform: pv.name,
+    sub: sub, season: season ? +season : null, episode: episode ? +episode : null,
+    video: "", note: "",
+  };
+}
+
 /** Тегли премиерите и сериалите за следващите месеци и ги слива с наличните. */
 async function syncCalendar(env, months) {
   if (!env.TMDB_KEY) return { error: "no_key", message: "Липсва ключът TMDB_KEY в Cloudflare." };
@@ -348,28 +360,48 @@ async function syncCalendar(env, months) {
     }
     if (!nMovies) notes.push("TMDB няма премиери за България в този период.");
   } catch (e) { notes.push("Филми: " + e.message); }
-  // сериали по стрийминга
+  // сериали по стрийминга — само с истинска дата на излъчване
+  const lo = ymd(from), hi = ymd(to);
+  let budget = 34;                       // таван на допълнителните запитвания към TMDB
   for (const pv of providers.slice(0, 4)) {
+    // 1) премиери на НОВИ сериали
+    try {
+      const nw = await tmdbGet(env, "/discover/tv", {
+        watch_region: "BG", with_watch_providers: String(pv.id), language: "bg-BG",
+        "first_air_date.gte": lo, "first_air_date.lte": hi,
+        sort_by: "popularity.desc", page: "1",
+      });
+      for (const t of (nw.results || []).slice(0, 6)) {
+        if (!t.first_air_date || t.first_air_date < lo || t.first_air_date > hi) continue;
+        if (fresh.some((f) => f.tmdbId === t.id && f.kind === "stream")) continue;
+        fresh.push(tvItem(t, pv, "series", t.first_air_date, 1, 1));
+        nSeries++;
+      }
+    } catch (e) { notes.push(pv.name + ": " + e.message); }
+
+    // 2) нови сезони и епизоди на вървящи сериали
     try {
       const tv = await tmdbGet(env, "/discover/tv", {
         watch_region: "BG", with_watch_providers: String(pv.id), language: "bg-BG",
-        "air_date.gte": ymd(from), "air_date.lte": ymd(to),
+        "air_date.gte": lo, "air_date.lte": hi,
         sort_by: "popularity.desc", page: "1",
       });
       for (const t of (tv.results || []).slice(0, 8)) {
-        const when = t.first_air_date && t.first_air_date >= ymd(from) ? t.first_air_date : ymd(from);
-        fresh.push({
-          id: "tmdb-t-" + t.id, kind: "stream", src: "tmdb", tmdbId: t.id,
-          t: t.name || t.original_name || "", when: when,
-          poster: t.poster_path ? POSTER + t.poster_path : "",
-          p: (t.overview || "").slice(0, 320), platform: pv.name, video: "", note: "",
-        });
+        if (budget <= 0) break;
+        if (fresh.some((f) => f.tmdbId === t.id && f.kind === "stream")) continue;
+        budget--;
+        let d = null;
+        try { d = await tmdbGet(env, "/tv/" + t.id, { language: "bg-BG" }); } catch (e) { continue; }
+        const ne = d && d.next_episode_to_air;
+        if (!ne || !ne.air_date || ne.air_date < lo || ne.air_date > hi) continue;   // няма надеждна дата — не влиза
+        const sub = +ne.episode_number === 1 ? "season" : "episode";
+        fresh.push(tvItem(t, pv, sub, ne.air_date, ne.season_number, ne.episode_number));
         nSeries++;
       }
     } catch (e) { notes.push(pv.name + ": " + e.message); }
   }
   if (!nSeries && !notes.some((x) => x.indexOf("TMDB 4") >= 0))
-    notes.push("TMDB не върна сериали за България.");
+    notes.push("TMDB няма сериали с обявена дата за България в този период.");
 
   const old = Array.isArray(data.calendar) ? data.calendar : [];
   const byId = {};
@@ -491,6 +523,46 @@ function seoFind(data, kind, slug) {
   return null;
 }
 
+/* ---------- теми (таговете от админа) ---------- */
+const SEO_TAG_MIN = 2;               // тема с един материал не получава своя страница
+function itemTags(it) {
+  const raw = Array.isArray(it && it.tags) ? it.tags : [];
+  const seen = {}, out = [];
+  for (const t of raw) {
+    const name = String(t || "").trim();
+    if (!name) continue;
+    const sl = slugify(name);
+    if (!sl || seen[sl]) continue;
+    seen[sl] = 1;
+    out.push({ name, slug: sl });
+  }
+  return out.slice(0, 12);
+}
+function seoTagMap(data) {
+  const map = {};
+  for (const x of seoAll(data)) {
+    for (const t of itemTags(x.it)) {
+      if (!map[t.slug]) map[t.slug] = { name: t.name, slug: t.slug, items: [] };
+      map[t.slug].items.push(x);
+    }
+  }
+  return map;
+}
+function seoTagList(data) {
+  const m = seoTagMap(data);
+  return Object.keys(m).map((k) => m[k])
+    .filter((t) => t.items.length >= SEO_TAG_MIN)
+    .sort((a, b) => b.items.length - a.items.length || a.name.localeCompare(b.name));
+}
+function tagChipsHTML(it, big) {
+  const tags = itemTags(it);
+  if (!tags.length) return "";
+  return '<div class="tags">' + (big ? "" : "<span>Теми:</span>") +
+    tags.map((t) => (big && big[t.slug]
+      ? '<a class="tag" href="/tema/' + t.slug + '">' + escHtml(t.name) + "</a>"
+      : '<span class="tag">' + escHtml(t.name) + "</span>")).join("") + "</div>";
+}
+
 /* ---------- скромен markdown → html ---------- */
 function seoBody(txt) {
   const src = String(txt || "").replace(/\r/g, "");
@@ -542,6 +614,8 @@ function seoJsonLd(kind, it, origin, canon, image) {
     url: canon,
     author, publisher: org,
   };
+  const kw = itemTags(it).map((t) => t.name);
+  if (kw.length) base.keywords = kw.join(", ");
   if (date) { base.datePublished = date; base.dateModified = date; }
 
   let node;
@@ -614,10 +688,17 @@ ul{padding-left:20px}li{margin:6px 0}
 .btns{display:flex;gap:10px;flex-wrap:wrap;margin:30px 0}
 .btn{display:inline-block;padding:11px 18px;border:1px solid rgba(246,242,230,.25);color:#F6F2E6;text-decoration:none;font-size:13px;letter-spacing:.1em;text-transform:uppercase}
 .btn.gold{background:#F6C92B;border-color:#F6C92B;color:#000;font-weight:700}
+.btn.like{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-family:inherit}
+.btn.like.on{border-color:#F6C92B;color:#F6C92B}
+.btn.like svg{display:block}
 .rel{border-top:1px solid rgba(246,242,230,.12);margin-top:44px;padding-top:26px}
 .rel ul{list-style:none;padding:0;margin:0}.rel li{margin:0 0 10px}
 .rel a{text-decoration:none}.rel a:hover{text-decoration:underline}
 .rel small{display:block;color:#8C877C;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase}
+.tags{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:30px 0 0;padding-top:18px;border-top:1px solid rgba(246,242,230,.12)}
+.tags>span:first-child{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#8C877C;margin-right:2px}
+.tag{display:inline-block;font-size:12px;letter-spacing:.06em;padding:5px 11px;border:1px solid rgba(246,242,230,.22);color:#B9B3A6;text-decoration:none}
+a.tag:hover{border-color:#F6C92B;color:#F6C92B}
 footer.bot{border-top:1px solid rgba(246,242,230,.12);margin-top:50px;padding:26px 0 50px;color:#8C877C;font-size:13px}
 footer.bot a{color:#B9B3A6}`;
 
@@ -629,6 +710,7 @@ function seoShell(opts) {
     "<title>" + escHtml(title) + "</title>" +
     '<meta name="description" content="' + escHtml(desc) + '">' +
     '<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">' +
+    (opts.keywords ? '<meta name="keywords" content="' + escHtml(opts.keywords) + '">' : "") +
     '<link rel="canonical" href="' + escHtml(canon) + '">' +
     '<meta property="og:type" content="' + (ogType || "article") + '">' +
     '<meta property="og:site_name" content="Men In A Movie">' +
@@ -670,6 +752,8 @@ function seoRelated(data, kind, it, limit) {
 
 function seoItemPage(kind, it, data, origin) {
   const canon = origin + seoUrl(kind, it);
+  const bigTags = {};
+  for (const t of seoTagList(data)) bigTags[t.slug] = 1;   // кои теми имат своя страница
   const image = seoImage(kind, it, origin);
   const date = seoDate(kind, it);
   const CK = { cinema: "По кината", stream: "Стрийминг", event: "Събитие" };
@@ -701,6 +785,35 @@ function seoItemPage(kind, it, data, origin) {
   const vid = it.video || it.yt || "";
   if (vid) extra += '<a class="btn" rel="nofollow" href="' + escHtml(vid) + '">Гледай видеото</a>';
 
+  const ckind = SEO_SHARE[kind];
+  const countable = !!ckind;
+  const likeHTML = () => countable
+    ? '<button class="btn like" id="lk" type="button" aria-label="Харесай">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+      '<path d="M20.8 5.6a5.5 5.5 0 0 0-7.8 0L12 6.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 22l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>' +
+      '<span id="lkn"></span></button>'
+    : "";
+  /* същите ключове като на сайта, за да е едно и също сърце и един и същ брояч */
+  const countJs = countable
+    ? "<script>(function(){var KIND=" + JSON.stringify(ckind) + ",ID=" + JSON.stringify(String(it.id)) +
+      ",K=KIND+':'+ID,B=document.getElementById('lk'),N=document.getElementById('lkn');" +
+      "function rd(s,k){try{return JSON.parse(s.getItem(k)||'{}')}catch(e){return{}}}" +
+      "function mine(){return !!rd(localStorage,'mim-likes')[K]}" +
+      "function paint(n){if(n!=null&&N)N.textContent=n||'';if(!B)return;B.classList.toggle('on',mine());" +
+      "var v=B.querySelector('svg');if(v)v.setAttribute('fill',mine()?'currentColor':'none')}" +
+      "function hit(o){return fetch('/api/hit',{method:'POST',headers:{'content-type':'application/json'}," +
+      "body:JSON.stringify(o)}).then(function(r){return r.ok?r.json():null}).catch(function(){return null})}" +
+      "paint(null);" +
+      "fetch('/api/stats',{cache:'no-store'}).then(function(r){return r.ok?r.json():null})" +
+      ".then(function(j){if(j)paint((j.likes||{})[K]||0)}).catch(function(){});" +
+      "if(B)B.addEventListener('click',function(){var on=!mine();var m=rd(localStorage,'mim-likes');" +
+      "if(on)m[K]=1;else delete m[K];try{localStorage.setItem('mim-likes',JSON.stringify(m))}catch(e){}" +
+      "paint(null);hit({kind:KIND,id:ID,like:on}).then(function(j){if(j)paint(j.likes)})});" +
+      "try{var seen=rd(sessionStorage,'mim-seen');if(!seen[K]){seen[K]=1;" +
+      "sessionStorage.setItem('mim-seen',JSON.stringify(seen));hit({kind:KIND,id:ID})}}catch(e){}" +
+      "})();<\/script>"
+    : "";
+
   const bodyTxt = kind === "episodes" ? it.desc : (kind === "calendar" ? it.p : it.body);
   const html =
     '<p class="kicker">' + escHtml(SEO_LABEL[kind]) + "</p>" +
@@ -710,13 +823,56 @@ function seoItemPage(kind, it, data, origin) {
     (lede ? '<p class="lede">' + escHtml(plain(lede, 400)) + "</p>" : "") +
     seoBody(bodyTxt) +
     (it.authorName ? '<p class="sig">— ' + escHtml(it.authorName) + "</p>" : "") +
-    '<div class="btns"><a class="btn gold" href="/#' + SEO_ANCHOR[kind] + '">Виж всичко в „' + escHtml(SEO_LABEL[kind]) + '“</a>' + extra + "</div>" +
+    tagChipsHTML(it, bigTags) +
+    '<div class="btns">' + likeHTML() + '<a class="btn gold" href="/#' + SEO_ANCHOR[kind] + '">Виж всичко в „' + escHtml(SEO_LABEL[kind]) + '“</a>' + extra + "</div>" +
     seoRelated(data, kind, it, 7);
 
   return seoShell({
     title, desc: seoDesc(it, 180), canon, image, ogType: "article",
+    keywords: itemTags(it).map((t) => t.name).join(", "),
     head: seoJsonLd(kind, it, origin, canon, image),
-    body: html,
+    body: html + countJs,
+  });
+}
+
+function seoTagPage(tag, data, origin) {
+  const canon = origin + "/tema/" + tag.slug;
+  const byKind = {};
+  for (const x of tag.items) (byKind[x.kind] = byKind[x.kind] || []).push(x);
+  const sections = Object.keys(SEO_PATH).filter((k) => (byKind[k] || []).length).map((k) =>
+    "<h2>" + escHtml(SEO_LABEL[k]) + "</h2><ul>" +
+    byKind[k].map((x) => '<li><a href="' + x.url + '">' + escHtml(x.it.t) + "</a>" +
+      "<small>" + escHtml(SEO_LABEL[x.kind]) +
+      (seoDate(x.kind, x.it) ? " · " + escHtml(seoDateBg(seoDate(x.kind, x.it))) : "") + "</small></li>").join("") +
+    "</ul>").join("");
+  const others = seoTagList(data).filter((t) => t.slug !== tag.slug).slice(0, 14);
+  const ld = {
+    "@context": "https://schema.org", "@type": "CollectionPage",
+    name: tag.name + " — Men In A Movie", url: canon, inLanguage: "bg-BG",
+    description: "Всичко за " + tag.name + " в Men In A Movie: " + tag.items.length + " материала.",
+    isPartOf: { "@type": "WebSite", name: "Men In A Movie", url: origin + "/" },
+    mainEntity: {
+      "@type": "ItemList", numberOfItems: tag.items.length,
+      itemListElement: tag.items.slice(0, 30).map((x, i) => ({
+        "@type": "ListItem", position: i + 1, name: x.it.t, url: origin + x.url,
+      })),
+    },
+  };
+  const body =
+    '<p class="kicker">Тема</p><h1>' + escHtml(tag.name) + "</h1>" +
+    '<p class="meta">' + tag.items.length + " материала в Men In A Movie</p>" +
+    '<div class="rel" style="border:0;margin:0;padding:0">' + sections + "</div>" +
+    (others.length
+      ? '<div class="tags" style="margin-top:38px"><span>Още теми:</span>' +
+        others.map((t) => '<a class="tag" href="/tema/' + t.slug + '">' + escHtml(t.name) + "</a>").join("") + "</div>"
+      : "");
+  return seoShell({
+    title: tag.name + " — всичко по темата | Men In A Movie",
+    desc: "Ревюта, новини и епизоди за " + tag.name + " в Men In A Movie. " + tag.items.length + " материала.",
+    canon, image: origin + "/og.jpg", ogType: "website",
+    keywords: tag.name,
+    head: '<script type="application/ld+json">' + JSON.stringify(ld).replace(/</g, "\\u003c") + "</script>",
+    body,
   });
 }
 
@@ -729,9 +885,14 @@ function seoMapPage(data, origin) {
     byKind[k].map((x) => '<li><a href="' + x.url + '">' + escHtml(x.it.t) + "</a>" +
       (seoDate(x.kind, x.it) ? " <small>" + escHtml(seoDateBg(seoDate(x.kind, x.it))) + "</small>" : "") + "</li>").join("") +
     "</ul>").join("");
+  const tags = seoTagList(data);
   const body =
     '<p class="kicker">Карта на сайта</p><h1>Всички материали</h1>' +
     '<p class="meta">' + all.length + " материала · Men In A Movie</p>" +
+    (tags.length
+      ? '<div class="tags" style="margin:0 0 34px;border-top:0;padding-top:0"><span>Теми:</span>' +
+        tags.map((t) => '<a class="tag" href="/tema/' + t.slug + '">' + escHtml(t.name) + " (" + t.items.length + ")</a>").join("") + "</div>"
+      : "") +
     '<div class="rel" style="border:0;margin:0;padding:0">' + (sections || "<p>Още няма публикувани материали.</p>") + "</div>";
   return seoShell({
     title: "Карта на сайта — всички материали | Men In A Movie",
@@ -748,6 +909,8 @@ function seoSitemap(data, origin) {
     rows.push("<url><loc>" + origin + x.url + "</loc>" + (d ? "<lastmod>" + d + "</lastmod>" : "") +
       "<changefreq>weekly</changefreq><priority>0.8</priority></url>");
   }
+  for (const t of seoTagList(data))
+    rows.push("<url><loc>" + origin + "/tema/" + t.slug + "</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>");
   return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
     rows.join("\n") + "\n</urlset>\n";
 }
@@ -1014,10 +1177,14 @@ export default {
       const id = String(body.id || "").slice(0, 64);
       if (!COUNT_KINDS[kind] || !id) return json({ error: "bad" }, 400);
       const key = kind + ":" + id;
+      const isLike = body.like === true || body.like === false;
       if (body.like === true) bump(key, "likes", 1);
       else if (body.like === false) bump(key, "likes", -1);
       else bump(key, "views", 1);
-      ctx.waitUntil(flushCounters(env, false));
+      /* Харесванията са рядко събитие и всяко има значение — записват се веднага.
+         Отварянията са честите; те чакат буфера, за да не изядат лимита на KV. */
+      if (isLike) await flushCounters(env, true);
+      else ctx.waitUntil(flushCounters(env, false));
       const c = merged(await counters(env));
       return json({ ok: true, views: c.views[key] || 0, likes: c.likes[key] || 0 });
     }
@@ -1076,6 +1243,17 @@ export default {
     if (path === "/karta" || path === "/karta/") {
       const data = (await stored(env)) || {};
       return new Response(seoMapPage(data, url.origin), {
+        headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" },
+      });
+    }
+
+    /* страница на тема: /tema/dyun */
+    if (path.startsWith("/tema/") || path === "/tema") {
+      const data = (await stored(env)) || {};
+      const slug = decodeURIComponent(path.split("/").filter(Boolean)[1] || "");
+      const tag = seoTagList(data).find((t) => t.slug === slug);
+      if (!tag) return Response.redirect(url.origin + "/karta", 302);
+      return new Response(seoTagPage(tag, data, url.origin), {
         headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" },
       });
     }
