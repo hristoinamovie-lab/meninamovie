@@ -242,6 +242,50 @@ async function flushCounters(env, force) {
 }
 
 
+/* ---------- какво може да записва един автор ---------- */
+const AUTHOR_KINDS = ["reviews", "news", "craft"];
+
+/**
+ * Авторът праща целия сайт, но пипаме САМО неговите материали.
+ * Чуждото, настройките, рекламите и календарът се вземат от предишното състояние.
+ * Публикуване няма — статусът се смъква до „чернова“ или „за одобрение“.
+ */
+function authorMerge(incoming, prev, who) {
+  const base = prev ? JSON.parse(JSON.stringify(prev)) : { settings: incoming.settings };
+  const mineId = String(who.id || "");
+  for (const kind of AUTHOR_KINDS) {
+    const old = Array.isArray(base[kind]) ? base[kind] : [];
+    const inc = Array.isArray(incoming[kind]) ? incoming[kind] : [];
+    const owner = {};
+    for (const x of old) if (x && x.id != null) owner[String(x.id)] = String(x.author || "");
+    const sent = {};
+    for (const x of inc) {
+      if (!x || x.id == null) continue;
+      if (String(x.author || "") !== mineId) continue;          // чуждо — не се пипа
+      const id = String(x.id);
+      if (owner[id] !== undefined && owner[id] !== mineId) continue;   // чужд запис със същото id
+      const wasPublished = (old.find((o) => o && String(o.id) === id) || {}).status === "published";
+      if (wasPublished) continue;                                // публикуваното не се пипа от автора
+      const copy = Object.assign({}, x);
+      copy.author = mineId;
+      copy.status = copy.status === "review" ? "review" : "draft";
+      sent[id] = copy;
+    }
+    const out = [];
+    for (const x of old) {
+      const id = x && x.id != null ? String(x.id) : null;
+      if (id && String(x.author || "") === mineId && x.status !== "published") {
+        if (sent[id]) { out.push(sent[id]); delete sent[id]; }  // поправен
+        continue;                                               // липсва в изпратеното → изтрит
+      }
+      out.push(x);
+    }
+    const fresh = Object.keys(sent).map((k) => sent[k]);         // новите отиват най-отгоре
+    base[kind] = fresh.concat(out);
+  }
+  return base;
+}
+
 /* ---------- Movie calendar: премиери от TMDB ---------- */
 const TMDB = "https://api.themoviedb.org/3";
 const POSTER = "https://image.tmdb.org/t/p/w500";
@@ -920,8 +964,8 @@ export default {
         const bootstrap = !prev && !env.ADMIN_KEY && !(rec && rec.users.length);
 
         if (!who && !bootstrap) return json({ error: "bad_key", message: "Непознат достъп." }, 401);
-        if (who && who.role !== "admin" && who.role !== "moderator")
-          return json({ error: "forbidden", message: "Тази роля не записва на сайта." }, 403);
+        const roleOk = !who || who.role === "admin" || who.role === "moderator" || who.role === "author";
+        if (!roleOk) return json({ error: "forbidden", message: "Тази роля не записва на сайта." }, 403);
 
         let body;
         try {
@@ -932,14 +976,19 @@ export default {
         if (!body || typeof body !== "object" || !body.settings)
           return json({ error: "bad_shape", message: "Данните не приличат на съдържание на сайта." }, 400);
 
-        const merged = keepImages(keepSecrets(body, prev), prev);
+        // авторът стига само до собствените си материали
+        const shaped = who && who.role === "author" ? authorMerge(body, prev, who) : body;
+        const merged = keepImages(keepSecrets(shaped, prev), prev);
         const text = JSON.stringify(merged);
         if (text.length > 20 * 1024 * 1024)
           return json({ error: "too_large", message: "Съдържанието е над 20 MB." }, 413);
 
         if (prev) await env.MIM.put("content-prev", JSON.stringify(prev));
         await env.MIM.put("content", text);
-        return json({ ok: true, at: Date.now(), by: who ? who.role : "bootstrap" });
+        return json({
+          ok: true, at: Date.now(), by: who ? who.role : "bootstrap",
+          scope: who && who.role === "author" ? "own" : "all",
+        });
       }
 
       return json({ error: "method" }, 405);
