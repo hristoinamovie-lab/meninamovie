@@ -2501,7 +2501,7 @@ function listView(kind){
       title=it.t; meta=(CAL_KINDS[it.kind]||"")+" • "+fmtDate(it.when)+(it.hidden?" • СКРИТ":"")+(it.src==="tmdb"?(it.edited?" • ПОПРАВЕН":" • ОТ TMDB"):" • РЪЧЕН"); }
     else if(kind==="craft"){ th = it.img?'style="background-image:url('+it.img+')"':'style="background:linear-gradient(150deg,'+(it.c1||"#333")+","+(it.c2||"#666")+')"';
       title=it.t; meta=it.tag+" • "+fmtDate(it.when)+" • "+craftKind(it).toUpperCase(); }
-    else if(kind==="news"){ th = it.img?'style="background-image:url('+it.img+')"':""; title=it.t; meta=it.tag+" • "+fmtDate(it.when)+(it.lead?" • ВОДЕЩА":"")+(String(it.video||"").trim()?" • С ВИДЕО":""); }
+    else if(kind==="news"){ th = it.img?'style="background-image:url('+it.img+')"':""; title=it.t; meta=it.tag+" • "+fmtDate(it.when)+(it.lead?" • ГОЛЯМА КАРТА":"")+(String(it.video||"").trim()?" • С ВИДЕО":""); }
     else if(kind==="episodes"){ th=""; title=it.t; meta="Еп. "+it.n+" • "+fmtDate(it.d)+" • "+fmtMins(epMins(it)); }
     else { th = it.img?'style="background-image:url('+it.img+')"':""; title=it.t; meta=it.p+" € • "+(it.sizes||[]).join(", ")+(it.on===false?" • СКРИТ":""); }
     var st = hasStatus ? (STATUS[it.status||"published"]||STATUS.published) : null;
@@ -2513,6 +2513,7 @@ function listView(kind){
         (st?'<span class="pill '+st[1]+'">'+st[0]+"</span>":"")+
         (hasStatus&&perm().approve&&it.status!=="published"?'<button class="btn btn-gold btn-sm" data-act="approve" data-i="'+i+'">Одобри</button>':"")+
         (perm().all?'<button class="ibtn" data-act="up" data-i="'+i+'" title="Нагоре">↑</button><button class="ibtn" data-act="down" data-i="'+i+'" title="Надолу">↓</button>':"")+
+        (may&&kind==="news"?'<button class="btn btn-'+(it.lead?"gold":"ghost")+' btn-sm" data-act="newslead" data-i="'+i+'" title="Големината на картата на сайта">'+(it.lead?"Голяма":"Малка")+"</button>":"")+
         (may?'<button class="btn btn-ghost btn-sm" data-act="edit" data-i="'+i+'">Редактирай</button>':'<span class="hint">само за преглед</span>')+
         (may?(A.confirmId===kind+i
           ? '<button class="btn btn-sm" style="background:var(--bad);color:#000" data-act="del2" data-i="'+i+'">Изтрий?</button>'
@@ -2958,6 +2959,11 @@ admEl.addEventListener("click",function(ev){
   }
   if(act==="gotab"){ A.tab=t.dataset.tab; A.kind=A.tab; A.idx=+t.dataset.i;
     A.edit=prep(JSON.parse(JSON.stringify(DATA[A.tab][+t.dataset.i]))); admRender(); return; }
+  if(act==="newslead"){
+    var ni=+t.dataset.i, nit=(DATA.news||[])[ni];
+    if(nit){ nit.lead=!nit.lead; A.msg=nit.lead?"Голяма карта":"Малка карта"; A.msgType="ok"; afterChange(); }
+    return;
+  }
   if(act==="calfilter"){ A.calFilter=t.dataset.v; A.calShow=0; admRender(); return; }
   if(act==="calvis"){ A.calVis=t.dataset.v; A.calShow=0; admRender(); return; }
   if(act==="calmoreadm"){ A.calShow=(A.calShow||CAL_SHOW_FIRST)+CAL_SHOW_STEP; admRender(); return; }
