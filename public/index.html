@@ -117,6 +117,11 @@ nav.main a:hover::after,nav.main a.active::after{right:0}
 .about-text h4{font-family:var(--f-hl);font-style:italic;font-weight:800;text-transform:uppercase;font-size:17px;color:var(--ink);margin:20px 0 8px}
 .about-text ul{margin:0 0 14px;padding-left:20px}.about-text li{margin:4px 0}
 .about-text b,.about-text strong{color:var(--ink)}
+.panel.pend{border-color:var(--brand)}
+.panel.pend .panel-head{background:rgba(246,201,43,.09)}
+.panel.pend .panel-head h3{color:var(--brand)}
+.adm-nav .pend-dot{width:7px;height:7px;border-radius:50%;background:var(--brand);display:inline-block;margin-left:6px;vertical-align:middle}
+.adm-nav{position:relative}
 .headset{padding:0 0 22px;margin-bottom:22px;border-bottom:1px solid var(--line-soft)}
 .headset:last-child{border-bottom:0;margin-bottom:0;padding-bottom:0}
 .headset h4{font-family:var(--f-hl);font-style:italic;font-weight:800;text-transform:uppercase;font-size:15px;color:var(--brand);margin:0 0 12px}
@@ -2355,9 +2360,36 @@ function topList(){
     '<div class="rows">'+body+"</div>"+
     '<div class="panel-body hint">Броят се отварянията на материал, по едно на посещение. Числата са общи, без лични данни за никого.</div></div>';
 }
+var PEND_KINDS={reviews:"Ревю",news:"Новина",craft:"Зад кадър"};
+function pendingList(){
+  var out=[];
+  Object.keys(PEND_KINDS).forEach(function(k){
+    (DATA[k]||[]).forEach(function(it,i){ if(it&&it.status==="review") out.push({kind:k,i:i,it:it}); });
+  });
+  return out;
+}
+function pendCount(kind){
+  return (DATA[kind]||[]).filter(function(x){ return x&&x.status==="review"; }).length;
+}
+function pendPanel(){
+  if(!perm().approve) return "";
+  var list=pendingList(); if(!list.length) return "";
+  return '<div class="panel pend"><div class="panel-head"><h3>'+list.length+' чакат одобрение</h3>'+
+    '<span class="hint">Материали от авторите. Одобриш ли ги, излизат на сайта.</span></div><div class="rows">'+
+    list.map(function(r){
+      return '<div class="rowi"><div class="thumb">'+esc(PEND_KINDS[r.kind].slice(0,3).toUpperCase())+"</div>"+
+        "<div><h4>"+esc(r.it.t||"—")+'</h4><div class="meta">'+esc(PEND_KINDS[r.kind])+
+          (r.it.authorName?" • "+esc(r.it.authorName):"")+
+          (r.it.when?" • "+esc(fmtDate(r.it.when)):"")+"</div></div>"+
+        '<div class="acts"><span class="pill warn">За одобрение</span>'+
+          '<button class="btn btn-ghost btn-sm" data-act="gotab" data-tab="'+r.kind+'" data-i="'+r.i+'">Прегледай</button>'+
+          '<button class="btn btn-gold btn-sm" data-act="approve" data-kind="'+r.kind+'" data-i="'+r.i+'">Одобри</button>'+
+        "</div></div>";
+    }).join("")+"</div></div>";
+}
 function vDash(){
   var d=DATA;
-  return '<div class="adm-cards">'+
+  return pendPanel()+'<div class="adm-cards">'+
     stat(d.reviews.length,"Ревюта")+stat((d.craft||[]).length,"Зад кадър")+stat(d.news.length,"Новини")+stat(d.episodes.length,"Епизоди")+stat(d.merch.filter(function(m){return m.on!==false;}).length,"Продукта")+
   "</div>"+
   '<div class="panel"><div class="panel-head"><h3>Бързи действия</h3></div><div class="panel-body" style="display:flex;gap:10px;flex-wrap:wrap">'+
@@ -2876,7 +2908,12 @@ function admRender(){
 
   admEl.innerHTML = '<div class="adm"><aside class="adm-side">'+
     '<div class="adm-logo"><div class="mimlogo" style="width:48px;height:34px"></div><span><b>Men In A Movie</b><i>Админ панел</i></span></div>'+
-    tabs.map(function(t){ return '<button class="adm-nav'+(A.tab===t[0]&&!A.edit?" on":"")+'" data-act="tab" data-tab="'+t[0]+'">'+esc(t[1])+(t[2]!==""?"<span>"+t[2]+"</span>":"")+"</button>"; }).join("")+
+    tabs.map(function(t){
+      var pc = perm().approve && PEND_KINDS[t[0]] ? pendCount(t[0]) : 0;
+      return '<button class="adm-nav'+(A.tab===t[0]&&!A.edit?" on":"")+'" data-act="tab" data-tab="'+t[0]+'">'+
+        esc(t[1])+(pc?' <i class="pend-dot" title="'+pc+' за одобрение"></i>':"")+
+        (t[2]!==""?"<span>"+t[2]+"</span>":"")+"</button>";
+    }).join("")+
     '<div class="sep" style="display:flex;flex-direction:column;gap:8px"><button class="btn btn-ghost btn-sm" data-act="exit" style="justify-content:center;width:100%">Виж сайта</button><button class="btn btn-ghost btn-sm" data-act="lock" style="justify-content:center;width:100%">Заключи</button></div>'+
     "</aside><main class=\"adm-main\">"+
     '<div class="adm-top"><h1>'+esc(A.edit?({reviews:"Ревю",craft:"Зад кадър",news:"Новина",episodes:"Епизод",merch:"Продукт"})[A.kind]:(tabs.filter(function(t){return t[0]===A.tab;})[0]||["","Табло"])[1])+"</h1>"+
@@ -2914,7 +2951,13 @@ admEl.addEventListener("click",function(ev){
   if(act==="save"){ saveEdit(); return; }
   if(act==="del"){ A.confirmId=kind+i; admRender(); return; }
   if(act==="del2"){ DATA[kind].splice(i,1); A.confirmId=null; afterChange(); return; }
-  if(act==="approve"){ DATA[kind][i].status="published"; A.msg="Одобрено"; A.msgType="ok"; afterChange(); return; }
+  if(act==="approve"){
+    var ak=t.dataset.kind||kind, ai=+t.dataset.i;
+    if(DATA[ak]&&DATA[ak][ai]){ DATA[ak][ai].status="published"; A.msg="Одобрено"; A.msgType="ok"; afterChange(); }
+    return;
+  }
+  if(act==="gotab"){ A.tab=t.dataset.tab; A.kind=A.tab; A.idx=+t.dataset.i;
+    A.edit=prep(JSON.parse(JSON.stringify(DATA[A.tab][+t.dataset.i]))); admRender(); return; }
   if(act==="calfilter"){ A.calFilter=t.dataset.v; A.calShow=0; admRender(); return; }
   if(act==="calvis"){ A.calVis=t.dataset.v; A.calShow=0; admRender(); return; }
   if(act==="calmoreadm"){ A.calShow=(A.calShow||CAL_SHOW_FIRST)+CAL_SHOW_STEP; admRender(); return; }
