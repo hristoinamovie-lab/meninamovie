@@ -21,6 +21,10 @@
 <link data-mim="1" rel="preconnect" href="https://fonts.googleapis.com">
 <link data-mim="1" rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link data-mim="1" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,700;0,800;0,900;1,800;1,900&family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[
+{"@type":"Organization","@id":"https://meninamovie.com/#org","name":"Men In A Movie","alternateName":"Мен ин ъ муви","url":"https://meninamovie.com/","logo":"https://meninamovie.com/og.jpg","description":"Български канал за комерсиално кино — ревюта, подкаст, новини от индустрията и рубриката „Зад кадър“.","knowsLanguage":"bg"},
+{"@type":"WebSite","@id":"https://meninamovie.com/#site","url":"https://meninamovie.com/","name":"Men In A Movie","inLanguage":"bg-BG","publisher":{"@id":"https://meninamovie.com/#org"}}
+]}</script>
 </head>
 <body>
 
@@ -1210,7 +1214,7 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
       </div>
       <div>
         <h4>Съдържание</h4>
-        <div class="foot-links"><a href="#revyuta">Ревюта</a><a href="#podcast">Епизоди</a><a href="#zad-kadar">Зад кадър</a><a href="#novini">Новини</a><a href="#merch">Мърч</a></div>
+        <div class="foot-links"><a href="#revyuta">Ревюта</a><a href="#podcast">Епизоди</a><a href="#zad-kadar">Зад кадър</a><a href="#novini">Новини</a><a href="#kalendar">Movie calendar</a><a href="#merch">Мърч</a><a href="/karta">Карта на сайта</a></div>
       </div>
       <div>
         <h4>Последвай ни</h4>
@@ -1583,8 +1587,23 @@ function renderCraftFilters(){
   }).join("");
 }
 var SHARE_KEY={reviews:"r",news:"n",craft:"c",episodes:"e",merch:"m",calendar:"k"};
+var BG2LAT={"а":"a","б":"b","в":"v","г":"g","д":"d","е":"e","ж":"zh","з":"z","и":"i","й":"y","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ф":"f","х":"h","ц":"ts","ч":"ch","ш":"sh","щ":"sht","ъ":"a","ь":"y","ю":"yu","я":"ya"};
+function slugify(str){
+  var out="", t=String(str||"").toLowerCase();
+  for(var i=0;i<t.length;i++){ var ch=t[i];
+    if(BG2LAT[ch]) out+=BG2LAT[ch];
+    else if(/[a-z0-9]/.test(ch)) out+=ch;
+    else out+="-"; }
+  out=out.replace(/-+/g,"-").replace(/^-|-$/g,"").slice(0,70);
+  return out||"bez-zaglavie";
+}
+function idTail(id){ var m=/([a-z0-9]{4,})$/i.exec(String(id||"")); return (m?m[1]:String(id||"x")).toLowerCase().slice(-6); }
+var SEO_PATH={reviews:"revyu",news:"novina",craft:"zad-kadar",episodes:"epizod",calendar:"kalendar"};
+function itemUrl(kind,it){ return "/"+SEO_PATH[kind]+"/"+slugify(it&&it.t)+"-"+idTail(it&&it.id); }
 function shareUrl(kind,id){
   if(!/^https?:$/.test(location.protocol)) return "";
+  var it=(DATA[kind]||[]).filter(function(x){return String(x.id)===String(id);})[0];
+  if(it && SEO_PATH[kind]) return location.origin+itemUrl(kind,it);
   return location.origin+"/s/"+SHARE_KEY[kind]+"/"+encodeURIComponent(id);
 }
 function shareBtn(kind,it){
