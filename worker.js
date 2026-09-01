@@ -357,8 +357,8 @@ async function syncCalendar(env, months) {
 }
 
 /* ---------- споделяне: страница с картинка за Facebook, Viber и т.н. ---------- */
-const KINDS = { r: "reviews", n: "news", c: "craft", e: "episodes", m: "merch" };
-const SECTION = { reviews: "revyuta", news: "novini", craft: "zad-kadar", episodes: "podcast", merch: "merch" };
+const KINDS = { r: "reviews", n: "news", c: "craft", e: "episodes", m: "merch", k: "calendar" };
+const SECTION = { reviews: "revyuta", news: "novini", craft: "zad-kadar", episodes: "podcast", merch: "merch", calendar: "kalendar" };
 
 function findItem(data, kindKey, id) {
   const list = (data && data[KINDS[kindKey]]) || [];
@@ -381,6 +381,345 @@ function plain(t, max) {
   const s = String(t || "").replace(/[*_>#\[\]()]/g, " ").replace(/\s+/g, " ").trim();
   return s.length > max ? s.slice(0, max - 1).trimEnd() + "…" : s;
 }
+/* ================= ПРАВИЛНИ АДРЕСИ ЗА ТЪРСАЧКИТЕ И AI ================= */
+
+const SEO_PATH = { reviews: "revyu", news: "novina", craft: "zad-kadar", episodes: "epizod", calendar: "kalendar" };
+const SEO_LABEL = { reviews: "Ревюта", news: "Новини", craft: "Зад кадър", episodes: "Подкаст", calendar: "Movie calendar" };
+const SEO_ANCHOR = { reviews: "revyuta", news: "novini", craft: "zad-kadar", episodes: "podcast", calendar: "kalendar" };
+const SEO_SHARE = { reviews: "r", news: "n", craft: "c", episodes: "e", calendar: "k" };
+
+const BG2LAT = {
+  а:"a",б:"b",в:"v",г:"g",д:"d",е:"e",ж:"zh",з:"z",и:"i",й:"y",к:"k",л:"l",м:"m",
+  н:"n",о:"o",п:"p",р:"r",с:"s",т:"t",у:"u",ф:"f",х:"h",ц:"ts",ч:"ch",ш:"sh",
+  щ:"sht",ъ:"a",ь:"y",ю:"yu",я:"ya",
+};
+function slugify(s) {
+  let out = "";
+  for (const ch of String(s || "").toLowerCase()) {
+    if (BG2LAT[ch]) out += BG2LAT[ch];
+    else if (/[a-z0-9]/.test(ch)) out += ch;
+    else out += "-";
+  }
+  return out.replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 70) || "bez-zaglavie";
+}
+/* кратка опашка от id-то, за да няма два еднакви адреса */
+function idTail(id) {
+  const m = /([a-z0-9]{4,})$/i.exec(String(id || ""));
+  return (m ? m[1] : String(id || "x")).toLowerCase().slice(-6);
+}
+function seoSlug(it) { return slugify(it && it.t) + "-" + idTail(it && it.id); }
+function seoUrl(kind, it) { return "/" + SEO_PATH[kind] + "/" + seoSlug(it); }
+
+/* показва ли се на сайта изобщо */
+function seoLive(kind, it) {
+  if (!it || !it.t) return false;
+  if (kind === "calendar") return !it.hidden;
+  if (kind === "merch") return false;
+  const st = it.status || "published";
+  return st === "published";
+}
+function seoDate(kind, it) {
+  return String(it.when || it.d || "").slice(0, 10) || "";
+}
+function seoDesc(it, max) {
+  return plain(it.verdict || it.p || it.desc || it.body || it.note || "", max || 200);
+}
+function seoImage(kind, it, origin) {
+  if (kind === "calendar") return /^https?:/.test(String(it.poster || "")) ? it.poster : origin + "/og.jpg";
+  const key = SEO_SHARE[kind];
+  if (it.poster || it.img || it.yt || it.video) return origin + "/img/" + key + "/" + encodeURIComponent(it.id);
+  return origin + "/og.jpg";
+}
+function seoAll(data) {
+  const out = [];
+  for (const kind of Object.keys(SEO_PATH)) {
+    for (const it of data[kind] || []) if (seoLive(kind, it)) out.push({ kind, it, url: seoUrl(kind, it) });
+  }
+  return out;
+}
+function seoFind(data, kind, slug) {
+  const list = (data && data[kind]) || [];
+  const want = String(slug || "").toLowerCase();
+  for (const it of list) if (seoLive(kind, it) && seoSlug(it) === want) return it;
+  const tail = want.split("-").pop();
+  for (const it of list) if (seoLive(kind, it) && idTail(it.id) === tail) return it;
+  for (const it of list) if (seoLive(kind, it) && String(it.id).toLowerCase() === want) return it;
+  return null;
+}
+
+/* ---------- скромен markdown → html ---------- */
+function seoBody(txt) {
+  const src = String(txt || "").replace(/\r/g, "");
+  if (!src.trim()) return "";
+  const esc = (t) => escHtml(t);
+  const inline = (t) =>
+    esc(t)
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>")
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" rel="nofollow">$1</a>');
+  const out = [];
+  let list = null;
+  for (const raw of src.split("\n")) {
+    const line = raw.trim();
+    if (!line) { if (list) { out.push("<ul>" + list.join("") + "</ul>"); list = null; } continue; }
+    const h = /^(#{2,4})\s+(.*)$/.exec(line);
+    if (h) { if (list) { out.push("<ul>" + list.join("") + "</ul>"); list = null; }
+      const lvl = Math.min(h[1].length + 1, 4); out.push("<h" + lvl + ">" + inline(h[2]) + "</h" + lvl + ">"); continue; }
+    const li = /^[-*•]\s+(.*)$/.exec(line);
+    if (li) { (list = list || []).push("<li>" + inline(li[1]) + "</li>"); continue; }
+    const q = /^>\s+(.*)$/.exec(line);
+    if (q) { if (list) { out.push("<ul>" + list.join("") + "</ul>"); list = null; }
+      out.push("<blockquote>" + inline(q[1]) + "</blockquote>"); continue; }
+    if (list) { out.push("<ul>" + list.join("") + "</ul>"); list = null; }
+    out.push("<p>" + inline(line) + "</p>");
+  }
+  if (list) out.push("<ul>" + list.join("") + "</ul>");
+  return out.join("");
+}
+
+const BG_MONTHS = ["януари","февруари","март","април","май","юни","юли","август","септември","октомври","ноември","декември"];
+function seoDateBg(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ""));
+  return m ? +m[3] + " " + BG_MONTHS[+m[2] - 1] + " " + m[1] : "";
+}
+
+/* ---------- структурирани данни ---------- */
+function seoJsonLd(kind, it, origin, canon, image) {
+  const org = { "@type": "Organization", name: "Men In A Movie", url: origin + "/", logo: origin + "/og.jpg" };
+  const author = it.authorName ? { "@type": "Person", name: it.authorName } : org;
+  const date = seoDate(kind, it);
+  const base = {
+    "@context": "https://schema.org",
+    headline: it.t, name: it.t,
+    description: seoDesc(it, 300),
+    image: [image],
+    inLanguage: "bg-BG",
+    mainEntityOfPage: canon,
+    url: canon,
+    author, publisher: org,
+  };
+  if (date) { base.datePublished = date; base.dateModified = date; }
+
+  let node;
+  if (kind === "reviews") {
+    node = Object.assign({}, base, {
+      "@type": "Review",
+      itemReviewed: { "@type": "Movie", name: it.t, ...(it.y ? { dateCreated: String(it.y) } : {}), ...(it.g ? { genre: it.g } : {}) },
+      reviewRating: { "@type": "Rating", ratingValue: String(it.s || ""), bestRating: "5", worstRating: "1" },
+      reviewBody: plain(it.body, 1500),
+    });
+    if (!it.s) delete node.reviewRating;
+  } else if (kind === "news") {
+    node = Object.assign({}, base, { "@type": "NewsArticle", articleSection: it.tag || "Новини" });
+  } else if (kind === "craft") {
+    node = Object.assign({}, base, { "@type": "Article", articleSection: it.tag || "Зад кадър" });
+  } else if (kind === "episodes") {
+    node = Object.assign({}, base, {
+      "@type": "PodcastEpisode",
+      episodeNumber: it.n ? +it.n : undefined,
+      partOfSeries: { "@type": "PodcastSeries", name: "Men In A Movie", url: origin + "/#podcast" },
+    });
+  } else if (kind === "calendar" && it.kind === "event") {
+    node = Object.assign({}, base, {
+      "@type": "Event",
+      startDate: it.when + (it.time ? "T" + it.time : ""),
+      eventStatus: "https://schema.org/EventScheduled",
+      eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+      location: { "@type": "Place", name: it.place || "България", address: it.place || "България" },
+      organizer: it.organizer ? { "@type": "Organization", name: it.organizer } : undefined,
+      ...(it.ticketUrl ? { offers: { "@type": "Offer", url: it.ticketUrl, availability: "https://schema.org/InStock" } } : {}),
+    });
+    delete node.headline;
+  } else if (kind === "calendar") {
+    node = Object.assign({}, base, {
+      "@type": it.kind === "stream" ? "TVSeries" : "Movie",
+      datePublished: it.when || undefined,
+    });
+    delete node.headline; delete node.dateModified;
+  }
+  const crumbs = {
+    "@context": "https://schema.org", "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Men In A Movie", item: origin + "/" },
+      { "@type": "ListItem", position: 2, name: SEO_LABEL[kind], item: origin + "/#" + SEO_ANCHOR[kind] },
+      { "@type": "ListItem", position: 3, name: it.t, item: canon },
+    ],
+  };
+  const clean = JSON.parse(JSON.stringify([node, crumbs]));
+  return '<script type="application/ld+json">' + JSON.stringify(clean).replace(/</g, "\\u003c") + "</script>";
+}
+
+/* ---------- обвивката на страницата ---------- */
+const SEO_CSS = `*{box-sizing:border-box}body{margin:0;background:#0A0908;color:#F6F2E6;font-family:Manrope,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.65;font-size:17px}
+a{color:#F6C92B}.wrap{max-width:760px;margin:0 auto;padding:0 22px}
+header.top{border-bottom:1px solid rgba(246,242,230,.12);padding:16px 0;margin-bottom:34px}
+header.top .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{font-family:Montserrat,system-ui,sans-serif;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:.02em;color:#F6C92B;text-decoration:none;font-size:18px}
+header.top nav{display:flex;gap:16px;flex-wrap:wrap;margin-left:auto;font-size:13px;text-transform:uppercase;letter-spacing:.1em}
+header.top nav a{color:#B9B3A6;text-decoration:none}header.top nav a:hover{color:#F6C92B}
+.kicker{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#F6C92B;margin:0 0 10px}
+h1{font-family:Montserrat,system-ui,sans-serif;font-weight:900;font-style:italic;text-transform:uppercase;font-size:clamp(28px,6vw,44px);line-height:1.05;margin:0 0 14px}
+h2,h3,h4{font-family:Montserrat,system-ui,sans-serif;font-weight:800;font-style:italic;text-transform:uppercase;line-height:1.15;margin:32px 0 10px}
+h2{font-size:24px}h3{font-size:20px}h4{font-size:17px}
+.meta{font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:#B9B3A6;margin:0 0 22px}
+.lede{font-size:19px;color:#EDE7D8;border-left:3px solid #F6C92B;padding-left:16px;margin:0 0 26px}
+figure{margin:0 0 28px}figure img{width:100%;height:auto;display:block;border:1px solid rgba(246,242,230,.12)}
+blockquote{border-left:3px solid #F6C92B;margin:22px 0;padding-left:16px;color:#EDE7D8;font-style:italic}
+ul{padding-left:20px}li{margin:6px 0}
+.sig{text-align:right;color:#B9B3A6;font-size:14px;margin:26px 0 0}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin:30px 0}
+.btn{display:inline-block;padding:11px 18px;border:1px solid rgba(246,242,230,.25);color:#F6F2E6;text-decoration:none;font-size:13px;letter-spacing:.1em;text-transform:uppercase}
+.btn.gold{background:#F6C92B;border-color:#F6C92B;color:#000;font-weight:700}
+.rel{border-top:1px solid rgba(246,242,230,.12);margin-top:44px;padding-top:26px}
+.rel ul{list-style:none;padding:0;margin:0}.rel li{margin:0 0 10px}
+.rel a{text-decoration:none}.rel a:hover{text-decoration:underline}
+.rel small{display:block;color:#8C877C;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase}
+footer.bot{border-top:1px solid rgba(246,242,230,.12);margin-top:50px;padding:26px 0 50px;color:#8C877C;font-size:13px}
+footer.bot a{color:#B9B3A6}`;
+
+function seoShell(opts) {
+  const { title, desc, canon, image, ogType, head, body } = opts;
+  return (
+    '<!doctype html><html lang="bg"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+    "<title>" + escHtml(title) + "</title>" +
+    '<meta name="description" content="' + escHtml(desc) + '">' +
+    '<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">' +
+    '<link rel="canonical" href="' + escHtml(canon) + '">' +
+    '<meta property="og:type" content="' + (ogType || "article") + '">' +
+    '<meta property="og:site_name" content="Men In A Movie">' +
+    '<meta property="og:locale" content="bg_BG">' +
+    '<meta property="og:url" content="' + escHtml(canon) + '">' +
+    '<meta property="og:title" content="' + escHtml(title) + '">' +
+    '<meta property="og:description" content="' + escHtml(desc) + '">' +
+    '<meta property="og:image" content="' + escHtml(image) + '">' +
+    '<meta name="twitter:card" content="summary_large_image">' +
+    '<meta name="twitter:title" content="' + escHtml(title) + '">' +
+    '<meta name="twitter:description" content="' + escHtml(desc) + '">' +
+    '<meta name="twitter:image" content="' + escHtml(image) + '">' +
+    '<link rel="preconnect" href="https://fonts.googleapis.com">' +
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@1,800;1,900&family=Manrope:wght@400;600;700&display=swap">' +
+    "<style>" + SEO_CSS + "</style>" + (head || "") +
+    "</head><body>" +
+    '<header class="top"><div class="wrap"><a class="brand" href="/">Men In A Movie</a>' +
+    '<nav><a href="/#novini">Новини</a><a href="/#revyuta">Ревюта</a><a href="/#podcast">Подкаст</a>' +
+    '<a href="/#kalendar">Movie calendar</a><a href="/karta">Карта на сайта</a></nav></div></header>' +
+    '<main class="wrap">' + body + "</main>" +
+    '<footer class="bot"><div class="wrap">Men In A Movie — кино, подкаст и ревюта. ' +
+    '<a href="/">Към сайта</a> · <a href="/karta">Всички материали</a></div></footer>' +
+    "</body></html>"
+  );
+}
+
+function seoRelated(data, kind, it, limit) {
+  const all = seoAll(data).filter((x) => !(x.kind === kind && x.it.id === it.id));
+  const same = all.filter((x) => x.kind === kind);
+  const rest = all.filter((x) => x.kind !== kind);
+  const pick = same.slice(0, 4).concat(rest.slice(0, Math.max(0, (limit || 7) - Math.min(4, same.length))));
+  if (!pick.length) return "";
+  return '<section class="rel"><h2>Още от Men In A Movie</h2><ul>' +
+    pick.map((x) => '<li><a href="' + x.url + '">' + escHtml(x.it.t) + "</a>" +
+      "<small>" + escHtml(SEO_LABEL[x.kind]) + (seoDate(x.kind, x.it) ? " · " + escHtml(seoDateBg(seoDate(x.kind, x.it))) : "") + "</small></li>").join("") +
+    "</ul></section>";
+}
+
+function seoItemPage(kind, it, data, origin) {
+  const canon = origin + seoUrl(kind, it);
+  const image = seoImage(kind, it, origin);
+  const date = seoDate(kind, it);
+  const CK = { cinema: "По кината", stream: "Стрийминг", event: "Събитие" };
+
+  let title, metaBits = [], lede = "", extra = "";
+  if (kind === "reviews") {
+    title = it.t + (it.y ? " (" + it.y + ")" : "") + " — ревю | Men In A Movie";
+    metaBits = ["Ревю", it.g, it.y, it.s ? it.s + "/5 клапи" : "", it.mins ? it.mins + " мин." : ""];
+    lede = it.verdict || "";
+    if (it.imdb) extra += '<a class="btn" rel="nofollow" href="' + escHtml(/^https?:/.test(it.imdb) ? it.imdb : "https://www.imdb.com/title/" + it.imdb + "/") + '">IMDb</a>';
+  } else if (kind === "news") {
+    title = it.t + " | Men In A Movie";
+    metaBits = [it.tag || "Новини", seoDateBg(date)];
+    lede = it.p || "";
+  } else if (kind === "craft") {
+    title = it.t + " | Зад кадър — Men In A Movie";
+    metaBits = ["Зад кадър", it.tag, seoDateBg(date), it.role];
+    lede = it.p || "";
+  } else if (kind === "episodes") {
+    title = "Епизод " + (it.n || "") + ": " + it.t + " | Подкаст Men In A Movie";
+    metaBits = ["Подкаст", it.n ? "Епизод " + it.n : "", seoDateBg(date), it.tag];
+    lede = it.desc || "";
+  } else {
+    title = it.t + (it.when ? " — " + seoDateBg(it.when) : "") + " | Movie calendar";
+    metaBits = [CK[it.kind] || "Movie calendar", seoDateBg(it.when), it.platform, it.place, it.organizer];
+    lede = it.p || "";
+    if (it.ticketUrl) extra += '<a class="btn gold" rel="nofollow" href="' + escHtml(it.ticketUrl) + '">Билети</a>';
+  }
+  const vid = it.video || it.yt || "";
+  if (vid) extra += '<a class="btn" rel="nofollow" href="' + escHtml(vid) + '">Гледай видеото</a>';
+
+  const bodyTxt = kind === "episodes" ? it.desc : (kind === "calendar" ? it.p : it.body);
+  const html =
+    '<p class="kicker">' + escHtml(SEO_LABEL[kind]) + "</p>" +
+    "<h1>" + escHtml(it.t) + "</h1>" +
+    '<p class="meta">' + escHtml(metaBits.filter(Boolean).join(" • ")) + "</p>" +
+    (image && !/\/og\.jpg$/.test(image) ? '<figure><img src="' + escHtml(image) + '" alt="' + escHtml(it.t) + '" loading="lazy" onerror="this.parentNode.remove()"></figure>' : "") +
+    (lede ? '<p class="lede">' + escHtml(plain(lede, 400)) + "</p>" : "") +
+    seoBody(bodyTxt) +
+    (it.authorName ? '<p class="sig">— ' + escHtml(it.authorName) + "</p>" : "") +
+    '<div class="btns"><a class="btn gold" href="/#' + SEO_ANCHOR[kind] + '">Виж всичко в „' + escHtml(SEO_LABEL[kind]) + '“</a>' + extra + "</div>" +
+    seoRelated(data, kind, it, 7);
+
+  return seoShell({
+    title, desc: seoDesc(it, 180), canon, image, ogType: "article",
+    head: seoJsonLd(kind, it, origin, canon, image),
+    body: html,
+  });
+}
+
+function seoMapPage(data, origin) {
+  const all = seoAll(data);
+  const byKind = {};
+  for (const x of all) (byKind[x.kind] = byKind[x.kind] || []).push(x);
+  const sections = Object.keys(SEO_PATH).filter((k) => (byKind[k] || []).length).map((k) =>
+    "<h2>" + escHtml(SEO_LABEL[k]) + "</h2><ul>" +
+    byKind[k].map((x) => '<li><a href="' + x.url + '">' + escHtml(x.it.t) + "</a>" +
+      (seoDate(x.kind, x.it) ? " <small>" + escHtml(seoDateBg(seoDate(x.kind, x.it))) + "</small>" : "") + "</li>").join("") +
+    "</ul>").join("");
+  const body =
+    '<p class="kicker">Карта на сайта</p><h1>Всички материали</h1>' +
+    '<p class="meta">' + all.length + " материала · Men In A Movie</p>" +
+    '<div class="rel" style="border:0;margin:0;padding:0">' + (sections || "<p>Още няма публикувани материали.</p>") + "</div>";
+  return seoShell({
+    title: "Карта на сайта — всички материали | Men In A Movie",
+    desc: "Пълен списък с ревютата, новините, епизодите и календара с премиери на Men In A Movie.",
+    canon: origin + "/karta", image: origin + "/og.jpg", ogType: "website", body,
+  });
+}
+
+function seoSitemap(data, origin) {
+  const rows = ['<url><loc>' + origin + '/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>',
+                '<url><loc>' + origin + '/karta</loc><changefreq>daily</changefreq><priority>0.5</priority></url>'];
+  for (const x of seoAll(data)) {
+    const d = seoDate(x.kind, x.it);
+    rows.push("<url><loc>" + origin + x.url + "</loc>" + (d ? "<lastmod>" + d + "</lastmod>" : "") +
+      "<changefreq>weekly</changefreq><priority>0.8</priority></url>");
+  }
+  return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+    rows.join("\n") + "\n</urlset>\n";
+}
+
+/* Търсачките и ботовете, които ЦИТИРАТ, минават. Чисто обучаващите — не. */
+function seoRobots(origin) {
+  const cite = ["Googlebot","Bingbot","OAI-SearchBot","ChatGPT-User","PerplexityBot","Perplexity-User",
+                "Claude-SearchBot","Claude-User","Applebot","DuckDuckBot","YandexBot","Amazonbot"];
+  const train = ["GPTBot","CCBot","Bytespider","meta-externalagent","FacebookBot","Google-Extended",
+                 "Applebot-Extended","ClaudeBot","anthropic-ai","cohere-ai","Diffbot","Omgilibot","Timpibot","AI2Bot"];
+  return "User-agent: *\nAllow: /\nDisallow: /api/\n\n" +
+    cite.map((b) => "User-agent: " + b + "\nAllow: /\n").join("\n") + "\n" +
+    train.map((b) => "User-agent: " + b + "\nDisallow: /\n").join("\n") +
+    "\nSitemap: " + origin + "/sitemap.xml\n";
+}
+
 /* data:image/... → същинските байтове */
 function dataUriToResponse(uri) {
   const m = /^data:([^;,]+);base64,(.*)$/s.exec(String(uri || ""));
@@ -669,6 +1008,46 @@ export default {
       return Response.redirect(new URL("/og.jpg", url).toString(), 302);
     }
 
+    /* robots.txt — кой бот какво може */
+    if (path === "/robots.txt") {
+      return new Response(seoRobots(url.origin), {
+        headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" },
+      });
+    }
+
+    /* карта на сайта за търсачките */
+    if (path === "/sitemap.xml") {
+      const data = (await stored(env)) || {};
+      return new Response(seoSitemap(data, url.origin), {
+        headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=900" },
+      });
+    }
+
+    /* карта на сайта за хората и за обхождането */
+    if (path === "/karta" || path === "/karta/") {
+      const data = (await stored(env)) || {};
+      return new Response(seoMapPage(data, url.origin), {
+        headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" },
+      });
+    }
+
+    /* истинска страница за всеки материал: /revyu/dyun-chast-vtora-r1 */
+    {
+      const seg = path.split("/").filter(Boolean);
+      const kind = Object.keys(SEO_PATH).find((k) => SEO_PATH[k] === seg[0]);
+      if (kind && seg.length >= 2) {
+        const data = (await stored(env)) || {};
+        const it = seoFind(data, kind, decodeURIComponent(seg[1]));
+        if (!it) return Response.redirect(url.origin + "/#" + SEO_ANCHOR[kind], 302);
+        const good = seoUrl(kind, it);
+        if (path !== good) return Response.redirect(url.origin + good, 301);
+        return new Response(seoItemPage(kind, it, data, url.origin), {
+          headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" },
+        });
+      }
+      if (kind && seg.length === 1) return Response.redirect(url.origin + "/#" + SEO_ANCHOR[kind], 302);
+    }
+
     /* адрес за споделяне: показва визитка на ботовете, човека праща в сайта */
     if (path.startsWith("/s/")) {
       const parts = path.split("/").filter(Boolean); // s, kind, id
@@ -677,6 +1056,9 @@ export default {
       const it = KINDS[kindKey] ? findItem(data, kindKey, id) : null;
       const site = (data && data.settings) || {};
       const origin = url.origin;
+      /* вече има истински адрес — пращаме там, за да не се дели силата на две */
+      if (it && KINDS[kindKey] && SEO_PATH[KINDS[kindKey]] && seoLive(KINDS[kindKey], it))
+        return Response.redirect(origin + seoUrl(KINDS[kindKey], it), 301);
       const target = origin + "/#/" + kindKey + "/" + encodeURIComponent(id);
       if (!it) return Response.redirect(origin + "/", 302);
       const title = it.t || "Men In A Movie";
