@@ -378,9 +378,11 @@ footer.site .brand span i{color:rgba(0,0,0,.6)}
 .foot-links a{text-decoration:none;font-size:15px;color:#000;opacity:.85;width:max-content;border-bottom:1px solid transparent}
 .foot-links a:hover{color:#000;opacity:1;border-color:#000}
 .foot-brand p{color:rgba(0,0,0,.72);font-size:15px;margin-top:14px;max-width:38ch}
-.tmdb-credit{margin-top:26px;font-size:12px;line-height:1.6;color:rgba(0,0,0,.6)}
-.tmdb-credit a{color:#000;font-weight:600}
-.foot-bottom{margin-top:44px;padding-top:20px;border-top:1px solid rgba(0,0,0,.25);display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;font-family:var(--f-cond);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(0,0,0,.65);font-weight:600}
+.tmdb-credit{margin-left:auto;text-align:right;font-size:10.5px;letter-spacing:.06em;text-transform:none;line-height:1.5;color:rgba(0,0,0,.6);max-width:62ch}
+.tmdb-credit a{color:#000;font-weight:700}
+.foot-map{color:inherit;text-decoration:none;border-bottom:1px solid rgba(0,0,0,.35)}
+.foot-map:hover{color:#000}
+.foot-bottom{margin-top:44px;padding-top:20px;border-top:1px solid rgba(0,0,0,.25);display:flex;flex-wrap:wrap;align-items:baseline;gap:12px 18px;font-family:var(--f-cond);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(0,0,0,.65);font-weight:600}
 
 .rv{opacity:0;transform:translateY(16px);transition:opacity .55s ease,transform .55s ease}
 .rv.in{opacity:1;transform:none}
@@ -401,6 +403,7 @@ html{scroll-behavior:smooth;scroll-padding-top:86px}
   .sub-grid{grid-template-columns:1fr;gap:20px}
   nav.main{position:fixed;inset:75px 0 auto 0;background:var(--brand);border-bottom:3px solid #000;flex-direction:column;gap:0;padding:6px 22px 16px;display:none}
   nav.main.open{display:flex}
+  .hbtns{margin-left:auto}
   nav.main a{padding:13px 0;border-bottom:1px solid rgba(0,0,0,.16);font-size:16px}
   .burger{display:block}
   .ep{grid-template-columns:64px 1fr;row-gap:12px}
@@ -415,6 +418,7 @@ html{scroll-behavior:smooth;scroll-padding-top:86px}
   .section{padding:56px 0}
   .grid-reviews{grid-template-columns:repeat(2,1fr)}
   .grid-news,.grid-merch,.foot-grid,.grid-craft{grid-template-columns:1fr}
+  .tmdb-credit{margin-left:0;text-align:left;max-width:none}
   .news-lead{grid-column:span 1}
   .poster .hl{font-size:15px}
   .score{font-size:16px;padding:8px 10px 9px 16px}
@@ -1214,7 +1218,7 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
       </div>
       <div>
         <h4>Съдържание</h4>
-        <div class="foot-links"><a href="#revyuta">Ревюта</a><a href="#podcast">Епизоди</a><a href="#zad-kadar">Зад кадър</a><a href="#novini">Новини</a><a href="#kalendar">Movie calendar</a><a href="#merch">Мърч</a><a href="/karta">Карта на сайта</a></div>
+        <div class="foot-links"><a href="#novini">Новини</a><a href="#revyuta">Ревюта</a><a href="#podcast">Подкаст</a><a href="#zad-kadar">Зад кадър</a><a href="/karta">Карта на сайта</a></div>
       </div>
       <div>
         <h4>Последвай ни</h4>
@@ -1225,13 +1229,12 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
         <div class="foot-links" data-dyn="contacts"></div>
       </div>
     </div>
-    <p class="tmdb-credit" id="tmdbCredit" hidden>
-      Данните за премиерите идват от <a href="https://www.themoviedb.org/" target="_blank" rel="noopener">TMDB</a>.
-      This product uses the TMDB API but is not endorsed or certified by TMDB.
-    </p>
     <div class="foot-bottom">
       <span data-dyn="copyText"></span>
       <span data-dyn="footNote"></span>
+      <span class="tmdb-credit" id="tmdbCredit" hidden>Данни за премиерите от
+        <a href="https://www.themoviedb.org/" target="_blank" rel="noopener">TMDB</a>.
+        This product uses the TMDB API but is not endorsed or certified by TMDB.</span>
     </div>
   </div>
 </footer>
@@ -1336,6 +1339,7 @@ function migrate(){
   if(s.subText==null) s.subText="Новият епизод, ревютата от седмицата и какво да гледате през уикенда.";
   if(s.copyright==null) s.copyright="© "+new Date().getFullYear()+" Men In A Movie";
   if(s.footerNote==null) s.footerNote="";
+  if(s.cinemaProgramUrl==null) s.cinemaProgramUrl="";
   if(s.footerNote==="Демо съдържание — текстовете са примерни") s.footerNote="";
   if(!s.users) s.users=[];
   if(!DATA.craft) DATA.craft=[];
@@ -1434,7 +1438,6 @@ function renderSettings(){
   var mails=[];
   if(String(s.contactEmail||"").trim()) mails.push('<a href="mailto:'+esc(s.contactEmail)+'">'+esc(s.contactEmail)+"</a>");
   if(String(s.orderEmail||"").trim() && s.orderEmail!==s.contactEmail) mails.push('<a href="mailto:'+esc(s.orderEmail)+'">'+esc(s.orderEmail)+"</a>");
-  if(String(s.contactEmail||"").trim()) mails.push('<a href="mailto:'+esc(s.contactEmail)+'?subject=Реклама">Реклама и партньорства</a>');
   dyn("contacts").innerHTML = mails.join("");
   var conBox=dyn("contacts"); if(conBox&&conBox.closest("div")) conBox.closest("div").hidden = !mails.length;
   var tm=$("#tmdbCredit");
@@ -2033,7 +2036,8 @@ function openCal(c){
   var links="";
   if(c.kind==="event"&&c.ticketUrl) links+='<a class="btn btn-gold btn-sm" href="'+esc(c.ticketUrl)+'" target="_blank" rel="noopener">Билети</a>';
   if(c.kind==="stream"&&c.watchUrl) links+='<a class="btn btn-gold btn-sm" href="'+esc(c.watchUrl)+'" target="_blank" rel="noopener">Гледай в '+esc(c.platform||"платформата")+"</a>";
-  if(c.kind==="cinema") links+='<a class="btn btn-ghost btn-sm" href="https://www.cinefish.bg/kino_programa.php" target="_blank" rel="noopener">Програма по кината</a>';
+  var prog=String((DATA.settings||{}).cinemaProgramUrl||"").trim();
+  if(c.kind==="cinema"&&prog) links+='<a class="btn btn-ghost btn-sm" href="'+esc(prog)+'" target="_blank" rel="noopener">Програма по кината</a>';
   if(rv) links+='<button class="btn btn-ghost btn-sm" data-openrev="'+esc(rv.id)+'">Прочети ревюто</button>';
   $("#modalBody").innerHTML = hero+md(c.body||c.p||"")+sig(c)+
     '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">'+likeBtn("calendar",c)+links+shareBtn("calendar",c)+
@@ -2727,6 +2731,8 @@ function vSettings(){
     fldTa("Стрийминг платформи за календара (по една на ред: име и номер в TMDB)",'data-p="settings.calProvidersText" data-type="lines"',
       ((s.calProviders||[]).map(function(x){return x.name+" | "+x.id;})).join("\n"),
       {rows:5,hint:"Номерата са на TMDB. По подразбиране: Netflix | 8, HBO Max | 1899, Disney+ | 337, Prime Video | 119."})+
+    fldInp("Програма по кината — линк",'data-p="settings.cinemaProgramUrl"',s.cinemaProgramUrl,
+      {ph:"празно = бутонът не се показва",hint:"Бутонът „Програма по кината“ в календара се появява само ако тук има адрес. Тук слагаш програмата на партньорско кино."})+
     fldTa("Рубрики за новините (по една на ред)",'data-p="settings.newsTags" data-type="lines"',(s.newsTags||[]).join("\n"),{rows:7,hint:"Появяват се в падащото меню при новините."})+
     fldTa("Размери за мърч (по един на ред)",'data-p="settings.sizesList" data-type="lines"',(s.sizesList||[]).join("\n"),{rows:6})+
   "</div></div></div>"+
@@ -2788,7 +2794,7 @@ function admRender(){
   }
 
   admEl.innerHTML = '<div class="adm"><aside class="adm-side">'+
-    '<div class="adm-logo"><div class="mimlogo" style="width:48px;height:34px"></div><span><b>Men In A Movie</b><i>Админ</i></span></div>'+
+    '<div class="adm-logo"><div class="mimlogo" style="width:48px;height:34px"></div><span><b>Men In A Movie</b><i>Админ панел</i></span></div>'+
     tabs.map(function(t){ return '<button class="adm-nav'+(A.tab===t[0]&&!A.edit?" on":"")+'" data-act="tab" data-tab="'+t[0]+'">'+esc(t[1])+(t[2]!==""?"<span>"+t[2]+"</span>":"")+"</button>"; }).join("")+
     '<div class="sep" style="display:flex;flex-direction:column;gap:8px"><button class="btn btn-ghost btn-sm" data-act="exit" style="justify-content:center;width:100%">Виж сайта</button><button class="btn btn-ghost btn-sm" data-act="lock" style="justify-content:center;width:100%">Заключи</button></div>'+
     "</aside><main class=\"adm-main\">"+
