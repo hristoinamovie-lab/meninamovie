@@ -112,6 +112,14 @@ nav.main a:hover::after,nav.main a.active::after{right:0}
 .section-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:22px 30px;margin-bottom:36px}
 .section-head h2{font-size:clamp(30px,4.6vw,48px);text-transform:uppercase;font-style:italic}
 .section-head .lede{font-size:15px;margin-top:14px}
+.about-text{margin-top:16px;max-width:62ch;color:var(--muted);font-size:15.5px;line-height:1.75}
+.about-text p{margin:0 0 14px}.about-text p:last-child{margin-bottom:0}
+.about-text h4{font-family:var(--f-hl);font-style:italic;font-weight:800;text-transform:uppercase;font-size:17px;color:var(--ink);margin:20px 0 8px}
+.about-text ul{margin:0 0 14px;padding-left:20px}.about-text li{margin:4px 0}
+.about-text b,.about-text strong{color:var(--ink)}
+.about-cta[hidden]{display:none}
+.about-cta{margin-top:26px;padding-top:22px;border-top:1px solid var(--line);display:flex;align-items:center;gap:16px;flex-wrap:wrap;max-width:62ch}
+.about-cta p{font-family:var(--f-hl);font-style:italic;font-weight:800;text-transform:uppercase;font-size:clamp(17px,2.4vw,22px);line-height:1.2;margin:0}
 
 /* ================= ХЕРО ================= */
 .hero{position:relative;padding:64px 0 78px;overflow:hidden}
@@ -536,11 +544,8 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
   "podcastLede": "Час и нещо за киното, което всички гледаме и малцина защитават. Навсякъде, където слушате подкасти.",
   "about": "Men In A Movie е канал за комерсиално кино — блокбъстъри, франчайзи, супергерои и всичко, което пълни салоните. Гледаме всичко, за да не се налага вие да гледате всичко. 42 епизода, над 300 ревюта и нито едно извинение за вкуса ни.",
   "aboutTitle": "Няколко души, един екран,\nнула респект към класациите",
-  "stats": [
-   "42 епизода",
-   "300+ ревюта",
-   "Всеки четвъртък"
-  ],
+  "joinText": "Ако искаш и ти да си част от нас, пиши ни!",
+  "joinBtn": "Пиши ни",
   "contactEmail": "hello@meninamovie.bg",
   "orderEmail": "merch@meninamovie.bg",
   "shipping": 5,
@@ -1194,9 +1199,9 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
     <div>
       <p class="eyebrow">За нас</p>
       <h2 data-dyn="aboutTitle"></h2>
-      <p class="lede" style="margin-top:16px" data-dyn="about"></p>
+      <div class="about-text" data-dyn="about"></div>
+      <div class="about-cta" data-dyn="aboutCta"></div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:10px;font-family:var(--f-cond);font-size:12.5px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase" data-dyn="stats"></div>
   </div>
 </section>
 
@@ -1340,6 +1345,9 @@ function migrate(){
   if(s.copyright==null) s.copyright="© "+new Date().getFullYear()+" Men In A Movie";
   if(s.footerNote==null) s.footerNote="";
   if(s.cinemaProgramUrl==null) s.cinemaProgramUrl="";
+  if(s.joinText==null) s.joinText="Ако искаш и ти да си част от нас, пиши ни!";
+  if(s.joinBtn==null) s.joinBtn="Пиши ни";
+  if(s.stats) delete s.stats;
   if(s.footerNote==="Демо съдържание — текстовете са примерни") s.footerNote="";
   if(!s.users) s.users=[];
   if(!DATA.craft) DATA.craft=[];
@@ -1424,8 +1432,14 @@ function renderSettings(){
   dyn("podcastDay").textContent = s.podcastDay;
   dyn("podcastLede").textContent = s.podcastLede;
   dyn("aboutTitle").innerHTML = esc(s.aboutTitle).replace(/\n/g,"<br>");
-  dyn("about").textContent = s.about;
-  dyn("stats").innerHTML = (s.stats||[]).map(function(x){return "<span>"+esc(x)+"</span>";}).join("");
+  dyn("about").innerHTML = md(s.about||"");
+  var jt=String(s.joinText||"").trim();
+  var jm=String(s.contactEmail||"").trim();
+  var jb=String(s.joinBtn||"").trim()||"Пиши ни";
+  dyn("aboutCta").innerHTML = jt
+    ? '<p>'+esc(jt)+"</p>"+(jm?'<a class="btn btn-gold btn-sm" href="mailto:'+esc(jm)+'?subject='+encodeURIComponent("Искам да съм част от Men In A Movie")+'">'+esc(jb)+"</a>":"")
+    : "";
+  dyn("aboutCta").hidden = !jt;
   var L = s.links||{};
   dyn("podcastLinks").innerHTML =
     [["Гледай в YouTube",L.youtube],["Instagram",L.instagram],["TikTok",L.tiktok]]
@@ -2703,8 +2717,9 @@ function vSettings(){
     '<div class="grid2">'+fldInp("Ден и час на подкаста",'data-p="settings.podcastDay"',s.podcastDay)+fldInp("Доставка (€)",'data-p="settings.shipping" data-type="num"',s.shipping,{type:"number"})+"</div>"+
     fldTa("Текст в секция Подкаст",'data-p="settings.podcastLede"',s.podcastLede,{rows:2})+
     fldTa("Заглавие „За нас“",'data-p="settings.aboutTitle"',s.aboutTitle,{rows:2,hint:"Нов ред = нов ред в заглавието."})+
-    fldTa("Текст „За нас“",'data-p="settings.about"',s.about,{rows:4})+
-    fldInp("Три числа отстрани (със запетая)",'data-p="settings.stats" data-type="csv"',(s.stats||[]).join(", "))+
+    fldTa("Текст „За нас“",'data-p="settings.about"',s.about,{rows:8,hint:"Празен ред = нов параграф. Работят и **удебелено**, *наклонено*, ## подзаглавие и списък с тире."})+
+    fldTa("Покана в края на „За нас“",'data-p="settings.joinText"',s.joinText,{rows:2,ph:"Ако искаш и ти да си част от нас, пиши ни!",hint:"Празно = не се показва. Бутонът отваря имейла за контакт."})+
+    fldInp("Надпис на бутона към поканата",'data-p="settings.joinBtn"',s.joinBtn,{ph:"Пиши ни"})+
     '<div class="grid2">'+fldInp("Ред долу вляво",'data-p="settings.copyright"',s.copyright,{ph:"© 2026 Men In A Movie"})+
       fldInp("Ред долу вдясно",'data-p="settings.footerNote"',s.footerNote,{ph:"празно = нищо не се показва"})+"</div>"+
     fldTa("Бягаща лента (по един ред)",'data-p="settings.ticker" data-type="lines"',(s.ticker||[]).join("\n"),{rows:6})+
