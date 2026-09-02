@@ -1163,6 +1163,28 @@ export default {
       return json({ error: "method" }, 405);
     }
 
+    /* кои стрийминг платформи изобщо ги има в България */
+    if (path === "/api/calendar/providers" && request.method === "GET") {
+      const data = (await stored(env)) || {};
+      const who = await whoIs(request, env, data);
+      if (!who || (who.role !== "admin" && who.role !== "moderator"))
+        return json({ error: "forbidden", message: "Само администратор и модератор." }, 403);
+      if (!env.TMDB_KEY) return json({ error: "no_key", message: "Липсва ключът TMDB_KEY в Cloudflare." }, 400);
+      try {
+        const r = await tmdbGet(env, "/watch/providers/tv", { watch_region: "BG", language: "bg-BG" });
+        const list = (r.results || [])
+          .map((x) => ({
+            id: x.provider_id, name: x.provider_name,
+            pri: (x.display_priorities && x.display_priorities.BG != null)
+              ? x.display_priorities.BG : (x.display_priority != null ? x.display_priority : 999),
+          }))
+          .sort((a, b) => a.pri - b.pri || a.name.localeCompare(b.name));
+        return json({ ok: true, providers: list });
+      } catch (e) {
+        return json({ error: "tmdb", message: String(e.message || e) }, 400);
+      }
+    }
+
     /* обновяване на календара — ръчно от админа */
     if (path === "/api/calendar/sync" && request.method === "POST") {
       const data = (await stored(env)) || {};
