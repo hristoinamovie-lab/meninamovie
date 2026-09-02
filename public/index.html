@@ -122,6 +122,15 @@ nav.main a:hover::after,nav.main a.active::after{right:0}
 .panel.pend .panel-head h3{color:var(--brand)}
 .adm-nav .pend-dot{width:7px;height:7px;border-radius:50%;background:var(--brand);display:inline-block;margin-left:6px;vertical-align:middle}
 .adm-nav{position:relative}
+.pillbtn{cursor:pointer;font-family:var(--f-cond);font-size:11px;letter-spacing:.14em;text-transform:uppercase;transition:all .16s ease}
+.pillbtn:hover{border-color:var(--brand);color:var(--brand)}
+.provbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.provgrid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;max-height:230px;overflow:auto;padding:2px}
+.provchip{display:inline-flex;align-items:center;gap:7px;background:transparent;border:1px solid var(--line);color:var(--muted);
+  font-family:var(--f-cond);font-size:12px;letter-spacing:.06em;padding:6px 11px;cursor:pointer}
+.provchip:hover{border-color:var(--brand);color:var(--brand)}
+.provchip.on{background:var(--brand);border-color:var(--brand);color:#000;font-weight:700}
+.provchip small{font-family:var(--f-mono);font-size:10px;opacity:.6}
 .headset{padding:0 0 22px;margin-bottom:22px;border-bottom:1px solid var(--line-soft)}
 .headset:last-child{border-bottom:0;margin-bottom:0;padding-bottom:0}
 .headset h4{font-family:var(--f-hl);font-style:italic;font-weight:800;text-transform:uppercase;font-size:15px;color:var(--brand);margin:0 0 12px}
@@ -520,7 +529,7 @@ html{scroll-behavior:smooth;scroll-padding-top:86px}
 .pill{font-family:var(--f-cond);font-size:11px;letter-spacing:.14em;text-transform:uppercase;padding:5px 11px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
 .pill.warn{border-color:var(--brand);color:var(--brand)}
 .pill.ok{border-color:var(--ok);color:var(--ok)}
-.pill.err{border-color:var(--bad);color:var(--bad)}
+.pill.err{border-color:var(--bad);color:var(--bad);display:inline-block}
 .adm-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 .stat{background:var(--surface);border:1px solid var(--line);padding:18px 20px;display:flex;flex-direction:column;gap:6px}
 .stat b{font-family:var(--f-hl);font-style:italic;font-weight:900;font-size:34px;color:var(--brand);line-height:1}
@@ -2568,9 +2577,13 @@ function paintSrv(){
     }).catch(function(){}); }catch(e){}
   }
 })();
-var A = { tab:"dash", kind:null, edit:null, idx:-1, msg:"", msgType:"", confirmId:null, unlocked:false, gateBad:false, gateMail:"", me:null, role:null, prevBackup:null, authMail:"", authMsg:"", authMsgType:"", users:null, umsg:"", umsgType:"", uedit:null, calMsg:"", calMsgType:"", calFilter:"Всичко", calVis:"Всички", calQ:"", calShow:0 };
+var A = { tab:"dash", kind:null, edit:null, idx:-1, msg:"", msgType:"", confirmId:null, unlocked:false, gateBad:false, gateMail:"", me:null, role:null, prevBackup:null, authMail:"", authMsg:"", authMsgType:"", users:null, umsg:"", umsgType:"", uedit:null, calMsg:"", calMsgType:"", calFilter:"Всичко", calVis:"Всички", calQ:"", calShow:0, provList:null, provMsg:"", provMsgType:"" };
 function perm(){ return PERMS[A.role]||PERMS.author; }
-function canEdit(it){ return perm().all || (it.author===(A.me&&A.me.id) && it.status!=="published"); }
+/* само модератор и администратор крият и връщат публикувано */
+function canToggle(it){
+  return !!(perm().approve && it && (it.status==="published"||it.status==="hidden"));
+}
+function canEdit(it){ return perm().all || (it.author===(A.me&&A.me.id) && it.status!=="published" && it.status!=="hidden"); }
 var admEl = $("#admin"), siteEl = $("#site");
 
 function getP(o,p){ return p.split(".").reduce(function(x,k){ return x==null?x:x[k]; },o); }
@@ -2695,7 +2708,7 @@ function vDash(){
 }
 function stat(n,l){ return '<div class="stat"><b>'+n+"</b><span>"+esc(l)+"</span></div>"; }
 
-var STATUS={draft:["Чернова",""],review:["За одобрение","warn"],published:["Публикувано","ok"]};
+var STATUS={draft:["Чернова",""],review:["За одобрение","warn"],published:["Публикувано","ok"],hidden:["Скрито","err"]};
 
 function calBar(){
   if(SRV!==true) return '<div class="panel"><div class="panel-head"><h3>Обновяване от TMDB</h3></div>'+
@@ -2708,6 +2721,14 @@ function calBar(){
     (at?"Последно: "+esc(new Date(at).toLocaleString("bg-BG"))+". ":"Още не е правено. ")+
     'Записите, които си пипал, и събитията остават непокътнати.</div>'+
     '<div class="panel-body" style="border-top:1px solid var(--line)"><div class="form">'+
+      '<div class="provbar"><button class="btn btn-ghost btn-sm" data-act="calprov">'+
+        (A.provList?"Скрий списъка":"Покажи наличните в България")+"</button>"+
+        (A.provMsg?'<span class="pill '+(A.provMsgType||"")+'">'+esc(A.provMsg)+"</span>":"")+"</div>"+
+      (A.provList ? '<div class="provgrid">'+A.provList.map(function(x){
+          var on=(((DATA.settings||{}).calProviders)||[]).some(function(y){ return +y.id===+x.id; });
+          return '<button class="provchip'+(on?" on":"")+'" data-act="provadd" data-pid="'+x.id+'" data-pname="'+esc(x.name)+'" title="'+
+            esc(x.name+" · номер "+x.id)+'">'+esc(x.name)+"<small>"+x.id+"</small></button>";
+        }).join("")+"</div>" : "")+
       fldTa("Стрийминг платформи (по една на ред: име и номер в TMDB)",'data-p="settings.calProvidersText" data-type="lines"',
         (((DATA.settings||{}).calProviders||[]).map(function(x){ return x.name+" | "+x.id; })).join("\n"),
         {rows:5,hint:"Номерата са на TMDB. По подразбиране: Netflix | 8, HBO Max | 1899, Disney+ | 337, Prime Video | 119.<br>"+
@@ -2796,7 +2817,10 @@ function listView(kind){
       "<div><h4>"+esc(title)+'</h4><div class="meta">'+esc(meta)+
         (hasStatus&&it.authorName?" • "+esc(it.authorName):"")+"</div></div>"+
       '<div class="acts">'+
-        (st?'<span class="pill '+st[1]+'">'+st[0]+"</span>":"")+
+        (st?(canToggle(it)
+            ? '<button class="pill pillbtn '+st[1]+'" data-act="togglepub" data-i="'+i+'" title="'+
+              (it.status==="hidden"?"Върни на сайта":"Скрий от сайта, без да триеш")+'">'+st[0]+"</button>"
+            : '<span class="pill '+st[1]+'">'+st[0]+"</span>"):"")+
         (hasStatus&&perm().approve&&it.status!=="published"?'<button class="btn btn-gold btn-sm" data-act="approve" data-i="'+i+'">Одобри</button>':"")+
         (perm().all?'<button class="ibtn" data-act="up" data-i="'+i+'" title="Нагоре">↑</button><button class="ibtn" data-act="down" data-i="'+i+'" title="Надолу">↓</button>':"")+
         (may&&kind==="news"?'<button class="btn btn-'+(it.lead?"gold":"ghost")+' btn-sm" data-act="newslead" data-i="'+i+'" title="Големината на картата на сайта">'+(it.lead?"Голяма":"Малка")+"</button>":"")+
@@ -3318,6 +3342,15 @@ admEl.addEventListener("click",function(ev){
   if(act==="save"){ saveEdit(); return; }
   if(act==="del"){ A.confirmId=kind+i; admRender(); return; }
   if(act==="del2"){ DATA[kind].splice(i,1); A.confirmId=null; afterChange(); return; }
+  if(act==="togglepub"){
+    var pk=A.tab, pit=(DATA[pk]||[])[i];
+    if(pit&&canToggle(pit)){
+      pit.status = pit.status==="hidden" ? "published" : "hidden";
+      A.msg = pit.status==="hidden" ? "Скрито от сайта" : "Върнато на сайта";
+      A.msgType="ok"; afterChange();
+    }
+    return;
+  }
   if(act==="approve"){
     var ak=t.dataset.kind||kind, ai=+t.dataset.i;
     if(DATA[ak]&&DATA[ak][ai]){ DATA[ak][ai].status="published"; A.msg="Одобрено"; A.msgType="ok"; afterChange(); }
@@ -3344,6 +3377,30 @@ admEl.addEventListener("click",function(ev){
     calAdmList().forEach(function(x){ if(!!x.hidden!==want){ x.hidden=want; n++; } });
     A.msg = n ? (want?n+" скрити":n+" показани") : "Нищо за промяна";
     A.msgType="ok"; afterChange(); return;
+  }
+  if(act==="calprov"){
+    if(A.provList){ A.provList=null; A.provMsg=""; admRender(); return; }
+    A.provMsg="Пита TMDB…"; A.provMsgType=""; admRender();
+    fetch("/api/calendar/providers",{headers:authHeaders()})
+      .then(function(r){ return r.json().catch(function(){return {};}).then(function(j){ return {ok:r.ok,j:j}; }); })
+      .then(function(res){
+        if(res.ok&&res.j.ok){ A.provList=res.j.providers||[]; A.provMsg=A.provList.length+" налични"; A.provMsgType="ok"; }
+        else { A.provList=null; A.provMsg=res.j.message||"Не се получи."; A.provMsgType="err"; }
+        admRender();
+      })
+      .catch(function(){ A.provMsg="Няма връзка със сървъра."; A.provMsgType="err"; admRender(); });
+    return;
+  }
+  if(act==="provadd"){
+    var pid=+t.dataset.pid, pname=t.dataset.pname;
+    var list=(((DATA.settings||{}).calProviders)||[]).slice();
+    var at=-1; list.forEach(function(x,ix){ if(+x.id===pid) at=ix; });
+    if(at>=0){ list.splice(at,1); A.msg="Махната: "+pname; }
+    else { list.push({name:pname,id:pid}); A.msg="Добавена: "+pname; }
+    DATA.settings.calProviders=list;
+    A.msgType="ok"; markDirty();
+    if(at>=0) pruneProviders(); else afterChange();
+    return;
   }
   if(act==="calsync"){
     A.calMsg="Тегли от TMDB…"; A.calMsgType=""; admRender();
