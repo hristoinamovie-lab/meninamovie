@@ -492,7 +492,13 @@ function seoLive(kind, it) {
   if (kind === "calendar") return !it.hidden;
   if (kind === "merch") return false;
   const st = it.status || "published";
-  return st === "published";
+  if (st !== "published") return false;
+  /* насрочено за бъдеща дата — чака я, преди да излезе някъде */
+  if (it.schedule !== false) {
+    const d = seoDate(kind, it);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d > ymd(new Date())) return false;
+  }
+  return true;
 }
 function seoDate(kind, it) {
   return String(it.when || it.d || "").slice(0, 10) || "";
