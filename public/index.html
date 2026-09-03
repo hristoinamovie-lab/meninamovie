@@ -323,6 +323,9 @@ nav.main a:hover::after,nav.main a.active::after{right:0}
 .cal-empty{border:1px dashed var(--line);padding:26px;color:var(--muted);font-size:15px;text-align:center}
 @media (max-width:1040px){.grid-cal{grid-template-columns:repeat(3,1fr)}}
 @media (max-width:760px){.grid-cal{grid-template-columns:repeat(2,1fr)}}
+.cal-all{text-align:center;margin:18px 0 0;font-size:13px;letter-spacing:.12em;text-transform:uppercase}
+.cal-all a{color:var(--muted);text-decoration:none;border-bottom:1px solid transparent}
+.cal-all a:hover{color:var(--brand);border-bottom-color:var(--brand)}
 .more-wrap{display:flex;justify-content:center;margin-top:26px}
 .more-wrap:empty{display:none}
 .btn-more{min-width:220px;justify-content:center}
@@ -1243,6 +1246,7 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
     </div>
     <div data-dyn="calendar"></div>
     <div class="more-wrap" data-more="calendar"></div>
+    <p class="cal-all"><a href="/kalendar">Целият календар по месеци и платформи →</a></p>
   </div>
 </section>
 
@@ -1296,7 +1300,7 @@ code.k{font-family:var(--f-mono);background:var(--surface-2);border:1px solid va
       </div>
       <div>
         <h4>Съдържание</h4>
-        <div class="foot-links"><a href="#novini">Новини</a><a href="#revyuta">Ревюта</a><a href="#podcast">Подкаст</a><a href="#zad-kadar">Зад кадър</a><a href="/karta">Карта на сайта</a></div>
+        <div class="foot-links"><a href="#novini">Новини</a><a href="#revyuta">Ревюта</a><a href="#podcast">Подкаст</a><a href="#zad-kadar">Зад кадър</a><a href="/kalendar">Какво да гледам</a><a href="/karta">Карта на сайта</a></div>
       </div>
       <div>
         <h4>Последвай ни</h4>
