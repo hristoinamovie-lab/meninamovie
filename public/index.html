@@ -3415,6 +3415,9 @@ admEl.addEventListener("click",function(ev){
           var m=res.j.movies, sr=res.j.series, nt=res.j.notes||[];
           var txt="Готово — "+res.j.count+" записа";
           if(typeof m==="number") txt+=" ("+m+" филма, "+sr+" сериала от TMDB)";
+          var pp=res.j.perPlatform;
+          if(pp&&Object.keys(pp).length)
+            txt+=" · "+Object.keys(pp).map(function(k){ return k+" "+pp[k]; }).join(", ");
           if(nt.length){ txt+=" — "+nt.join("; "); A.calMsgType="err"; } else A.calMsgType="ok";
           A.calMsg=txt; apiGet();
         }
