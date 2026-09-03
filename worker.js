@@ -362,8 +362,19 @@ async function syncCalendar(env, months) {
   } catch (e) { notes.push("Филми: " + e.message); }
   // сериали по стрийминга — само с истинска дата на излъчване
   const lo = ymd(from), hi = ymd(to);
-  let budget = 34;                       // таван на допълнителните запитвания към TMDB
-  for (const pv of providers.slice(0, 4)) {
+  /* Cloudflare пуска 50 запитвания в едно изпълнение. Едно вече отиде за филмите,
+     всяка платформа взима по две за списъците — останалото се дели поравно между тях,
+     за да не изяде първата платформа целия остатък и последните да останат празни. */
+  const MAX_PROVIDERS = 12;
+  const used = providers.length > MAX_PROVIDERS ? providers.slice(0, MAX_PROVIDERS) : providers;
+  if (providers.length > MAX_PROVIDERS)
+    notes.push("Платформите са " + providers.length + " — обновявам първите " + MAX_PROVIDERS + ".");
+  const perPlatform = {};
+  let budget = Math.max(0, 46 - 1 - used.length * 2);
+  const share = Math.max(1, Math.floor(budget / Math.max(1, used.length)));
+  for (const pv of used) {
+    const before = nSeries;
+    let mine = share;                    // дял от запитванията за тази платформа
     // 1) премиери на НОВИ сериали
     try {
       const nw = await tmdbGet(env, "/discover/tv", {
@@ -387,9 +398,9 @@ async function syncCalendar(env, months) {
         sort_by: "popularity.desc", page: "1",
       });
       for (const t of (tv.results || []).slice(0, 8)) {
-        if (budget <= 0) break;
+        if (mine <= 0 || budget <= 0) break;
         if (fresh.some((f) => f.tmdbId === t.id && f.kind === "stream")) continue;
-        budget--;
+        mine--; budget--;
         let d = null;
         try { d = await tmdbGet(env, "/tv/" + t.id, { language: "bg-BG" }); } catch (e) { continue; }
         const ne = d && d.next_episode_to_air;
@@ -399,7 +410,12 @@ async function syncCalendar(env, months) {
         nSeries++;
       }
     } catch (e) { notes.push(pv.name + ": " + e.message); }
+
+    perPlatform[pv.name] = nSeries - before;
   }
+  const emptyPv = Object.keys(perPlatform).filter((n) => !perPlatform[n]);
+  if (emptyPv.length && emptyPv.length < used.length)
+    notes.push("Без обявени дати в TMDB: " + emptyPv.join(", ") + ".");
   if (!nSeries && !notes.some((x) => x.indexOf("TMDB 4") >= 0))
     notes.push("TMDB няма сериали с обявена дата за България в този период.");
 
@@ -428,7 +444,8 @@ async function syncCalendar(env, months) {
   await env.MIM.put("content", JSON.stringify(data));
   return {
     ok: true, count: out.length, added: fresh.length,
-    movies: nMovies, series: nSeries, notes: notes, at: data.settings.calSyncedAt,
+    movies: nMovies, series: nSeries, perPlatform: perPlatform,
+    notes: notes, at: data.settings.calSyncedAt,
   };
 }
 
