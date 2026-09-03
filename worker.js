@@ -736,10 +736,10 @@ function seoShell(opts) {
     "</head><body>" +
     '<header class="top"><div class="wrap"><a class="brand" href="/">Men In A Movie</a>' +
     '<nav><a href="/#novini">Новини</a><a href="/#revyuta">Ревюта</a><a href="/#podcast">Подкаст</a>' +
-    '<a href="/#kalendar">Movie calendar</a><a href="/karta">Карта на сайта</a></nav></div></header>' +
+    '<a href="/kalendar">Какво да гледам</a><a href="/karta">Карта на сайта</a></nav></div></header>' +
     '<main class="wrap">' + body + "</main>" +
     '<footer class="bot"><div class="wrap">Men In A Movie — кино, подкаст и ревюта. ' +
-    '<a href="/">Към сайта</a> · <a href="/karta">Всички материали</a></div></footer>' +
+    '<a href="/">Към сайта</a> · <a href="/kalendar">Какво да гледам</a> · <a href="/karta">Всички материали</a></div></footer>' +
     "</body></html>"
   );
 }
@@ -830,7 +830,12 @@ function seoItemPage(kind, it, data, origin) {
     seoBody(bodyTxt) +
     (it.authorName ? '<p class="sig">— ' + escHtml(it.authorName) + "</p>" : "") +
     tagChipsHTML(it, bigTags) +
-    '<div class="btns">' + likeHTML() + '<a class="btn gold" href="/#' + SEO_ANCHOR[kind] + '">Виж всичко в „' + escHtml(SEO_LABEL[kind]) + '“</a>' + extra + "</div>" +
+    '<div class="btns">' + likeHTML() +
+      (kind === "calendar"
+        ? '<a class="btn gold" href="/kalendar">Виж целия календар</a>'
+        : '<a class="btn gold" href="/#' + SEO_ANCHOR[kind] + '">Виж всичко в „' + escHtml(SEO_LABEL[kind]) + '“</a>') +
+      extra + "</div>" +
+    (kind === "calendar" ? calItemLinks(data, it) : "") +
     seoRelated(data, kind, it, 7);
 
   return seoShell({
@@ -882,6 +887,187 @@ function seoTagPage(tag, data, origin) {
   });
 }
 
+/* ================= СТРАНИЦИ НА КАЛЕНДАРА =================
+   /kalendar                  — какво да гледам, всичко напред по месеци
+   /kalendar/septemvri-2026   — какво излиза през даден месец
+   /kalendar/kino             — само премиерите по кината
+   /kalendar/streaming        — само стрийминга
+   /kalendar/netflix          — само една платформа
+*/
+const CAL_KIND_LABEL = { cinema: "По кината", stream: "Стрийминг", event: "Събитие" };
+const CAL_SUB_LABEL = { series: "Нов сериал", season: "Нов сезон", episode: "Нов епизод" };
+
+function calMonthName(ym) {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(ym || ""));
+  return m ? BG_MONTHS[+m[2] - 1] + " " + m[1] : "";
+}
+function calMonthSlug(ym) {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(ym || ""));
+  return m ? slugify(BG_MONTHS[+m[2] - 1]) + "-" + m[1] : "";
+}
+/* всичко видимо в календара, подредено по дата */
+function calLive(data) {
+  return ((data && data.calendar) || [])
+    .filter((it) => seoLive("calendar", it) && /^\d{4}-\d{2}-\d{2}$/.test(String(it.when || "")))
+    .slice()
+    .sort((a, b) => String(a.when).localeCompare(String(b.when)));
+}
+/* подстраниците, които наистина имат съдържание */
+function calViews(data) {
+  const today = ymd(new Date());
+  const soon = calLive(data).filter((x) => x.when >= today);
+  const views = [];
+  const push = (v) => { if (v.items.length && !views.some((o) => o.slug === v.slug)) views.push(v); };
+
+  const months = [];
+  for (const it of soon) { const ym = it.when.slice(0, 7); if (months.indexOf(ym) < 0) months.push(ym); }
+  for (const ym of months.slice(0, 6))
+    push({ slug: calMonthSlug(ym), type: "month", ym: ym, name: calMonthName(ym),
+           items: soon.filter((x) => x.when.slice(0, 7) === ym) });
+
+  push({ slug: "kino", type: "cinema", name: "По кината", items: soon.filter((x) => x.kind === "cinema") });
+  const str = soon.filter((x) => x.kind === "stream");
+  push({ slug: "streaming", type: "stream", name: "Стрийминг", items: str });
+
+  const byPlat = {};
+  for (const it of str) { const p = String(it.platform || "").trim(); if (p) (byPlat[p] = byPlat[p] || []).push(it); }
+  for (const p of Object.keys(byPlat).sort())
+    push({ slug: slugify(p), type: "platform", name: p, items: byPlat[p] });
+
+  return views;
+}
+function calFindView(data, slug) {
+  const want = String(slug || "").toLowerCase();
+  return calViews(data).find((v) => v.slug === want) || null;
+}
+/* текстовете, с които страницата се явява пред търсачките */
+function calWords(v) {
+  if (!v) return {
+    kicker: "Movie calendar", h1: "Какво да гледам",
+    title: "Какво да гледам — премиери по кината и стрийминга в България | Men In A Movie",
+    desc: "Всички премиери по кината в България и новите филми и сериали по Netflix, HBO Max, Disney+ и другите стрийминг платформи — подредени по дата.",
+    keywords: "какво да гледам, премиери, кино програма, нови филми, нови сериали, стрийминг, България",
+    lede: "Тук е цялата програма напред: какво влиза по кината в България и какво излиза по стрийминга — филм по филм, сериал по сериал, по дати.",
+  };
+  if (v.type === "month") return {
+    kicker: "Movie calendar", h1: "Какво излиза през " + v.name,
+    title: "Филми и сериали през " + v.name + " — премиери в България | Men In A Movie",
+    desc: "Премиерите през " + v.name + " в България: " + v.items.length + " заглавия по кината и по стрийминга, с точните дати.",
+    keywords: "филми " + v.name + ", премиери " + v.name + ", какво да гледам през " + v.name,
+    lede: "Всичко, което излиза през " + v.name + " — по кината и по стрийминга.",
+  };
+  if (v.type === "cinema") return {
+    kicker: "Movie calendar", h1: "Премиери по кината",
+    title: "Премиери по кината в България — какво върви в кино | Men In A Movie",
+    desc: "Кои филми излизат по кината в България и на коя дата. " + v.items.length + " предстоящи премиери.",
+    keywords: "кино програма, премиери по кината, нови филми в кино, България",
+    lede: "Филмите, които влизат по кината в България — подредени по дата на премиерата.",
+  };
+  if (v.type === "stream") return {
+    kicker: "Movie calendar", h1: "Какво излиза по стрийминга",
+    title: "Нови филми и сериали по стрийминга в България | Men In A Movie",
+    desc: "Новите филми, сериали, сезони и епизоди по стрийминг платформите в България — " + v.items.length + " заглавия с дати.",
+    keywords: "какво да гледам, нови сериали, нови филми, стрийминг България, Netflix, HBO Max",
+    lede: "Нови сериали, нови сезони и отделни епизоди по платформите, които се гледат в България.",
+  };
+  return {
+    kicker: "Movie calendar", h1: "Какво ново по " + v.name,
+    title: "Какво ново по " + v.name + " в България — премиери по дати | Men In A Movie",
+    desc: "Новите филми и сериали по " + v.name + " в България: " + v.items.length + " заглавия с датите, на които излизат.",
+    keywords: v.name + ", какво да гледам по " + v.name + ", нови сериали " + v.name + ", " + v.name + " България",
+    lede: "Всичко ново по " + v.name + ", което се пуска в България, с датата до всяко заглавие.",
+  };
+}
+function calRow(it) {
+  const bits = [CAL_KIND_LABEL[it.kind] || "", it.platform || "", CAL_SUB_LABEL[it.sub] || "",
+                it.sub === "episode" && it.season && it.episode ? "S" + it.season + " · E" + it.episode : "",
+                it.place || ""].filter(Boolean);
+  return '<li><a href="' + seoUrl("calendar", it) + '">' + escHtml(it.t) + "</a>" +
+    "<small>" + escHtml(seoDateBg(it.when) + (bits.length ? " · " + bits.join(" · ") : "")) + "</small></li>";
+}
+function calByMonth(items) {
+  const order = [], group = {};
+  for (const it of items) { const ym = it.when.slice(0, 7); if (!group[ym]) { group[ym] = []; order.push(ym); } group[ym].push(it); }
+  return order.map((ym) =>
+    "<h2>" + escHtml(calMonthName(ym)) + "</h2><ul>" + group[ym].map(calRow).join("") + "</ul>").join("");
+}
+function calOtherViews(views, currentSlug) {
+  const rest = views.filter((v) => v.slug !== currentSlug);
+  if (!rest.length) return "";
+  const label = (v) => v.type === "month" ? v.name : v.name;
+  return '<div class="tags" style="margin-top:38px"><span>Виж и:</span>' +
+    (currentSlug ? '<a class="tag" href="/kalendar">Целият календар</a>' : "") +
+    rest.map((v) => '<a class="tag" href="/kalendar/' + v.slug + '">' + escHtml(label(v)) + " (" + v.items.length + ")</a>").join("") +
+    "</div>";
+}
+/* от отделното заглавие обратно към месеца и платформата му */
+function calItemLinks(data, it) {
+  const views = calViews(data);
+  const want = [calMonthSlug(String(it.when || "").slice(0, 7)),
+                it.kind === "cinema" ? "kino" : "",
+                it.platform ? slugify(it.platform) : ""].filter(Boolean);
+  const pick = views.filter((v) => want.indexOf(v.slug) >= 0);
+  if (!pick.length) return "";
+  return '<div class="tags" style="margin-top:30px"><span>Виж и:</span>' +
+    pick.map((v) => '<a class="tag" href="/kalendar/' + v.slug + '">' +
+      escHtml(v.type === "month" ? "Какво излиза през " + v.name : v.name) + "</a>").join("") +
+    '<a class="tag" href="/kalendar">Целият календар</a></div>';
+}
+
+function calJsonLd(items, w, canon, origin) {
+  const ld = {
+    "@context": "https://schema.org", "@type": "CollectionPage",
+    name: w.h1 + " — Men In A Movie", url: canon, inLanguage: "bg-BG",
+    description: w.desc,
+    isPartOf: { "@type": "WebSite", name: "Men In A Movie", url: origin + "/" },
+    mainEntity: {
+      "@type": "ItemList", numberOfItems: items.length,
+      itemListElement: items.slice(0, 60).map((it, i) => ({
+        "@type": "ListItem", position: i + 1,
+        item: {
+          "@type": it.kind === "stream" ? "TVSeries" : "Movie",
+          name: it.t, url: origin + seoUrl("calendar", it),
+          ...(it.poster && /^https?:/.test(it.poster) ? { image: it.poster } : {}),
+          ...(it.when ? { datePublished: it.when } : {}),
+        },
+      })),
+    },
+  };
+  const crumbs = {
+    "@context": "https://schema.org", "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Men In A Movie", item: origin + "/" },
+      { "@type": "ListItem", position: 2, name: "Movie calendar", item: origin + "/kalendar" },
+    ].concat(canon === origin + "/kalendar" ? [] : [{ "@type": "ListItem", position: 3, name: w.h1, item: canon }]),
+  };
+  return '<script type="application/ld+json">' +
+    JSON.stringify(JSON.parse(JSON.stringify([ld, crumbs]))).replace(/</g, "\\u003c") + "</script>";
+}
+function calListPage(data, origin, view) {
+  const views = calViews(data);
+  const today = ymd(new Date());
+  const items = view ? view.items : calLive(data).filter((x) => x.when >= today);
+  const w = calWords(view);
+  const canon = origin + "/kalendar" + (view ? "/" + view.slug : "");
+  const first = items.find((it) => it.poster && /^https?:/.test(it.poster));
+  const image = first ? first.poster : origin + "/og.jpg";
+  const body =
+    '<p class="kicker">' + escHtml(w.kicker) + "</p><h1>" + escHtml(w.h1) + "</h1>" +
+    '<p class="meta">' + items.length + " заглавия · обновено " + escHtml(seoDateBg(today)) + "</p>" +
+    '<p class="lede">' + escHtml(w.lede) + "</p>" +
+    '<div class="rel" style="border:0;margin:0;padding:0">' +
+    (items.length ? (view && view.type === "month" ? "<ul>" + items.map(calRow).join("") + "</ul>" : calByMonth(items))
+                  : "<p>Точно сега няма обявени дати. Върни се след ден-два — календарът се обновява сам.</p>") +
+    "</div>" +
+    '<div class="btns" style="margin-top:34px"><a class="btn gold" href="/#kalendar">Виж календара на сайта</a>' +
+    '<a class="btn" href="/karta">Всички материали</a></div>' +
+    calOtherViews(views, view ? view.slug : "");
+  return seoShell({
+    title: w.title, desc: w.desc, canon, image, ogType: "website", keywords: w.keywords,
+    head: calJsonLd(items, w, canon, origin), body,
+  });
+}
+
 function seoMapPage(data, origin) {
   const all = seoAll(data);
   const byKind = {};
@@ -895,6 +1081,7 @@ function seoMapPage(data, origin) {
   const body =
     '<p class="kicker">Карта на сайта</p><h1>Всички материали</h1>' +
     '<p class="meta">' + all.length + " материала · Men In A Movie</p>" +
+    '<div class="btns" style="margin:0 0 30px"><a class="btn gold" href="/kalendar">Какво да гледам — целият календар</a></div>' +
     (tags.length
       ? '<div class="tags" style="margin:0 0 34px;border-top:0;padding-top:0"><span>Теми:</span>' +
         tags.map((t) => '<a class="tag" href="/tema/' + t.slug + '">' + escHtml(t.name) + " (" + t.items.length + ")</a>").join("") + "</div>"
@@ -909,7 +1096,10 @@ function seoMapPage(data, origin) {
 
 function seoSitemap(data, origin) {
   const rows = ['<url><loc>' + origin + '/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>',
+                '<url><loc>' + origin + '/kalendar</loc><changefreq>daily</changefreq><priority>0.9</priority></url>',
                 '<url><loc>' + origin + '/karta</loc><changefreq>daily</changefreq><priority>0.5</priority></url>'];
+  for (const v of calViews(data))
+    rows.push("<url><loc>" + origin + "/kalendar/" + v.slug + "</loc><changefreq>daily</changefreq><priority>0.7</priority></url>");
   for (const x of seoAll(data)) {
     const d = seoDate(x.kind, x.it);
     rows.push("<url><loc>" + origin + x.url + "</loc>" + (d ? "<lastmod>" + d + "</lastmod>" : "") +
@@ -1286,6 +1476,25 @@ export default {
       });
     }
 
+    /* календарът като истинска страница: /kalendar и подстраниците ѝ */
+    if (path === "/kalendar" || path === "/kalendar/") {
+      const data = (await stored(env)) || {};
+      return new Response(calListPage(data, url.origin, null), {
+        headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" },
+      });
+    }
+    if (path.startsWith("/kalendar/")) {
+      const seg = path.split("/").filter(Boolean);
+      if (seg.length === 2) {
+        const data = (await stored(env)) || {};
+        const view = calFindView(data, decodeURIComponent(seg[1]));
+        if (view)
+          return new Response(calListPage(data, url.origin, view), {
+            headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" },
+          });
+      }
+    }
+
     /* истинска страница за всеки материал: /revyu/dyun-chast-vtora-r1 */
     {
       const seg = path.split("/").filter(Boolean);
@@ -1293,7 +1502,7 @@ export default {
       if (kind && seg.length >= 2) {
         const data = (await stored(env)) || {};
         const it = seoFind(data, kind, decodeURIComponent(seg[1]));
-        if (!it) return Response.redirect(url.origin + "/#" + SEO_ANCHOR[kind], 302);
+        if (!it) return Response.redirect(url.origin + (kind === "calendar" ? "/kalendar" : "/#" + SEO_ANCHOR[kind]), 302);
         const good = seoUrl(kind, it);
         if (path !== good) return Response.redirect(url.origin + good, 301);
         return new Response(seoItemPage(kind, it, data, url.origin), {
