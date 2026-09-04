@@ -3572,16 +3572,32 @@ function downloadBackup(btn){
   }
   saveBackupFile(btn, JSON.stringify(DATA,null,1));
 }
-function saveBackupFile(btn,txt){
+/* Сваля текст като файл. Първо пробва браузъра, после — ако сме в артефакт —
+   вградения начин, и чак ако и двете не станат, оставя копие в клипборда. */
+function dlFile(name,txt,type,btn,okMsg){
+  var done=false;
+  try{
+    var blob=new Blob([txt],{type:type||"application/octet-stream"});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement("a"); a.href=url; a.download=name; a.rel="noopener";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); },2000);
+    done=true;
+  }catch(e){}
+  if(done){ A.msg=okMsg; A.msgType="ok"; admRender(); return Promise.resolve(true); }
   var api=(window.claude&&window.claude.use)?window.claude.use("downloads"):Promise.resolve(null);
-  Promise.resolve(api).then(function(dl){
-    if(!dl){ copy(txt,btn,"Изтегли файл"); A.msg="Свалянето не е налично тук — копието е в клипборда"; A.msgType="warn"; admRender(); return; }
-    return dl.save({filename:"mim-backup-"+todayISO()+".json",data:txt}).then(function(){ A.msg="Копието е свалено ✓"; A.msgType="ok"; admRender(); });
+  return Promise.resolve(api).then(function(dl){
+    if(!dl) throw new Error("no-downloads");
+    return dl.save({filename:name,data:txt}).then(function(){ A.msg=okMsg; A.msgType="ok"; admRender(); return true; });
   }).catch(function(err){
     var c=(err&&err.code)||"";
-    A.msg = c==="declined" ? "Свалянето е отказано" : "Свалянето не мина — ползвай „Копирай“";
-    A.msgType="err"; admRender();
+    if(c==="declined"){ A.msg="Свалянето е отказано"; A.msgType="err"; admRender(); return false; }
+    if(btn) copy(txt,btn,btn.textContent);
+    A.msg="Свалянето не мина — копието е в клипборда"; A.msgType="warn"; admRender(); return false;
   });
+}
+function saveBackupFile(btn,txt){
+  return dlFile("mim-backup-"+todayISO()+".json", txt, "application/json;charset=utf-8", btn, "Копието е свалено ✓");
 }
 function uploadBackup(){
   var inp=document.createElement("input"); inp.type="file"; inp.accept=".json,application/json";
@@ -3656,16 +3672,7 @@ function snapshot(){
   return "<!doctype html>\n"+clone.outerHTML;
 }
 function saveSiteFile(){
-  var html=snapshot();
-  var api=(window.claude&&window.claude.use)?window.claude.use("downloads"):Promise.resolve(null);
-  Promise.resolve(api).then(function(dl){
-    if(dl) return dl.save({filename:"index.html",data:html}).then(function(){ A.msg="index.html е свален ✓"; A.msgType="ok"; admRender(); });
-    var blob=new Blob([html],{type:"text/html"}), url=URL.createObjectURL(blob);
-    var a=document.createElement("a"); a.href=url; a.download="index.html";
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(function(){ URL.revokeObjectURL(url); },2000);
-    A.msg="index.html е свален — качи го в GitHub"; A.msgType="ok"; admRender();
-  }).catch(function(){ A.msg="Свалянето не мина"; A.msgType="err"; admRender(); });
+  return dlFile("index.html", snapshot(), "text/html;charset=utf-8", null, "index.html е свален — качи го в GitHub");
 }
 function publish(){
   if(SRV===true){ apiSave(true); return; }
