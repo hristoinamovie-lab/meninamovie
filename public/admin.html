@@ -81,6 +81,15 @@ a{color:inherit;text-decoration:none}
 .a-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .a-stat{background:#161412;border:1px solid var(--line);padding:12px 14px}
 .a-stat b{display:block;font-family:Oswald,sans-serif;font-size:26px;color:var(--y);font-weight:500}
+.a-stats-cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.a-stats-cols h3{font-family:Oswald,sans-serif;font-size:13px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx2);margin:0 0 10px}
+.a-stats-list{display:flex;flex-direction:column;gap:6px}
+.a-stats-row{position:relative;display:flex;align-items:center;gap:10px;padding:8px 10px;background:#161412;border:1px solid var(--line);overflow:hidden}
+.a-stats-bar{position:absolute;left:0;top:0;bottom:0;background:rgba(246,201,43,.14);z-index:0}
+.a-stats-title{position:relative;z-index:1;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.a-stats-kind{position:relative;z-index:1;font-family:Oswald,sans-serif;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx2);flex:none}
+.a-stats-n{position:relative;z-index:1;font-family:Oswald,sans-serif;font-weight:600;color:var(--y);flex:none;min-width:26px;text-align:right}
+@media(max-width:700px){.a-stats-cols{grid-template-columns:1fr}}
 .a-pending{border:2px solid var(--y);padding:12px 14px;margin-bottom:18px}
 .a-pending h3{margin:0 0 8px;font-family:Oswald,sans-serif;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--y)}
 .a-login{max-width:360px;margin:14vh auto;background:#131210;border:1px solid var(--line);padding:24px}
@@ -267,7 +276,50 @@ function dash(){
   }).join("")+'<div class="a-stat"><b>'+Object.keys(D.tagLabels||{}).length+'</b>Тагове</div></div>';
   h+='<div class="a-bar" style="margin-top:18px">'+Object.keys(TYPES).filter(can).map(function(k){
     return '<button class="a-btn" data-act="new" data-k="'+k+'">+ '+esc2(TYPES[k].label)+'</button>';}).join("")+'</div>';
+
+  if(A.stats===undefined) loadStats();
+  var totalViews=0,totalLikes=0;
+  if(A.stats){
+    Object.keys(A.stats.views||{}).forEach(function(k){totalViews+=A.stats.views[k]||0;});
+    Object.keys(A.stats.likes||{}).forEach(function(k){totalLikes+=A.stats.likes[k]||0;});
+  }
+  h+='<div class="a-grid" style="margin-top:22px"><div class="a-stat"><b>'+totalViews+'</b>Прегледи общо</div>'+
+    '<div class="a-stat"><b>'+totalLikes+'</b>Харесвания общо</div></div>';
+  h+='<div class="a-stats-cols" style="margin-top:18px">'+
+    '<div><h3>Най-отваряно</h3>'+(A.stats?topStatsHTML("views"):'<p class="a-note">Зарежда…</p>')+'</div>'+
+    '<div><h3>Най-харесвано</h3>'+(A.stats?topStatsHTML("likes"):'<p class="a-note">Зарежда…</p>')+'</div>'+
+    '</div>';
   return h;
+}
+function loadStats(){
+  A.stats=null;
+  if(location.protocol==="file:"){ A.stats={views:{},likes:{}}; draw(); return; }
+  fetch("/api/stats").then(function(r){return r.ok?r.json():null;})
+    .then(function(j){ A.stats=j||{views:{},likes:{}}; draw(); })
+    .catch(function(){ A.stats={views:{},likes:{}}; draw(); });
+}
+function findByStatKey(key){
+  var i=key.indexOf(":"); if(i<0) return null;
+  var ck=key.slice(0,i), id=key.slice(i+1);
+  var kind={r:"reviews",n:"news",c:"craft",e:"episodes",k:"calendar"}[ck];
+  if(!kind) return null;
+  var it=(all(kind)||[]).filter(function(x){return String(x.id)===id;})[0];
+  return it?{kind:kind,it:it}:null;
+}
+function topStatsHTML(field){
+  var obj=(A.stats&&A.stats[field])||{};
+  var arr=Object.keys(obj).map(function(k){return {key:k,n:obj[k]||0};}).filter(function(x){return x.n>0;});
+  arr.sort(function(a,b){return b.n-a.n;});
+  arr=arr.slice(0,8);
+  if(!arr.length) return '<p class="a-note">Още няма данни.</p>';
+  var max=arr[0].n;
+  return '<div class="a-stats-list">'+arr.map(function(x){
+    var f=findByStatKey(x.key);
+    var title=f?f.it.t:x.key, kindLbl=f?TYPES[f.kind].label:"";
+    return '<div class="a-stats-row"><span class="a-stats-bar" style="width:'+Math.max(6,Math.round(x.n/max*100))+'%"></span>'+
+      '<span class="a-stats-title">'+esc2(title)+'</span><span class="a-stats-kind">'+esc2(kindLbl)+'</span>'+
+      '<span class="a-stats-n">'+x.n+'</span></div>';
+  }).join("")+'</div>';
 }
 
 /* ---------- списък ---------- */
@@ -629,7 +681,7 @@ function collect(){
   [].forEach.call(document.querySelectorAll("#aMain [data-f]"),function(el){
     var n=el.getAttribute("data-f");
     if(n.indexOf("s:")===0||n.indexOf("nu:")===0) return;
-    if(n==="tagsTxt"){ it.tags=el.value.split(",").map(function(s){return s.trim().toLowerCase();}).filter(Boolean); return; }
+    if(n==="tagsTxt"){ it.tags=el.value.split(",").map(function(s){return s.trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");}).filter(Boolean); return; }
     if(n==="sizesTxt"){ it.sizes=el.value.split(",").map(function(s){return s.trim();}).filter(Boolean); return; }
     if(n==="on"){ it.on=!!el.value; return; }
     if(n==="s"){ it.s=+el.value||0; return; }

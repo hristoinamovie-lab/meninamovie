@@ -138,6 +138,54 @@ section{margin-top:46px}
 .art-split .facts{font-family:Oswald,sans-serif;font-size:13px;letter-spacing:.06em;text-transform:uppercase}
 .claps-big{font-size:22px;letter-spacing:4px;margin-top:10px}
 .art-body{max-width:var(--wrap);margin:0 auto;padding:26px 20px 10px}
+
+/* ---------- продукт (мърч): e-shop страница ---------- */
+.shop-crumbs{font-family:Oswald,sans-serif;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--tx2);margin:20px 0 22px}
+.shop-grid{display:grid;grid-template-columns:minmax(0,520px) 1fr;gap:48px;align-items:start;padding-bottom:44px}
+.shop-frame{aspect-ratio:1/1;background:var(--card2);border:1px solid var(--line);overflow:hidden}
+.shop-frame img{width:100%;height:100%;object-fit:cover}
+.shop-panel{position:sticky;top:20px}
+.shop-panel h1{font-family:Montserrat,sans-serif;font-style:italic;font-weight:900;text-transform:uppercase;letter-spacing:-.02em;font-size:28px;line-height:1.08;margin:0 0 14px}
+.shop-stockline{display:flex;align-items:center;gap:9px;margin-bottom:16px}
+.shop-stockdot{width:8px;height:8px;border-radius:50%;background:var(--y)}
+.shop-stockdot.out{background:#e07a76}
+.shop-stocktxt{font-family:Oswald,sans-serif;font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--y)}
+.shop-stocktxt.out{color:#e07a76}
+.shop-price{font-family:Oswald,sans-serif;font-weight:700;font-size:30px;margin:0 0 16px}
+.shop-desc{color:var(--tx2);font-size:15px;line-height:1.6;max-width:44ch;margin:0 0 26px}
+.shop-sizes .lbl{font-family:Oswald,sans-serif;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--tx2);margin-bottom:10px}
+.shop-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:26px}
+.shop-chip{font-family:Oswald,sans-serif;font-size:13px;font-weight:600;padding:10px 16px;border:1.5px solid var(--line);background:transparent;color:var(--tx);cursor:pointer}
+.shop-chip.sel{background:var(--y);border-color:var(--y);color:var(--black)}
+.shop-chip:hover:not(.sel){border-color:var(--y);color:var(--y)}
+.shop-cta{width:100%;font-family:Oswald,sans-serif;font-size:14px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:17px 24px;background:var(--y);color:var(--black);border:0;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:10px}
+.shop-cta:hover{background:#ffd84a}
+.shop-cta[aria-disabled="true"]{background:var(--card2);color:var(--tx2);pointer-events:none}
+.shop-lower{max-width:var(--wrap);margin:0 auto;padding:0 20px 60px;display:grid;grid-template-columns:1.3fr 1fr;gap:48px;border-top:1px solid var(--line);padding-top:36px}
+.shop-lower h2{font-family:Montserrat,sans-serif;font-style:italic;font-weight:900;text-transform:uppercase;font-size:19px;margin:0 0 14px}
+.shop-lower .prose{color:var(--tx2);font-size:15px;line-height:1.65;max-width:52ch}
+.spec2 .row{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--line);font-size:14px}
+.spec2 .row dt{color:var(--tx2);font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin:0}
+.spec2 .row dd{margin:0;color:var(--tx);text-align:right}
+@media(max-width:860px){
+  .shop-grid{grid-template-columns:1fr;gap:24px}
+  .shop-panel{position:static}
+  .shop-lower{grid-template-columns:1fr;gap:26px}
+}
+/* ---------- мърч: grid витрина ---------- */
+.shop-grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.pcard{background:var(--card2);display:flex;flex-direction:column;position:relative}
+.pcard .shot{aspect-ratio:1/1;background:var(--card);position:relative;overflow:hidden}
+.pcard .shot img{width:100%;height:100%;object-fit:cover}
+.pcard .pbadge{position:absolute;top:10px;left:10px;font-family:Oswald,sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px}
+.pcard .pbadge.ok{background:var(--y);color:var(--black)}
+.pcard .pbadge.out{background:var(--card);color:#e07a76;border:1px solid #7a2320}
+.pcard .shot.dim img{opacity:.35}
+.pcard .cbody{padding:14px 15px 16px}
+.pcard .prow{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:12px}
+.pcard .price{font-family:Oswald,sans-serif;font-weight:600;font-size:16px;color:var(--y)}
+.pcard .price.mute{color:var(--tx2)}
+@media(max-width:900px){.shop-grid4{grid-template-columns:repeat(2,1fr)}}
 .art-body h1{margin:.2em 0 .35em;font-family:Montserrat,sans-serif;font-style:italic;font-weight:900;font-size:32px;line-height:1.1;text-transform:uppercase;letter-spacing:-.02em}
 .art-meta{font-family:Oswald,sans-serif;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--y)}
 .answer{border-left:4px solid var(--y);padding:2px 0 2px 16px;margin:20px 0 26px;font-size:19px;line-height:1.6}
@@ -242,7 +290,7 @@ footer a:hover{color:var(--y)}
 .lede{color:var(--tx2);max-width:62ch;margin:8px 0 0;font-size:14.5px;line-height:1.6}
 
 /* ---------- по-голямо разстояние + светла линия между секциите (В1) ---------- */
-main section.wrap{margin-top:0;padding-top:64px;border-top:1px solid var(--line)}
+main section.wrap{margin-top:0;padding-top:64px;padding-bottom:40px;border-top:1px solid var(--line)}
 main section:first-child{border-top:0}
 
 /* ---------- херо: последен епизод ---------- */
@@ -320,6 +368,7 @@ main section:first-child{border-top:0}
 .craft-card{position:relative}
 .craft-tab{position:absolute;top:0;left:0;z-index:2;background:var(--y);color:var(--black);font-family:Oswald,sans-serif;font-weight:600;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;padding:6px 14px 6px 10px;clip-path:polygon(0 0,100% 0,calc(100% - 10px) 100%,0 100%)}
 .craft-card .ph{position:relative}
+.craft-card .card-btn{margin-top:auto;align-self:flex-end}
 
 /* ---------- movie calendar карта ---------- */
 .cal-art{position:relative}
@@ -330,7 +379,7 @@ main section:first-child{border-top:0}
 
 /* ---------- подкаст: горни бутони ---------- */
 .pod-actions{display:flex;gap:8px;flex-wrap:wrap}
-.row .watch{align-self:center;flex:none;margin-left:auto}
+.row .watch{align-self:flex-end;flex:none;margin-left:auto}
 
 /* ---------- за нас ---------- */
 .about-title{font-size:clamp(22px,3.6vw,32px);font-family:Montserrat,sans-serif;font-style:italic;font-weight:900;text-transform:uppercase;line-height:1.08;margin:0}
@@ -637,7 +686,7 @@ function cardH(k,it){
       '<div class="cbody"><h3 class="ctitle">'+esc(it.t)+'</h3>'+
       (it.lead?'<p class="clead">'+esc(txt(it.lead))+'</p>':'')+
       '<div class="cdate">Статия'+(it.when?' · '+dt(it.when):'')+(who?' · разказва '+esc(who):'')+'</div>'+
-      '<button class="card-btn dark" type="button">Виж повече</button></div></a>';
+      '<button class="card-btn gold" type="button">Виж повече</button></div></a>';
   }
   if(k==="merch"){
     return '<a class="card" href="'+url(k,it)+'" data-nav>'+
@@ -822,10 +871,12 @@ function renderCal(view,p){
 
 /* ---------- списъчна страница ---------- */
 function listPage(kindKey,page){
+  if(kindKey==="calendar"){ calendarListPage(page); return; }
+  if(kindKey==="reviews"){ reviewsListPage(page); return; }
+  if(kindKey==="merch"){ merchListPage(page); return; }
   var K=KIND[kindKey], head=(D.heads&&D.heads[K.list])||{};
   var all=items(kindKey);
-  if(kindKey==="calendar"){all=calList("all");}
-  else all.sort(function(a,b){return (b.when||"").localeCompare(a.when||"");});
+  all.sort(function(a,b){return (b.when||"").localeCompare(a.when||"");});
   var pages=Math.max(1,Math.ceil(all.length/PER_PAGE)), p=Math.min(Math.max(1,page),pages);
   var slice=all.slice((p-1)*PER_PAGE,p*PER_PAGE);
   var h='<div class="banner"><div class="wrap"><h1>'+esc(head.title||K.label)+'</h1></div></div>'+
@@ -833,6 +884,125 @@ function listPage(kindKey,page){
     slice.map(function(it){return listRow(kindKey,it);}).join("")+'</div>'+pager(K.list,p,pages)+'</div>';
   document.getElementById("app").innerHTML=h;
   document.title=(head.title||K.label)+" — Men In A Movie";
+}
+
+/* ---------- ревюта: grid с вертикални постери, като началната ---------- */
+function reviewsListPage(page){
+  var head=(D.heads&&D.heads.revyuta)||{};
+  var all=items("reviews").slice().sort(function(a,b){return (b.when||"").localeCompare(a.when||"");});
+  var pages=Math.max(1,Math.ceil(all.length/PER_PAGE)), p=Math.min(Math.max(1,page||1),pages);
+  var slice=all.slice((p-1)*PER_PAGE,p*PER_PAGE);
+  var h='<div class="banner"><div class="wrap"><h1>'+esc(head.title||"Ревюта")+'</h1></div></div>'+
+    '<div class="wrap"><div class="grid4">'+
+    slice.map(function(it){return card("reviews",it);}).join("")+'</div>'+pager("revyuta",p,pages)+'</div>';
+  document.getElementById("app").innerHTML=h;
+  document.title=(head.title||"Ревюта")+" — Men In A Movie";
+}
+
+/* ---------- movie calendar: филтри + grid с вертикални постери, като началната ---------- */
+var lpCalView="all", lpCalPlatform="", lpCalMedia="";
+function lpCalList(view){
+  var all=items("calendar").filter(function(c){return (c.when||"")>=todayISO();});
+  all.sort(function(a,b){return (a.when||"").localeCompare(b.when||"");});
+  if(view!=="all") all=all.filter(function(c){return (c.kind||"")===view;});
+  if(view==="stream"){
+    if(lpCalPlatform) all=all.filter(function(c){return (c.platform||"")===lpCalPlatform;});
+    if(lpCalMedia==="movie") all=all.filter(function(c){return !c.sub;});
+    if(lpCalMedia==="series") all=all.filter(function(c){return !!c.sub;});
+  }
+  return all;
+}
+function calendarListPage(page){
+  var head=(D.heads&&D.heads.kalendar)||{};
+  var h='<div class="banner"><div class="wrap"><h1>'+esc(head.title||"Movie calendar")+'</h1></div></div>'+
+    '<div class="wrap"><div class="filters" id="lpCalFilters"></div><div class="filters sub" id="lpCalSubFilters"></div>'+
+    '<div class="grid4" id="lpCalGrid"></div><div id="lpCalPager"></div></div>';
+  document.getElementById("app").innerHTML=h;
+  document.title=(head.title||"Movie calendar")+" — Men In A Movie";
+  renderLpCal(lpCalView,page||1);
+}
+function renderLpCal(view,p){
+  lpCalView=view;
+  if(view!=="stream"){ lpCalPlatform=""; lpCalMedia=""; }
+  var kinds=[["all","Всичко"],["cinema","По кината"],["stream","Стрийминг"],["event","Събития"]];
+  var f=document.getElementById("lpCalFilters");
+  if(f) f.innerHTML=kinds.map(function(kv){
+    var n=lpCalList(kv[0]).length; if(!n&&kv[0]!=="all")return "";
+    return '<button data-lpcal="'+kv[0]+'" class="'+(view===kv[0]?"on":"")+'">'+kv[1]+' ('+n+')</button>';}).join("");
+  var sf=document.getElementById("lpCalSubFilters");
+  if(sf){
+    if(view==="stream"&&calStreamPlatforms().length){
+      var pls=calStreamPlatforms();
+      sf.innerHTML='<div class="cal-plat">'+
+        '<button data-lpplatform="" class="'+(lpCalPlatform===""?"on":"")+'">Всички платформи</button>'+
+        pls.map(function(pv){return '<button data-lpplatform="'+esc(pv[0])+'" class="'+(lpCalPlatform===pv[0]?"on":"")+'">'+esc(pv[0])+' ('+pv[1]+')</button>';}).join("")+
+        '</div><div class="cal-media">'+
+        '<button data-lpmedia="" class="'+(lpCalMedia===""?"on":"")+'">Всичко</button>'+
+        '<button data-lpmedia="movie" class="'+(lpCalMedia==="movie"?"on":"")+'">Филми</button>'+
+        '<button data-lpmedia="series" class="'+(lpCalMedia==="series"?"on":"")+'">Сериали</button>'+
+        '</div>';
+    } else sf.innerHTML="";
+  }
+  var list=lpCalList(view), pages=Math.max(1,Math.ceil(list.length/PER_PAGE)), pp=Math.min(Math.max(1,p),pages);
+  var slice=list.slice((pp-1)*PER_PAGE,pp*PER_PAGE);
+  document.getElementById("lpCalGrid").innerHTML=slice.map(function(i){return card("calendar",i);}).join("");
+  document.getElementById("lpCalPager").innerHTML=pager("kalendar",pp,pages);
+}
+
+/* ---------- мърч: витрина + e-shop продуктова страница ---------- */
+function merchCard(it){
+  var p=pic("merch",it);
+  return '<a class="pcard" href="'+url("merch",it)+'" data-nav>'+
+    '<div class="shot'+(it.on?"":" dim")+'">'+
+    (p?'<img src="'+esc(p)+'" alt="'+esc(it.t)+'" loading="lazy">':'')+
+    '<span class="pbadge '+(it.on?"ok":"out")+'">'+(it.on?"Налично":"Изчерпано")+'</span>'+
+    '</div><div class="cbody"><h3 class="ctitle">'+esc(it.t)+'</h3>'+
+    (it.lead?'<p class="clead">'+esc(txt(it.lead))+'</p>':'')+
+    '<div class="prow"><span class="price'+(it.on?"":" mute")+'">'+it.price+' €</span>'+
+    '<button class="card-btn'+(it.on?" gold":"")+'" type="button"'+(it.on?"":" disabled")+'>'+(it.on?"Поръчай":"Изчерпано")+'</button></div>'+
+    '</div></a>';
+}
+function merchListPage(page){
+  var head=(D.heads&&D.heads.march)||{};
+  var all=items("merch");
+  var h='<div class="banner"><div class="wrap"><h1>'+esc(head.title||"Мърч")+'</h1></div></div>'+
+    '<div class="wrap"><div class="shop-grid4">'+
+    (all.length?all.map(merchCard).join(""):'<p class="clead">Още няма продукти.</p>')+'</div></div>';
+  document.getElementById("app").innerHTML=h;
+  document.title=(head.title||"Мърч")+" — Men In A Movie";
+}
+function merchPage(it){
+  var p=pic("merch",it), sizes=it.sizes||[];
+  var mailSubj=function(size){return encodeURIComponent("Поръчка: "+it.t+(size?" ("+size+")":""));};
+  var h='<div class="wrap"><p class="shop-crumbs">Начало › <a href="/march" data-nav>Мърч</a> › '+esc(it.t)+'</p>'+
+    '<div class="shop-grid">'+
+    '<div class="shop-frame">'+(p?'<img src="'+esc(p)+'" alt="'+esc(it.t)+'">':'')+'</div>'+
+    '<div class="shop-panel">'+
+    '<h1>'+esc(it.t)+'</h1>'+
+    '<div class="shop-stockline"><span class="shop-stockdot'+(it.on?"":" out")+'"></span><span class="shop-stocktxt'+(it.on?"":" out")+'">'+(it.on?"В наличност":"Изчерпано")+'</span></div>'+
+    '<p class="shop-price">'+it.price+' €</p>'+
+    (it.lead?'<p class="shop-desc">'+esc(txt(it.lead))+'</p>':'')+
+    (sizes.length?'<div class="shop-sizes"><p class="lbl">Размер</p><div class="shop-chips" id="szChips">'+
+      sizes.map(function(s,i){return '<button class="shop-chip'+(i===0?" sel":"")+'" type="button" data-size="'+esc(s)+'">'+esc(s)+'</button>';}).join("")+
+      '</div></div>':"")+
+    (it.on?'<a class="shop-cta" id="merchBuy" href="mailto:'+esc(D.settings.orderEmail||"")+'?subject='+mailSubj(sizes[0])+'">Поръчай по имейл</a>'
+          :'<span class="shop-cta" aria-disabled="true">Изчерпано</span>')+
+    '</div></div></div>'+
+    '<div class="shop-lower">'+
+    '<div><h2>Описание</h2><div class="prose">'+(it.body?md(it.body):(it.lead?'<p>'+esc(txt(it.lead))+'</p>':'<p>Няма допълнително описание.</p>'))+'</div></div>'+
+    (sizes.length?'<div><h2>Детайли</h2><dl class="spec2"><div class="row"><dt>Размери</dt><dd>'+esc(sizes.join(" · "))+'</dd></div></dl></div>':'')+
+    '</div>';
+  document.getElementById("app").innerHTML=h;
+  document.title=it.t+" — Мърч — Men In A Movie";
+  if(sizes.length>1){
+    document.getElementById("szChips").addEventListener("click",function(e){
+      var b=e.target.closest("[data-size]"); if(!b) return;
+      var size=b.getAttribute("data-size");
+      [].forEach.call(document.querySelectorAll("#szChips .shop-chip"),function(c){c.classList.toggle("sel",c===b);});
+      var buy=document.getElementById("merchBuy");
+      if(buy) buy.href="mailto:"+(D.settings.orderEmail||"")+"?subject="+mailSubj(size);
+    });
+  }
 }
 function listRow(k,it){
   var wide=k==="calendar", p=wide?picWide(k,it):pic(k,it), shape=(KIND[k].shape==="p"&&!wide)?"r23":"r169";
@@ -938,6 +1108,33 @@ function article(kindKey,id){
   document.title=(kindKey==="reviews"? it.t+" ("+it.y+") — ревю" : it.t)+" — Men In A Movie";
   var CKIND={reviews:"r",news:"n",craft:"c",episodes:"e",calendar:"k"}[kindKey];
   if(CKIND) wireLikeShare(CKIND,it.id);
+  if(kindKey==="calendar"&&it.src==="tmdb"&&it.tmdbId) enrichCalTmdb(it);
+}
+/* трейлър/резюме/оценка от TMDB — теглят се асинхронно, за да не бавят зареждането на страницата */
+function enrichCalTmdb(it){
+  if(it.video) return;
+  var media=it.kind==="cinema"?"movie":"tv";
+  var qs="id="+encodeURIComponent(it.tmdbId)+"&media="+media;
+  if(it.sub==="episode"&&it.season&&it.episode) qs+="&season="+it.season+"&episode="+it.episode;
+  fetch("/api/tmdb-extra?"+qs).then(function(r){return r.ok?r.json():null;}).then(function(x){
+    if(!x) return;
+    if(x.trailer){
+      var btns=document.querySelector(".art-left .btns");
+      if(btns&&!btns.querySelector('a[href="'+x.trailer+'"]')){
+        var a=document.createElement("a");
+        a.className="btn gold"; a.target="_blank"; a.rel="noopener"; a.href=x.trailer; a.textContent="Виж трейлъра";
+        btns.insertBefore(a,btns.firstChild);
+      }
+    }
+    if(x.overview){
+      var lede=document.querySelector(".art-left .art-lede");
+      if(lede) lede.textContent=x.overview;
+    }
+    if(x.rating){
+      var facts=document.querySelector(".art-left .facts");
+      if(facts) facts.textContent=facts.textContent+" · TMDB "+x.rating+"/10";
+    }
+  }).catch(function(){});
 }
 function tagsHTML(it){
   var tg=(it.tags||[]).filter(Boolean);
@@ -1032,7 +1229,7 @@ function route(){
     var tail=seg[1].split("-").slice(-1)[0].toLowerCase();
     var found=items(k).filter(function(x){return idTail(x.id)===tail;})[0];
     if(!found) found=items(k).filter(function(x){return String(x.id).toLowerCase()===tail||slugify(x.t)+"-"+idTail(x.id)===seg[1];})[0];
-    if(found){ article(k,found.id); markNav(KIND[k].list); window.scrollTo(0,0); return; }
+    if(found){ (k==="merch"?merchPage(found):article(k,found.id)); markNav(KIND[k].list); window.scrollTo(0,0); return; }
   }
   notFound(); window.scrollTo(0,0);
 }
@@ -1059,6 +1256,12 @@ document.addEventListener("click",function(e){
   if(pf){ calPlatform=pf.getAttribute("data-platform"); renderCal("stream",1); return; }
   var md=e.target.closest?e.target.closest("[data-media]"):null;
   if(md){ calMedia=md.getAttribute("data-media"); renderCal("stream",1); return; }
+  var lc=e.target.closest?e.target.closest("[data-lpcal]"):null;
+  if(lc){ renderLpCal(lc.getAttribute("data-lpcal"),1); return; }
+  var lpf=e.target.closest?e.target.closest("[data-lpplatform]"):null;
+  if(lpf){ lpCalPlatform=lpf.getAttribute("data-lpplatform"); renderLpCal("stream",1); return; }
+  var lmd=e.target.closest?e.target.closest("[data-lpmedia]"):null;
+  if(lmd){ lpCalMedia=lmd.getAttribute("data-lpmedia"); renderLpCal("stream",1); return; }
 });
 window.addEventListener("popstate",route);
 window.addEventListener("hashchange",function(){ if(location.protocol==="file:") route(); });
