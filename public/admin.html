@@ -300,7 +300,7 @@ function imgField(label,name,val,shape){
   return '<div class="a-f"><label>'+esc2(label)+' — '+s[0]+' × '+s[1]+'</label><div class="a-img">'+
     (val?'<img src="'+esc2(val)+'">':'<p>няма изображение</p>')+
     '<input type="file" accept="image/*" data-img="'+name+'" data-shape="'+shape+'" style="width:auto;background:none;border:0">'+
-    (val?'<button class="a-btn dan" data-act="rmimg" data-f="'+name+'">Махни</button>':'')+
+    (val?'<button class="a-btn dan" data-act="rmimg" data-rmf="'+name+'">Махни</button>':'')+
     '</div><p class="a-note">Смалява се автоматично и се реже от центъра.</p></div>';
 }
 function editor(){
@@ -575,7 +575,7 @@ function onClick(e){
     if(o2){ o2.status = o2.status==="hidden"?"published":"hidden"; persist(o2.status==="hidden"?"Скрито от сайта.":"Върнато на сайта."); } return; }
   if(act==="del"){ if(!confirm("Да изтрия ли „"+(all(k).filter(function(x){return x.id===id;})[0]||{}).t+"“?")) return;
     D[k]=all(k).filter(function(x){return x.id!==id;}); persist("Изтрито."); return; }
-  if(act==="rmimg"){ A.edit[t.getAttribute("data-f")]=""; draw(); return; }
+  if(act==="rmimg"){ A.edit[t.getAttribute("data-rmf")]=""; draw(); return; }
   if(act==="addtag"){ var inp=document.querySelector('[data-f="tagsTxt"]'); if(!inp)return;
     var arr=inp.value.split(",").map(function(s){return s.trim();}).filter(Boolean);
     var tg=t.getAttribute("data-tag"); if(arr.indexOf(tg)<0)arr.push(tg);
