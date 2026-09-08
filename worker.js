@@ -1472,6 +1472,22 @@ export default {
     out.headers.set("permissions-policy", "geolocation=(), camera=(), microphone=(), interest-cohort=()");
     out.headers.set("x-frame-options", "SAMEORIGIN");
     out.headers.set("strict-transport-security", "max-age=31536000; includeSubDomains; preload");
+    /* сайтът разчита на инлайн <script>/<style> в много страници — 'unsafe-inline' е компромис,
+       но всичко останало е стегнато до конкретните домейни, които реално се ползват */
+    out.headers.set("content-security-policy",
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-inline'; " +
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+      "font-src 'self' https://fonts.gstatic.com; " +
+      "img-src 'self' data: https://image.tmdb.org https://i.ytimg.com; " +
+      "frame-src https://www.youtube.com; " +
+      "connect-src 'self'; " +
+      "object-src 'none'; " +
+      "base-uri 'self'; " +
+      "form-action 'self'; " +
+      "frame-ancestors 'self'; " +
+      "upgrade-insecure-requests"
+    );
     if (!isTestEnv(env)) return out;
 
     out.headers.set("x-robots-tag", "noindex, nofollow, noarchive, nosnippet");
