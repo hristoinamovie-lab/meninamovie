@@ -481,9 +481,9 @@ function normalize(raw){
   var lab={};
   function tg(a){return (a||[]).map(function(t){var s=String(t).trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");if(!s)return null;lab[s]=lab[s]||String(t).trim();return s;}).filter(Boolean);}
   var o={settings:raw.settings||{},heads:raw.heads||{},tagLabels:lab,
-    reviews:(raw.reviews||[]).map(function(r){return{id:r.id,t:r.t,when:r.when||"",y:r.y,g:r.g,s:+r.s||0,mins:r.mins,poster:r.poster||"",share:"",video:r.video||"",lead:r.verdict||"",body:r.body||"",tags:tg(r.tags),status:r.status||"published",authorName:r.authorName||""};}),
-    news:(raw.news||[]).map(function(n){return{id:n.id,t:n.t,when:n.when||"",cat:n.tag||"",img:n.img||"",video:n.video||"",lead:n.p||"",body:n.body||"",tags:tg(n.tags),status:n.status||"published",authorName:n.authorName||"",source:"",sourceUrl:""};}),
-    craft:(raw.craft||[]).map(function(c){return{id:c.id,t:c.t,when:c.when||"",cat:c.tag||"",img:c.img||"",video:c.video||"",guest:c.guest||"",role:c.role||"",lead:c.p||"",body:c.body||"",tags:tg(c.tags),status:c.status||"published",authorName:c.authorName||""};}),
+    reviews:(raw.reviews||[]).map(function(r){return{id:r.id,t:r.t,when:r.when||"",y:r.y,g:r.g,s:+r.s||0,mins:r.mins,poster:r.poster||"",share:"",video:r.video||"",trailer:r.trailer||"",lead:r.verdict||"",body:r.body||"",tags:tg(r.tags),status:r.status||"published",authorName:r.authorName||""};}),
+    news:(raw.news||[]).map(function(n){return{id:n.id,t:n.t,when:n.when||"",cat:n.tag||"",img:n.img||"",video:n.video||"",trailer:n.trailer||"",lead:n.p||"",body:n.body||"",tags:tg(n.tags),status:n.status||"published",authorName:n.authorName||"",source:"",sourceUrl:""};}),
+    craft:(raw.craft||[]).map(function(c){return{id:c.id,t:c.t,when:c.when||"",cat:c.tag||"",img:c.img||"",video:c.video||"",trailer:c.trailer||"",guest:c.guest||"",role:c.role||"",lead:c.p||"",body:c.body||"",tags:tg(c.tags),status:c.status||"published",authorName:c.authorName||""};}),
     episodes:(raw.episodes||[]).map(function(e){return{id:e.id,n:e.n,t:e.t,when:e.d||"",cat:e.tag||"",lead:e.desc||"",body:"",yt:e.yt||"",sp:e.sp||"",len:e.len,tags:tg(e.tags),status:"published",authorName:""};}),
     merch:(raw.merch||[]).map(function(m){return{id:m.id,t:m.t,lead:m.d||"",body:"",price:+m.p||0,sizes:m.sizes||[],img:m.img||"",on:!!m.on,tags:[],status:"published"};}),
     calendar:(raw.calendar||[]).filter(function(c){return !c.hidden;})};
@@ -901,6 +901,7 @@ function likeShareHTML(kindKey,it){
   var CKIND={reviews:"r",news:"n",craft:"c",episodes:"e",calendar:"k"}[kindKey];
   if(!CKIND) return "";
   var listen = kindKey!=="episodes"&&kindKey!=="calendar"&&it.video ? '<a class="btn gold" target="_blank" rel="noopener" href="'+esc(it.video)+'">Чуй повече</a>' : "";
+  var trailerBtn = kindKey!=="episodes"&&kindKey!=="calendar"&&it.trailer ? '<a class="btn" target="_blank" rel="noopener" href="'+esc(it.trailer)+'">Виж трейлъра</a>' : "";
   var calBtns="";
   if(kindKey==="calendar"){
     if(it.video) calBtns+='<a class="btn gold" target="_blank" rel="noopener" href="'+esc(it.video)+'">Виж трейлъра</a>';
@@ -915,7 +916,7 @@ function likeShareHTML(kindKey,it){
     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+
     '<path d="M20.8 5.6a5.5 5.5 0 0 0-7.8 0L12 6.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 22l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>'+
     '<span id="lkn"></span></button>'+
-    '<button class="btn" id="shr" type="button">Сподели</button>'+listen+calBtns+'</div>';
+    '<button class="btn" id="shr" type="button">Сподели</button>'+trailerBtn+listen+calBtns+'</div>';
 }
 
 /* ---------- харесване + споделяне (същите ключове като на сървъра) ---------- */

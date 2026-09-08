@@ -127,9 +127,9 @@ function normalize(raw){
   var lab={};
   function tg(a){return (a||[]).map(function(t){var s=String(t).trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");if(!s)return null;lab[s]=lab[s]||String(t).trim();return s;}).filter(Boolean);}
   var o={settings:raw.settings||{},heads:raw.heads||{},tagLabels:lab,
-    reviews:(raw.reviews||[]).map(function(r){return{id:r.id,t:r.t,when:r.when||"",y:r.y,g:r.g,s:+r.s||0,mins:r.mins,poster:r.poster||"",share:"",video:r.video||"",lead:r.verdict||"",body:r.body||"",tags:tg(r.tags),status:r.status||"published",authorName:r.authorName||""};}),
-    news:(raw.news||[]).map(function(n){return{id:n.id,t:n.t,when:n.when||"",cat:n.tag||"",img:n.img||"",video:n.video||"",lead:n.p||"",body:n.body||"",tags:tg(n.tags),status:n.status||"published",authorName:n.authorName||"",source:"",sourceUrl:""};}),
-    craft:(raw.craft||[]).map(function(c){return{id:c.id,t:c.t,when:c.when||"",cat:c.tag||"",img:c.img||"",video:c.video||"",guest:c.guest||"",role:c.role||"",lead:c.p||"",body:c.body||"",tags:tg(c.tags),status:c.status||"published",authorName:c.authorName||""};}),
+    reviews:(raw.reviews||[]).map(function(r){return{id:r.id,t:r.t,when:r.when||"",y:r.y,g:r.g,s:+r.s||0,mins:r.mins,poster:r.poster||"",share:"",video:r.video||"",trailer:r.trailer||"",lead:r.verdict||"",body:r.body||"",tags:tg(r.tags),status:r.status||"published",authorName:r.authorName||""};}),
+    news:(raw.news||[]).map(function(n){return{id:n.id,t:n.t,when:n.when||"",cat:n.tag||"",img:n.img||"",video:n.video||"",trailer:n.trailer||"",lead:n.p||"",body:n.body||"",tags:tg(n.tags),status:n.status||"published",authorName:n.authorName||"",source:"",sourceUrl:""};}),
+    craft:(raw.craft||[]).map(function(c){return{id:c.id,t:c.t,when:c.when||"",cat:c.tag||"",img:c.img||"",video:c.video||"",trailer:c.trailer||"",guest:c.guest||"",role:c.role||"",lead:c.p||"",body:c.body||"",tags:tg(c.tags),status:c.status||"published",authorName:c.authorName||""};}),
     episodes:(raw.episodes||[]).map(function(e){return{id:e.id,n:e.n,t:e.t,when:e.d||e.when||"",cat:e.tag||"",lead:e.desc||e.lead||"",body:"",yt:e.yt||"",sp:e.sp||"",len:e.len,tags:tg(e.tags),status:"published",authorName:""};}),
     merch:(raw.merch||[]).map(function(m){return{id:m.id,t:m.t,lead:m.d||m.lead||"",body:"",price:+m.p||0,sizes:m.sizes||[],img:m.img||"",on:!!m.on,tags:[],status:"published"};}),
     calendar:(raw.calendar||[]).filter(function(c){return !c.hidden;})};
@@ -292,7 +292,7 @@ function f(label,name,val,type,extra){
 }
 function sel(label,name,val,opts){
   return '<div class="a-f"><label>'+esc2(label)+'</label><select data-f="'+name+'">'+
-    opts.map(function(o){var v=o[0]==null?o:o[0],t=o[1]||o;return '<option value="'+esc2(v)+'"'+(String(val)===String(v)?" selected":"")+'>'+esc2(t)+'</option>';}).join("")+
+    opts.map(function(o){var v=Array.isArray(o)?o[0]:o,t=Array.isArray(o)?(o[1]||o[0]):o;return '<option value="'+esc2(v)+'"'+(String(val)===String(v)?" selected":"")+'>'+esc2(t)+'</option>';}).join("")+
     '</select></div>';
 }
 function imgField(label,name,val,shape){
@@ -317,6 +317,11 @@ function editor(){
       imgField("Снимка","img",it.img,"h")+
       f("Кратък отговор — 2–3 изречения, това цитират търсачките","lead",it.lead,"area")+
       body(it)+
+      '<div class="a-grid">'+
+        f("Линк — „Чуй повече\" (по избор)","video",it.video,"text",'placeholder="https://youtube.com/…"')+
+        f("Линк към трейлъра (по избор)","trailer",it.trailer,"text",'placeholder="https://youtube.com/…"')+
+      '</div>'+
+      '<p class="a-note">„Чуй повече\" води към нашия YouTube канал, ако сме говорили по темата. „Виж трейлъра\" се появява само ако има линк тук и води към официалния трейлър.</p>'+
       '<div class="a-grid">'+f("Източник","source",it.source)+f("Линк към източника","sourceUrl",it.sourceUrl)+'</div>';
   }
   if(k==="reviews"){
@@ -328,14 +333,20 @@ function editor(){
       imgField("Постер","poster",it.poster,"p")+
       imgField("Кадър за споделяне","share",it.share,"h")+
       f("Кратък отговор","lead",it.lead,"area")+body(it)+
-      f("Линк към видео","video",it.video);
+      '<div class="a-grid">'+
+        f("Линк — „Чуй повече\" (по избор)","video",it.video)+
+        f("Линк към трейлъра (по избор)","trailer",it.trailer)+
+      '</div>';
   }
   if(k==="craft"){
     h+='<div class="a-grid">'+f("Дата","when",it.when,"date")+
       sel("Раздел","cat",it.cat,["","Камера","Монтаж","Звук","VFX","Каскади","Продукция","Кадър по кадър"])+
       f("Гост","guest",it.guest)+f("Роля на госта","role",it.role)+'</div>'+
       imgField("Кадър","img",it.img,"h")+
-      f("Линк към видеото в YouTube или Vimeo","video",it.video)+
+      '<div class="a-grid">'+
+        f("Линк към видеото в YouTube или Vimeo","video",it.video)+
+        f("Линк към трейлъра (по избор)","trailer",it.trailer)+
+      '</div>'+
       f("Кратък отговор","lead",it.lead,"area")+body(it);
   }
   if(k==="episodes"){
@@ -674,9 +685,9 @@ function pickInlineImage(){
 function blank(k){
   var b={id:uid(k.slice(0,1)==="e"&&k==="episodes"?"e":k.slice(0,1)),t:"",when:today(),lead:"",body:"",tags:[],
     status:canPublish()?"published":"review",authorName:A.me?A.me.name:""};
-  if(k==="reviews"){b.y="";b.g="";b.s=4;b.mins="";b.poster="";b.share="";b.video="";}
-  if(k==="news"){b.img="";b.cat="";b.video="";b.source="";b.sourceUrl="";}
-  if(k==="craft"){b.img="";b.cat="";b.video="";b.guest="";b.role="";}
+  if(k==="reviews"){b.y="";b.g="";b.s=4;b.mins="";b.poster="";b.share="";b.video="";b.trailer="";}
+  if(k==="news"){b.img="";b.cat="";b.video="";b.trailer="";b.source="";b.sourceUrl="";}
+  if(k==="craft"){b.img="";b.cat="";b.video="";b.trailer="";b.guest="";b.role="";}
   if(k==="episodes"){b.yt="";b.sp="";b.n="";b.len="";b.cat="";}
   if(k==="merch"){b.img="";b.price=0;b.sizes=[];b.on=true;}
   if(k==="calendar"){b.kind="cinema";b.platform="";b.poster="";b.src="manual";}
