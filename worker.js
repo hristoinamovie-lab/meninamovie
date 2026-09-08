@@ -356,6 +356,37 @@ function tvItem(t, pv, sub, when, season, episode) {
   };
 }
 
+/** Първо видео от TMDB, дадено с приоритет на official trailer в YouTube. */
+function tmdbPickTrailer(results) {
+  if (!Array.isArray(results) || !results.length) return "";
+  const yt = results.filter((r) => r.site === "YouTube");
+  const v = yt.find((r) => r.type === "Trailer" && r.official) || yt.find((r) => r.type === "Trailer") || yt[0];
+  return v ? "https://www.youtube.com/watch?v=" + v.key : "";
+}
+/** Трейлър + резюме (+ оценка на епизод, ако е приложимо) — тегли се при отваряне на страницата, не при синхронизацията. */
+async function tmdbExtra(env, media, tmdbId, season, episode) {
+  const out = { trailer: "", overview: "", rating: null };
+  if (!env.TMDB_KEY || !tmdbId) return out;
+  try {
+    if (media === "movie") {
+      const vids = await tmdbGet(env, "/movie/" + tmdbId + "/videos", { language: "bg-BG" });
+      out.trailer = tmdbPickTrailer(vids.results) || tmdbPickTrailer((await tmdbGet(env, "/movie/" + tmdbId + "/videos", {})).results);
+    } else if (season && episode) {
+      const ep = await tmdbGet(env, "/tv/" + tmdbId + "/season/" + season + "/episode/" + episode, { language: "bg-BG" });
+      out.overview = ep.overview || "";
+      out.rating = ep.vote_average ? Math.round(ep.vote_average * 10) / 10 : null;
+      try {
+        const vids = await tmdbGet(env, "/tv/" + tmdbId + "/season/" + season + "/episode/" + episode + "/videos", { language: "bg-BG" });
+        out.trailer = tmdbPickTrailer(vids.results);
+      } catch (e) {}
+    } else {
+      const vids = await tmdbGet(env, "/tv/" + tmdbId + "/videos", { language: "bg-BG" });
+      out.trailer = tmdbPickTrailer(vids.results);
+    }
+  } catch (e) {}
+  return out;
+}
+
 /** Тегли премиерите и сериалите за следващите месеци и ги слива с наличните. */
 async function syncCalendar(env, months) {
   if (!env.TMDB_KEY) return { error: "no_key", message: "Липсва ключът TMDB_KEY в Cloudflare." };
@@ -825,14 +856,66 @@ a.tag:hover{border-color:#F6C92B;color:#F6C92B}
 .lbanner .cnt{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;opacity:.7}
 .lbanner img.bn{flex:0 0 40%;max-width:470px;aspect-ratio:4/1;object-fit:cover}
 .list{max-width:1180px;margin:26px auto 0;padding:0 22px;display:flex;flex-direction:column;gap:12px}
-.li{display:flex;gap:20px;background:#161412;border:1px solid rgba(246,242,230,.09);padding:14px;color:#F2F0EB}
+.li{display:flex;gap:20px;background:#161412;border:1px solid rgba(246,242,230,.09);padding:14px;color:#F2F0EB;height:210px;overflow:hidden}
 .li:hover{border-color:#F6C92B}
-.li img{flex:0 0 28%;max-width:320px;aspect-ratio:16/9;object-fit:cover;background:#0f0e0c}
-.li img.p{flex:0 0 128px;aspect-ratio:2/3}
-.li .tx{flex:1;min-width:0}
-.li h3{margin:0 0 8px;font-size:21px;line-height:1.25;font-family:Montserrat,system-ui,sans-serif;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:-.015em}
+.li img{flex:0 0 28%;max-width:320px;height:100%;object-fit:cover;background:#0f0e0c}
+.li img.p{flex:0 0 128px}
+.li .tx{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column}
+.li h3{margin:0 0 8px;font-size:21px;line-height:1.25;font-family:Montserrat,system-ui,sans-serif;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:-.015em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .li p{margin:0;color:#B9B3A6;font-size:15px}
-.li .more{display:inline-block;margin-top:12px;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#F6C92B;border:1px solid rgba(246,201,43,.5);padding:7px 13px}
+.li .more{display:inline-block;margin-top:auto;align-self:flex-end;flex:none;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;background:#F6C92B;color:#141210;border:0;padding:9px 14px}
+.li .more:hover{background:#ffd84a}
+
+/* ---- grid карти: ревюта и movie calendar, с вертикални постери ---- */
+.grid-cards{max-width:1180px;margin:26px auto 0;padding:0 22px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.rcard,.calcard{display:block;background:#161412;border:1px solid rgba(246,242,230,.09);color:#F2F0EB}
+.rcard:hover,.calcard:hover{border-color:#F6C92B}
+.rcard-art{position:relative;aspect-ratio:2/3;background:#0f0e0c}
+.rcard-art img{width:100%;height:100%;object-fit:cover}
+.rcard-art .claps{position:absolute;top:8px;right:8px;gap:2px;margin:0;background:rgba(10,9,8,.75);padding:4px 6px}
+.rcard-art .claps svg{width:12px;height:12px}
+.rcard .cbody,.calcard .cbody{padding:12px 13px 15px}
+.rcard h3{margin:0 0 6px;font-size:15px;line-height:1.3;font-family:Montserrat,system-ui,sans-serif;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:-.01em}
+.rcard .kicker,.calcard .kicker{margin:0;color:#8C877C;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.calcard{position:relative}
+.calcard-art{position:relative;aspect-ratio:2/3;background:#0f0e0c;overflow:hidden}
+.calcard-art::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.75),transparent 42%)}
+.calcard-art img{width:100%;height:100%;object-fit:cover}
+.calcard-tab{position:absolute;top:0;left:0;z-index:2;background:#F6C92B;color:#141210;font-family:Oswald,system-ui,sans-serif;font-weight:600;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;padding:5px 11px 5px 8px}
+.calcard-tab2{position:absolute;top:23px;left:0;z-index:2;background:#141210;color:#F6C92B;font-family:Oswald,system-ui,sans-serif;font-weight:600;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;padding:4px 10px 4px 8px}
+.calcard-when{position:absolute;left:9px;bottom:9px;z-index:2;font-family:Oswald,system-ui,sans-serif;font-weight:600;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:#F6C92B}
+.calcard h3{margin:0 0 4px;font-size:14px;line-height:1.3;font-weight:700}
+@media(max-width:900px){.grid-cards{grid-template-columns:repeat(2,1fr)}}
+.pcard{display:block;background:#161412;border:1px solid rgba(246,242,230,.09);color:#F2F0EB}
+.pcard:hover{border-color:#F6C92B}
+.pshot{position:relative;aspect-ratio:1/1;background:#0f0e0c;overflow:hidden}
+.pshot img{width:100%;height:100%;object-fit:cover}
+.pshot.dim img{opacity:.35}
+.pbadge{position:absolute;top:9px;left:9px;font-family:Oswald,system-ui,sans-serif;font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;padding:5px 9px}
+.pbadge.ok{background:#F6C92B;color:#141210}
+.pbadge.out{background:#161412;color:#e07a76;border:1px solid #7a2320}
+
+/* ---- мърч: e-shop продуктова страница ---- */
+.shop-crumbs{max-width:1180px;margin:0 auto;padding:20px 22px 0;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8C877C}
+.shop-crumbs a{color:#8C877C}
+.shop-grid{max-width:1180px;margin:0 auto;padding:22px 22px 44px;display:grid;grid-template-columns:minmax(0,480px) 1fr;gap:48px;align-items:start}
+.shop-frame{aspect-ratio:1/1;background:#161412;border:1px solid rgba(246,242,230,.09);overflow:hidden}
+.shop-frame img{width:100%;height:100%;object-fit:cover}
+.shop-panel h1{font-family:Montserrat,system-ui,sans-serif;font-style:italic;font-weight:900;text-transform:uppercase;letter-spacing:-.02em;font-size:26px;margin:0 0 14px}
+.shop-stockline{display:flex;align-items:center;gap:9px;margin-bottom:16px}
+.shop-stockdot{width:8px;height:8px;border-radius:50%;background:#F6C92B}
+.shop-stockdot.out{background:#e07a76}
+.shop-stocktxt{font-family:Oswald,system-ui,sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#F6C92B}
+.shop-stocktxt.out{color:#e07a76}
+.shop-price{font-family:Oswald,system-ui,sans-serif;font-weight:700;font-size:28px;margin:0 0 16px}
+.shop-desc{color:#B9B3A6;font-size:15px;line-height:1.6;max-width:44ch;margin:0 0 20px}
+.shop-cta{display:flex;align-items:center;justify-content:center;width:100%;max-width:320px;font-family:Oswald,system-ui,sans-serif;font-size:14px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:16px 24px;background:#F6C92B;color:#141210;border:0;text-decoration:none}
+.shop-cta:hover{background:#ffd84a}
+.shop-cta[aria-disabled="true"]{background:#161412;color:#8C877C}
+.shop-lower{max-width:1180px;margin:0 auto;padding:0 22px 60px}
+.shop-lower h2{font-family:Montserrat,system-ui,sans-serif;font-style:italic;font-weight:900;text-transform:uppercase;font-size:19px;margin:0 0 14px;border-top:1px solid rgba(246,242,230,.09);padding-top:30px}
+@media(max-width:860px){.shop-grid{grid-template-columns:1fr}}
+
 .pager{max-width:1180px;margin:34px auto 0;padding:0 22px;display:flex;gap:7px;justify-content:center}
 .pager a,.pager span{border:1px solid rgba(246,242,230,.2);color:#B9B3A6;font-size:13px;font-weight:700;padding:8px 14px}
 .pager .cur{background:#F6C92B;border-color:#F6C92B;color:#141210}
@@ -854,8 +937,8 @@ footer.bot .fin{margin-top:24px;padding-top:16px;border-top:1px solid rgba(20,18
   footer.bot .cols{grid-template-columns:1fr 1fr}
 }
 @media(max-width:560px){
-  .li{flex-direction:column}.li img,.li img.p{flex:none;width:100%;max-width:none}
-  .li img.p{width:140px}
+  .li{flex-direction:column;height:auto}.li img,.li img.p{flex:none;width:100%;max-width:none;height:auto;aspect-ratio:16/9}
+  .li img.p{width:140px;aspect-ratio:2/3}
   footer.bot .cols{grid-template-columns:1fr}
 }`;
 
@@ -959,7 +1042,7 @@ function seoRelated(data, kind, it, limit) {
     "</div></section>";
 }
 
-function seoItemPage(kind, it, data, origin) {
+async function seoItemPage(kind, it, data, origin, env) {
   const canon = origin + seoUrl(kind, it);
   const bigTags = {};
   for (const t of seoTagList(data)) bigTags[t.slug] = 1;   // кои теми имат своя страница
@@ -992,8 +1075,17 @@ function seoItemPage(kind, it, data, origin) {
     /* билетите/гледането са бутон в жълтата лента */
   }
   const calPast = kind === "calendar" && String(it.when || "") < ymd(new Date());
+  /* трейлър/резюме/оценка от TMDB, теглени "на живо" при отваряне на страницата (не при синхронизацията) */
+  let tmdbX = { trailer: "", overview: "", rating: null };
+  if (kind === "calendar" && it.src === "tmdb" && it.tmdbId && env) {
+    const media = it.kind === "cinema" ? "movie" : "tv";
+    const s = it.sub === "episode" ? it.season : "", e = it.sub === "episode" ? it.episode : "";
+    tmdbX = await tmdbExtra(env, media, it.tmdbId, s, e);
+    if (tmdbX.overview) lede = tmdbX.overview;
+  }
   const calKicker = kind === "calendar"
-    ? [CK[it.kind] || "Movie calendar", it.kind === "stream" ? calSubLabel(it) : "", calPast ? "вече е налично" : seoDateBg(it.when)].filter(Boolean).join(" • ")
+    ? [CK[it.kind] || "Movie calendar", it.kind === "stream" ? calSubLabel(it) : "", calPast ? "вече е налично" : seoDateBg(it.when),
+       tmdbX.rating ? "TMDB " + tmdbX.rating + "/10" : ""].filter(Boolean).join(" • ")
     : SEO_LABEL[kind];
   const vid = it.video || it.yt || "";
   /* видеото вече е бутон в жълтата лента */
@@ -1043,7 +1135,7 @@ function seoItemPage(kind, it, data, origin) {
 
   /* бутоните в жълтата лента — трейлър, чуй повече, харесай, сподели и т.н. */
   let bandBtns = "";
-  const trailer = kind === "calendar" ? (it.video || "") : (it.trailer || "");
+  const trailer = kind === "calendar" ? (it.video || tmdbX.trailer || "") : (it.trailer || "");
   if (trailer) bandBtns += '<a class="btn" rel="nofollow" href="' + escHtml(trailer) + '">Виж трейлъра</a> ';
   if (kind === "episodes" && it.yt) bandBtns += '<a class="btn" rel="nofollow" href="' + escHtml(it.yt) + '">Гледай в YouTube</a> ';
   if (kind === "episodes" && it.sp) bandBtns += '<a class="btn" rel="nofollow" href="' + escHtml(it.sp) + '">Слушай в Spotify</a> ';
@@ -1107,9 +1199,28 @@ function seoListPage(slug, page, data, origin) {
   const poster = kind === "reviews" || kind === "calendar";
 
   const rows = slice.map((it) => {
-    const u = kind === "merch" ? "/march" : seoUrl(kind, it);
+    if (kind === "reviews") {
+      const im = seoImage(kind, it, origin);
+      return '<a class="rcard" href="' + seoUrl(kind, it) + '"><div class="rcard-art">' +
+        (im && !/\/og\.jpg$/.test(im) ? '<img src="' + escHtml(im) + '" alt="' + escHtml(it.t) + '" loading="lazy">' : "") +
+        clapsHTML(it.s) +
+        '</div><div class="cbody"><h3>' + escHtml(it.t) + '</h3>' +
+        '<p class="kicker">' + escHtml([it.y, it.g].filter(Boolean).join(" · ")) + "</p></div></a>";
+    }
+    if (kind === "merch") {
+      const im = it.img ? origin + "/img/m/" + encodeURIComponent(it.id) : "";
+      const u = "/produkt/" + slugify(it.t) + "-" + idTail(it.id);
+      return '<a class="pcard" href="' + u + '"><div class="pshot' + (it.on ? "" : " dim") + '">' +
+        (im ? '<img src="' + escHtml(im) + '" alt="' + escHtml(it.t) + '" loading="lazy">' : "") +
+        '<span class="pbadge ' + (it.on ? "ok" : "out") + '">' + (it.on ? "Налично" : "Изчерпано") + "</span>" +
+        '</div><div class="cbody"><h3>' + escHtml(it.t) + "</h3>" +
+        (it.lead ? "<p>" + escHtml(it.lead) + "</p>" : "") +
+        '<p class="kicker" style="margin-top:8px;color:#F6C92B;font-size:15px">' + escHtml(String(it.price || 0)) + " &euro;</p>" +
+        "</div></a>";
+    }
+    const u = seoUrl(kind, it);
     const im = seoImage(kind, it, origin);
-    const meta = [SEO_LABEL[kind] || cfg.title, seoDateBg(seoDate(kind, it)), kind === "reviews" && it.s ? it.s + "/5 клапи" : ""].filter(Boolean);
+    const meta = [SEO_LABEL[kind] || cfg.title, seoDateBg(seoDate(kind, it))].filter(Boolean);
     return '<a class="li" href="' + u + '">' +
       (im && !/\/og\.jpg$/.test(im) ? '<img class="' + (poster ? "p" : "") + '" src="' + escHtml(im) + '" alt="' + escHtml(it.t) + '" loading="lazy">' : '<div class="' + (poster ? "p" : "") + '"></div>') +
       '<div class="tx"><p class="kicker">' + escHtml(meta.join(" · ")) + "</p>" +
@@ -1148,7 +1259,37 @@ function seoListPage(slug, page, data, origin) {
       (banner ? '<img class="bn" src="' + escHtml(banner) + '" alt="">' : "") +
       "</div></div>" +
       '<div class="col" style="padding-top:24px;padding-bottom:0"><p class="lede" style="font-size:18px">' + escHtml(cfg.desc) + "</p></div>" +
-      '<div class="list">' + (rows || '<p class="kicker">Още няма нищо тук.</p>') + "</div>" + pager,
+      '<div class="' + (kind === "reviews" || kind === "merch" ? "grid-cards" : "list") + '">' + (rows || '<p class="kicker">Още няма нищо тук.</p>') + "</div>" + pager,
+  });
+}
+
+/* продуктова страница (мърч) — e-shop стил, за да не дава 404 при директно зареждане/refresh */
+function seoMerchPage(it, origin) {
+  const canon = origin + "/produkt/" + slugify(it.t) + "-" + idTail(it.id);
+  const im = it.img ? origin + "/img/m/" + encodeURIComponent(it.id) : "";
+  const sizes = Array.isArray(it.sizes) ? it.sizes : [];
+  const body =
+    '<p class="shop-crumbs"><a href="/">Начало</a> › <a href="/march">Мърч</a> › ' + escHtml(it.t) + "</p>" +
+    '<div class="shop-grid">' +
+    '<div class="shop-frame">' + (im ? '<img src="' + escHtml(im) + '" alt="' + escHtml(it.t) + '">' : "") + "</div>" +
+    '<div class="shop-panel"><h1>' + escHtml(it.t) + "</h1>" +
+    '<div class="shop-stockline"><span class="shop-stockdot' + (it.on ? "" : " out") + '"></span>' +
+    '<span class="shop-stocktxt' + (it.on ? "" : " out") + '">' + (it.on ? "В наличност" : "Изчерпано") + "</span></div>" +
+    '<p class="shop-price">' + escHtml(String(it.price || 0)) + " €</p>" +
+    (it.lead ? '<p class="shop-desc">' + escHtml(it.lead) + "</p>" : "") +
+    (sizes.length ? '<p class="kicker">Размери</p><p style="margin:0 0 24px">' + escHtml(sizes.join(" · ")) + "</p>" : "") +
+    (it.on
+      ? '<a class="shop-cta" href="mailto:?subject=' + encodeURIComponent("Поръчка: " + it.t) + '">Поръчай по имейл</a>'
+      : '<span class="shop-cta" aria-disabled="true">Изчерпано</span>') +
+    "</div></div>" +
+    '<div class="shop-lower"><div><h2>Описание</h2><div class="prose">' +
+    (it.body ? seoBody(it.body) : it.lead ? "<p>" + escHtml(it.lead) + "</p>" : "<p>Няма допълнително описание.</p>") +
+    "</div></div></div>";
+  return seoShell({
+    title: it.t + " | Мърч — Men In A Movie",
+    desc: it.lead || it.t,
+    canon, image: im || origin + "/og.jpg", ogType: "product",
+    body,
   });
 }
 
@@ -1284,18 +1425,25 @@ function calWords(v) {
     lede: "Всичко ново по " + v.name + ", което се пуска в България, с датата до всяко заглавие.",
   };
 }
-function calRow(it) {
-  const bits = [CAL_KIND_LABEL[it.kind] || "", it.platform || "", CAL_SUB_LABEL[it.sub] || "",
-                it.sub === "episode" && it.season && it.episode ? "S" + it.season + " · E" + it.episode : "",
-                it.place || ""].filter(Boolean);
-  return '<li><a href="' + seoUrl("calendar", it) + '">' + escHtml(it.t) + "</a>" +
-    "<small>" + escHtml(seoDateBg(it.when) + (bits.length ? " · " + bits.join(" · ") : "")) + "</small></li>";
+function calRow(it, origin) {
+  const im = it.poster || it.backdrop || "";
+  const tab1 = CAL_KIND_LABEL[it.kind] || (it.platform || "Movie calendar");
+  const tab2 = CAL_SUB_LABEL[it.sub] || (it.sub === "episode" && it.season && it.episode ? "S" + it.season + " · E" + it.episode : "");
+  const past = it.when < ymd(new Date());
+  const formatTxt = it.kind === "event" ? "Събитие" : it.kind === "stream" ? (it.sub ? "Сериал" : "Филм") : "По кината";
+  return '<a class="calcard" href="' + seoUrl("calendar", it) + '"><div class="calcard-art">' +
+    (im && /^https?:/.test(im) ? '<img src="' + escHtml(im) + '" alt="' + escHtml(it.t) + '" loading="lazy">' : "") +
+    '<span class="calcard-tab">' + escHtml(tab1) + "</span>" +
+    (tab2 ? '<span class="calcard-tab2">' + escHtml(tab2) + "</span>" : "") +
+    '<span class="calcard-when">' + escHtml(past ? "вече е налично" : seoDateBg(it.when)) + "</span>" +
+    '</div><div class="cbody"><h3>' + escHtml(it.t) + '</h3>' +
+    '<p class="kicker">' + escHtml([it.platform, formatTxt].filter(Boolean).join(" · ")) + "</p></div></a>";
 }
 function calByMonth(items) {
   const order = [], group = {};
   for (const it of items) { const ym = it.when.slice(0, 7); if (!group[ym]) { group[ym] = []; order.push(ym); } group[ym].push(it); }
   return order.map((ym) =>
-    "<h2>" + escHtml(calMonthName(ym)) + "</h2><ul>" + group[ym].map(calRow).join("") + "</ul>").join("");
+    "<h2>" + escHtml(calMonthName(ym)) + '</h2><div class="grid-cards">' + group[ym].map((it) => calRow(it)).join("") + "</div>").join("");
 }
 function calOtherViews(views, currentSlug) {
   const rest = views.filter((v) => v.slug !== currentSlug);
@@ -1362,7 +1510,7 @@ function calListPage(data, origin, view) {
     '<p class="meta">' + items.length + " заглавия · обновено " + escHtml(seoDateBg(today)) + "</p>" +
     '<p class="lede">' + escHtml(w.lede) + "</p>" +
     '<div class="rel" style="border:0;margin:0;padding:0">' +
-    (items.length ? (view && view.type === "month" ? "<ul>" + items.map(calRow).join("") + "</ul>" : calByMonth(items))
+    (items.length ? (view && view.type === "month" ? '<div class="grid-cards">' + items.map((it) => calRow(it)).join("") + "</div>" : calByMonth(items))
                   : "<p>Точно сега няма обявени дати. Върни се след ден-два — календарът се обновява сам.</p>") +
     "</div>" +
     '<div class="btns" style="margin-top:34px"><a class="btn gold" href="/#kalendar">Виж календара на сайта</a>' +
@@ -1794,6 +1942,18 @@ async function handleRequest(request, env, ctx) {
       }
     }
 
+    /* трейлър/резюме/оценка за конкретен филм или епизод — за клиентската страница на календарен елемент */
+    if (path === "/api/tmdb-extra" && request.method === "GET") {
+      const media = url.searchParams.get("media") === "movie" ? "movie" : "tv";
+      const tmdbId = url.searchParams.get("id") || "";
+      const season = url.searchParams.get("season") || "";
+      const episode = url.searchParams.get("episode") || "";
+      const out = await tmdbExtra(env, media, tmdbId, season, episode);
+      return new Response(JSON.stringify(out), {
+        headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=21600" },
+      });
+    }
+
     /* обновяване на календара — ръчно от админа */
     if (path === "/api/calendar/sync" && request.method === "POST") {
       const data = (await stored(env)) || {};
@@ -1890,7 +2050,7 @@ async function handleRequest(request, env, ctx) {
         if (r.status === 200) {
           const out = new Response(r.body, r);
           out.headers.set("content-type", "text/html; charset=utf-8");
-          out.headers.set("cache-control", "no-cache, must-revalidate");
+          out.headers.set("cache-control", "no-store");
           out.headers.set("x-robots-tag", "noindex, nofollow");
           return out;
         }
@@ -2004,6 +2164,23 @@ async function handleRequest(request, env, ctx) {
       }
     }
 
+    /* продукт от мърча: /produkt/teniska-mim-classic-m1 */
+    if (path.startsWith("/produkt/")) {
+      const seg = path.split("/").filter(Boolean);
+      if (seg.length === 2) {
+        const data = (await stored(env)) || {};
+        const slug = decodeURIComponent(seg[1]).toLowerCase();
+        const tail = slug.split("-").pop();
+        const list = Array.isArray(data.merch) ? data.merch : [];
+        const it = list.find((x) => x && (x.status || "published") === "published" &&
+          (idTail(x.id) === tail || String(x.id).toLowerCase() === tail));
+        if (it) return new Response(seoMerchPage(it, url.origin), {
+          headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" },
+        });
+      }
+      return Response.redirect(url.origin + "/march", 302);
+    }
+
     /* истинска страница за всеки материал: /revyu/dyun-chast-vtora-r1 */
     {
       const seg = path.split("/").filter(Boolean);
@@ -2014,7 +2191,7 @@ async function handleRequest(request, env, ctx) {
         if (!it) return Response.redirect(url.origin + (kind === "calendar" ? "/kalendar" : "/#" + SEO_ANCHOR[kind]), 302);
         const good = seoUrl(kind, it);
         if (path !== good) return Response.redirect(url.origin + good, 301);
-        return new Response(seoItemPage(kind, it, data, url.origin), {
+        return new Response(await seoItemPage(kind, it, data, url.origin, env), {
           headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" },
         });
       }
