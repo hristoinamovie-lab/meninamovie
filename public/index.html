@@ -112,6 +112,11 @@ section{margin-top:46px}
 .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .filters button{background:none;border:1px solid var(--line);color:var(--tx2);font-family:Oswald,sans-serif;font-size:12px;letter-spacing:.07em;text-transform:uppercase;padding:6px 13px;cursor:pointer}
 .filters button.on{background:var(--y);border-color:var(--y);color:var(--black)}
+.filters.sub{margin-top:-6px;align-items:center}
+.filters.sub:empty{margin:0}
+.cal-plat,.cal-media{display:flex;gap:8px;flex-wrap:wrap}
+.cal-media{padding-left:14px;border-left:1px solid var(--line)}
+.cal-media button{opacity:.85}
 .cal-when{font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--y)}
 .pill{display:inline-block;background:var(--y);color:var(--black);font-family:Oswald,sans-serif;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;margin-top:6px}
 
@@ -213,6 +218,19 @@ footer a:hover{color:var(--y)}
 .sbtn:hover{background:rgba(0,0,0,.08)}
 .btn-cal{display:inline-block;background:var(--black);color:var(--y);font-family:Oswald,sans-serif;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:9px 16px;white-space:nowrap}
 .btn-cal:hover{background:#000;color:#ffd84a}
+.hmenu{display:none;width:38px;height:38px;border:1px solid rgba(0,0,0,.35);background:none;color:var(--black);cursor:pointer;place-items:center;flex:none;margin-left:auto}
+.hmenu:hover{background:rgba(0,0,0,.08)}
+@media(max-width:900px){
+  .top{position:relative}
+  .bar{flex-wrap:nowrap}
+  .hmenu{display:grid}
+  .hbtns{display:none;position:absolute;top:100%;left:0;right:0;margin-left:0;flex-direction:column;align-items:stretch;gap:0;background:var(--y);border-top:1px solid rgba(0,0,0,.15);padding:6px 20px 18px;box-shadow:0 12px 20px rgba(0,0,0,.15);z-index:40}
+  .hbtns.open{display:flex}
+  .hbtns nav.main{flex-direction:column;gap:0;width:100%}
+  .hbtns nav.main a{padding:12px 2px;border-bottom:1px solid rgba(0,0,0,.1)}
+  .hbtns .sbtn{align-self:flex-start;margin-top:12px}
+  .hbtns .btn-cal{margin-top:12px;text-align:center}
+}
 
 /* ---------- секционни заглавия ---------- */
 .s-head{align-items:flex-end;border-bottom:0;margin-bottom:16px;padding-bottom:0}
@@ -360,7 +378,7 @@ footer a:hover{color:#000;text-decoration:underline}
 
 /* ---------- статия (новини/зад кадър/подкаст/мърч): текст вляво, снимка 1200×675 вдясно ---------- */
 .art-hd:has(.art-media){min-height:33vh;display:flex;align-items:center}
-.art-hd:has(.art-media) .wrap{width:100%}
+.art-hd:has(.art-media) .wrap{width:100%;max-width:var(--wrap)}
 .art-split{flex-wrap:wrap;align-items:stretch}
 .art-left{flex:1 1 420px;min-width:0;display:flex;flex-direction:column}
 .art-left .art-lede{color:rgba(0,0,0,.75);border-left-color:rgba(0,0,0,.35);font-size:16px;margin:14px 0 0}
@@ -377,7 +395,7 @@ footer a:hover{color:#000;text-decoration:underline}
 .art-left .btns .btn.like.on{color:var(--black);border-color:var(--black);background:rgba(0,0,0,.08)}
 .art-left .btns .btn.gold{background:var(--black);border-color:var(--black);color:var(--y)}
 .art-left .btns .btn.gold:hover{background:#000}
-.art-media{flex:1 1 380px;min-width:280px;max-width:560px;aspect-ratio:16/9;object-fit:cover;background:var(--card)}
+.art-media{flex:1 1 380px;min-width:280px;max-width:560px;aspect-ratio:16/9;object-fit:contain;background:var(--card)}
 .art-media.embed{margin:0;background:#000}
 @media(max-width:900px){
   .art-hd:has(.art-media){min-height:0;display:block;padding:24px 0}
@@ -413,7 +431,10 @@ footer a:hover{color:#000;text-decoration:underline}
       </svg>
       <span class="btxt"><b>Men In A Movie</b><i id="tagline"></i></span>
     </a>
-    <div class="hbtns">
+    <button class="hmenu" id="btnMenu" aria-label="Меню" aria-expanded="false">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <div class="hbtns" id="hbtns">
       <nav class="main" id="nav"></nav>
       <button class="sbtn" id="btnSearch" aria-label="Търсене" title="Търсене (/)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
@@ -724,13 +745,13 @@ function home(){
      '</div></div></section>';
 
   h+='<section class="wrap" id="kalendar"><div class="s-head"><h2>Movie calendar</h2></div>'+
-     '<div class="filters" id="calFilters"></div><div class="grid4" id="calGrid"></div>'+
+     '<div class="filters" id="calFilters"></div><div class="filters sub" id="calSubFilters"></div><div class="grid4" id="calGrid"></div>'+
      '<button class="more" data-more="calendar">виж повече</button></section>';
 
   document.getElementById("app").innerHTML=h;
   renderNews(1); renderRev(1); renderCal("all",1);
 }
-var newsPages=1, revPages=1, calPages=1, calView="all";
+var newsPages=1, revPages=1, calPages=1, calView="all", calPlatform="", calMedia="";
 function renderNews(p){
   newsPages=p; var nw=items("news"), lead=nw[0], rest=nw.slice(1,1+4+(p-1)*8);
   var h="";
@@ -753,18 +774,44 @@ function renderRev(p){
 function calList(view){
   var all=items("calendar").filter(function(c){return (c.when||"")>=todayISO();});
   all.sort(function(a,b){return (a.when||"").localeCompare(b.when||"");});
-  if(view==="all") return all;
-  return all.filter(function(c){return (c.kind||"")===view;});
+  if(view!=="all") all=all.filter(function(c){return (c.kind||"")===view;});
+  if(view==="stream"){
+    if(calPlatform) all=all.filter(function(c){return (c.platform||"")===calPlatform;});
+    if(calMedia==="movie") all=all.filter(function(c){return !c.sub;});
+    if(calMedia==="series") all=all.filter(function(c){return !!c.sub;});
+  }
+  return all;
+}
+function calStreamPlatforms(){
+  var all=items("calendar").filter(function(c){return (c.when||"")>=todayISO()&&c.kind==="stream";});
+  var seen={}, out=[];
+  all.forEach(function(c){var p=c.platform||"Друго"; if(!seen[p]){seen[p]=0;out.push(p);} seen[p]++;});
+  return out.map(function(p){return [p,seen[p]];});
 }
 function todayISO(){var d=new Date();return d.toISOString().slice(0,10);}
 function renderCal(view,p){
   calView=view; calPages=p;
+  if(view!=="stream"){ calPlatform=""; calMedia=""; }
   var kinds=[["all","Всичко"],["cinema","По кината"],["stream","Стрийминг"],["event","Събития"]];
   var f=document.getElementById("calFilters");
   if(f) f.innerHTML=kinds.map(function(kv){
     var n=calList(kv[0]).length; if(!n&&kv[0]!=="all")return "";
     return '<button data-cal="'+kv[0]+'" class="'+(view===kv[0]?"on":"")+'">'+kv[1]+' ('+n+')</button>';}).join("")+
     '<a class="all" href="/kalendar" data-nav style="margin-left:auto">виж всички</a>';
+  var sf=document.getElementById("calSubFilters");
+  if(sf){
+    if(view==="stream"&&calStreamPlatforms().length){
+      var pls=calStreamPlatforms();
+      sf.innerHTML='<div class="cal-plat">'+
+        '<button data-platform="" class="'+(calPlatform===""?"on":"")+'">Всички платформи</button>'+
+        pls.map(function(pv){return '<button data-platform="'+esc(pv[0])+'" class="'+(calPlatform===pv[0]?"on":"")+'">'+esc(pv[0])+' ('+pv[1]+')</button>';}).join("")+
+        '</div><div class="cal-media">'+
+        '<button data-media="" class="'+(calMedia===""?"on":"")+'">Всичко</button>'+
+        '<button data-media="movie" class="'+(calMedia==="movie"?"on":"")+'">Филми</button>'+
+        '<button data-media="series" class="'+(calMedia==="series"?"on":"")+'">Сериали</button>'+
+        '</div>';
+    } else sf.innerHTML="";
+  }
   var list=calList(view), show=list.slice(0,8*p);
   document.getElementById("calGrid").innerHTML=show.map(function(i){return card("calendar",i);}).join("");
   var btn=document.querySelector('[data-more="calendar"]');
@@ -1005,7 +1052,11 @@ document.addEventListener("click",function(e){
     if(w==="calendar") renderCal(calView,calPages+1);
     return; }
   var c=e.target.closest?e.target.closest("[data-cal]"):null;
-  if(c){ renderCal(c.getAttribute("data-cal"),1); }
+  if(c){ renderCal(c.getAttribute("data-cal"),1); return; }
+  var pf=e.target.closest?e.target.closest("[data-platform]"):null;
+  if(pf){ calPlatform=pf.getAttribute("data-platform"); renderCal("stream",1); return; }
+  var md=e.target.closest?e.target.closest("[data-media]"):null;
+  if(md){ calMedia=md.getAttribute("data-media"); renderCal("stream",1); return; }
 });
 window.addEventListener("popstate",route);
 window.addEventListener("hashchange",function(){ if(location.protocol==="file:") route(); });
@@ -1083,9 +1134,27 @@ function closeSearch(){
   document.getElementById("ovl").classList.remove("open");
   document.getElementById("searchBox").classList.remove("open");
 }
-document.getElementById("btnSearch").addEventListener("click",openSearch);
+document.getElementById("btnSearch").addEventListener("click",function(){closeMenu();openSearch();});
 document.getElementById("searchClose").addEventListener("click",closeSearch);
-document.getElementById("ovl").addEventListener("click",closeSearch);
+document.getElementById("ovl").addEventListener("click",function(){closeSearch();closeMenu();});
+
+/* ---------- мобилно меню (сандвич) ---------- */
+function openMenu(){
+  document.getElementById("hbtns").classList.add("open");
+  document.getElementById("btnMenu").setAttribute("aria-expanded","true");
+  document.getElementById("ovl").classList.add("open");
+}
+function closeMenu(){
+  document.getElementById("hbtns").classList.remove("open");
+  document.getElementById("btnMenu").setAttribute("aria-expanded","false");
+  document.getElementById("ovl").classList.remove("open");
+}
+document.getElementById("btnMenu").addEventListener("click",function(){
+  document.getElementById("hbtns").classList.contains("open")?closeMenu():openMenu();
+});
+document.getElementById("hbtns").addEventListener("click",function(e){
+  if(e.target.closest&&e.target.closest("a"))closeMenu();
+});
 document.getElementById("searchInput").addEventListener("input",function(e){renderSearchResults(e.target.value);});
 document.addEventListener("click",function(e){
   var h=e.target.closest?e.target.closest("[data-searchhit]"):null;
@@ -1093,6 +1162,7 @@ document.addEventListener("click",function(e){
 });
 document.addEventListener("keydown",function(e){
   if(e.key==="Escape"&&document.getElementById("searchBox").classList.contains("open")){ closeSearch(); return; }
+  if(e.key==="Escape"&&document.getElementById("hbtns").classList.contains("open")){ closeMenu(); return; }
   var tag=(document.activeElement&&document.activeElement.tagName||"").toLowerCase();
   if(e.key==="/"&&tag!=="input"&&tag!=="textarea"){ e.preventDefault(); openSearch(); }
 });
