@@ -753,26 +753,35 @@ header.top nav a{color:#141210;font-size:12px;font-weight:700;letter-spacing:.13
 header.top nav a:hover{border-bottom-color:#141210}
 .cal-btn{background:#141210;color:#F6C92B;font-size:12px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:10px 16px}
 
-/* ---- жълта лента на статията ---- */
-.band{background:#F6C92B;color:#141210;padding:22px 0 26px}
-.band .in{display:flex;gap:26px;align-items:flex-start}
-.band .shot{flex:0 0 300px;max-width:44%}
-.band .shot img{width:100%}
-.band .shot.wide{flex:0 0 520px}
-.band .side{flex:1;min-width:0}
+/* ---- жълта лента на статията: текст/тагове/цитат/бутони вляво, снимка вдясно ---- */
+.crumbs{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.7;margin:0;padding-top:16px}
+.band{background:#F6C92B;color:#141210;padding:2px 0 26px}
+.band .in{display:flex;gap:26px;align-items:center;flex-wrap:wrap;min-height:30vh;padding-top:8px}
+.band .side{flex:1 1 380px;min-width:280px}
+.band .shot{flex:1 1 380px;min-width:280px;max-width:560px;aspect-ratio:16/9;background:#F6C92B;display:flex}
+.band .shot img{width:100%;height:100%;object-fit:contain;margin:auto}
+.band .shot.wide{flex:1 1 380px}
 .band .kick{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;opacity:.7}
-.band h1{margin:.18em 0 .3em;font-size:38px;line-height:1.02;font-family:Montserrat,system-ui,sans-serif;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:-.025em}
+.band h1{margin:.15em 0 .3em;font-size:30px;line-height:1.08;font-family:Montserrat,system-ui,sans-serif;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:-.02em}
 .band .facts{font-size:12px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;opacity:.85}
-.claps{display:flex;gap:5px;margin:12px 0 4px}
-.claps svg{width:22px;height:22px}
+.claps{display:flex;gap:5px;margin:10px 0 0}
+.claps svg{width:20px;height:20px}
+.band .tags{margin-top:14px}
+.band .tags .lbl{color:rgba(20,18,16,.55)}
+.band .tag{color:rgba(20,18,16,.6);border-color:rgba(20,18,16,.3)}
+.band a.tag:hover{border-color:#141210;color:#141210}
 .band .btns{margin-top:16px}
-.band .btn{background:#141210;color:#F6C92B;border-color:#141210}
-.band .btn:hover{background:#000}
+.band .btn{color:#141210;border-color:rgba(20,18,16,.35)}
+.band .btn:hover{border-color:#141210;background:rgba(20,18,16,.08)}
+.band .btn.like.on{border-color:#141210;color:#141210;background:rgba(20,18,16,.08)}
+.band .btn.gold{background:#141210;border-color:#141210;color:#F6C92B}
+.band .btn.gold:hover{background:#000}
+@media(max-width:900px){.band .in{min-height:0;padding:20px 0}}
 
 /* ---- тяло ---- */
 main{padding-bottom:30px}
-.col{max-width:820px;margin:0 auto;padding:30px 22px 0}
-.lede{font-size:20px;line-height:1.55;border-left:4px solid #F6C92B;padding-left:18px;margin:0 0 26px;color:#EDEAE2}
+.col{max-width:1180px;margin:0 auto;padding:30px 22px 0}
+.lede{font-size:16px;line-height:1.5;border-left:4px solid rgba(20,18,16,.35);padding-left:16px;margin:14px 0 0;color:rgba(20,18,16,.75)}
 .col h2{font-family:Montserrat,system-ui,sans-serif;font-weight:900;font-style:italic;text-transform:uppercase;font-size:23px;margin:1.7em 0 .5em;letter-spacing:-.01em}
 .col p{margin:0 0 1.15em}
 .col ul{padding-left:20px}
@@ -961,20 +970,20 @@ function seoItemPage(kind, it, data, origin) {
   let title, metaBits = [], lede = "", extra = "";
   if (kind === "reviews") {
     title = it.t + (it.y ? " (" + it.y + ")" : "") + " — ревю | Men In A Movie";
-    metaBits = ["Ревю", it.g, it.y, it.s ? it.s + "/5 клапи" : "", it.mins ? it.mins + " мин." : ""];
+    metaBits = [SEO_LABEL[kind], it.y, it.g, it.mins ? it.mins + " мин" : ""];
     lede = it.lead || it.verdict || "";
     if (it.imdb) extra += '<a class="btn" rel="nofollow" href="' + escHtml(/^https?:/.test(it.imdb) ? it.imdb : "https://www.imdb.com/title/" + it.imdb + "/") + '">IMDb</a>';
   } else if (kind === "news") {
     title = it.t + " | Men In A Movie";
-    metaBits = [it.cat || it.tag || "Новини", seoDateBg(date)];
+    metaBits = [SEO_LABEL[kind], seoDateBg(date), it.cat || it.tag];
     lede = it.lead || it.p || it.desc || "";
   } else if (kind === "craft") {
     title = it.t + " | Зад кадър — Men In A Movie";
-    metaBits = ["Зад кадър", it.cat || it.tag, seoDateBg(date), it.role];
+    metaBits = [SEO_LABEL[kind], seoDateBg(date), it.cat || it.tag, [it.guest, it.role].filter(Boolean).join(", ")];
     lede = it.lead || it.p || it.desc || "";
   } else if (kind === "episodes") {
     title = "Епизод " + (it.n || "") + ": " + it.t + " | Подкаст Men In A Movie";
-    metaBits = ["Подкаст", it.n ? "Епизод " + it.n : "", seoDateBg(date), it.cat || it.tag];
+    metaBits = [SEO_LABEL[kind], seoDateBg(date), it.cat || it.tag, it.n ? "Епизод " + it.n : ""];
     lede = it.desc || "";
   } else {
     title = it.t + (it.when ? " — " + seoDateBg(it.when) : "") + " | Movie calendar";
@@ -1022,9 +1031,17 @@ function seoItemPage(kind, it, data, origin) {
   const poster = kind === "reviews" || kind === "calendar";
   const shotImg = image && !/\/og\.jpg$/.test(image)
     ? '<div class="shot' + (poster ? "" : " wide") + '"><img src="' + escHtml(image) + '" alt="' + escHtml(it.t) + '" onerror="this.parentNode.remove()"></div>'
-    : "";
+    : '<div class="shot' + (poster ? "" : " wide") + '"></div>';
 
-  /* бутоните в жълтата лента */
+  /* „Чуй повече“ — епизодът, в който сме говорили за материала (не и за календара — там video е трейлърът) */
+  let listen = "";
+  if (kind !== "episodes" && kind !== "calendar" && it.video) listen = '<a class="btn gold" rel="nofollow" href="' + escHtml(it.video) + '">Чуй повече</a> ';
+  if (kind === "calendar") {
+    const rv = calReviewFor(data, it);
+    if (rv) extra += '<a class="btn" href="' + escHtml(seoUrl("reviews", rv)) + '">Прочети ревюто</a> ';
+  }
+
+  /* бутоните в жълтата лента — трейлър, чуй повече, харесай, сподели и т.н. */
   let bandBtns = "";
   const trailer = kind === "calendar" ? (it.video || "") : (it.trailer || "");
   if (trailer) bandBtns += '<a class="btn" rel="nofollow" href="' + escHtml(trailer) + '">Виж трейлъра</a> ';
@@ -1036,32 +1053,22 @@ function seoItemPage(kind, it, data, origin) {
   if (kind === "merch") bandBtns += '<a class="btn" href="/march">Виж мърча</a> ';
 
   const band =
-    '<div class="band"><div class="wrap"><div class="in">' + shotImg +
-    '<div class="side"><p class="kick">' + escHtml(calKicker) + "</p>" +
+    '<div class="band"><div class="wrap"><p class="crumbs">Начало › ' + escHtml(SEO_LABEL[kind]) + "</p>" +
+    '<div class="in"><div class="side"><p class="facts">' + escHtml((kind === "calendar" ? [calKicker] : metaBits).filter(Boolean).join(" · ")) + "</p>" +
     "<h1>" + escHtml(it.t) + "</h1>" +
     (kind === "reviews" ? clapsHTML(it.s) : "") +
-    '<p class="facts">' + escHtml(metaBits.filter(Boolean).join(" • ")) + "</p>" +
-    (bandBtns ? '<div class="btns">' + bandBtns + "</div>" : "") +
-    "</div></div></div></div>";
-
-  /* „Чуй повече“ — епизодът, в който сме говорили за материала (не и за календара — там video е трейлърът) */
-  let listen = "";
-  if (kind !== "episodes" && kind !== "calendar" && it.video) listen = '<a class="btn gold" rel="nofollow" href="' + escHtml(it.video) + '">Чуй повече</a>';
-  if (kind === "calendar") {
-    const rv = calReviewFor(data, it);
-    if (rv) extra += '<a class="btn" href="' + escHtml(seoUrl("reviews", rv)) + '">Прочети ревюто</a>';
-  }
+    tagChipsHTML(it, bigTags) +
+    (lede ? '<p class="lede">' + escHtml(plain(lede, 400)) + "</p>" : "") +
+    '<div class="btns">' + likeHTML() + SHARE_BTN + listen + extra + bandBtns +
+      (kind === "calendar" ? '<a class="btn" href="/kalendar">Целият календар</a>' : "") +
+    "</div>" +
+    "</div>" + shotImg + "</div></div></div>";
 
   const html = band +
     '<div class="col">' +
-    (lede ? '<p class="lede">' + escHtml(plain(lede, 400)) + "</p>" : "") +
     seoBody(bodyTxt) +
     (it.guest ? '<p class="meta" style="margin-top:22px">Гост: ' + escHtml(it.guest) + (it.role ? " · " + escHtml(it.role) : "") + "</p>" : "") +
     (it.authorName ? '<p class="sig">— ' + escHtml(it.authorName) + "</p>" : "") +
-    tagChipsHTML(it, bigTags) +
-    '<div class="btns">' + likeHTML() + SHARE_BTN + listen + extra +
-      (kind === "calendar" ? '<a class="btn" href="/kalendar">Целият календар</a>' : "") +
-    "</div>" +
     (kind === "calendar" ? calItemLinks(data, it) : "") +
     "</div>" +
     seoRelated(data, kind, it, 4);
