@@ -5,7 +5,7 @@
 "vars": { "ADMIN_KEY": "M1M_2026" },
   "assets": {
     "directory": "./public",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
     "run_worker_first": true
   },
   "kv_namespaces": [
