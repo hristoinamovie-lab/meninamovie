@@ -1832,7 +1832,7 @@ async function handleRequest(request, env, ctx) {
     if (path === "/admin" || path === "/admin/") {
       const a = env.ASSETS || env.assets;
       if (a) {
-        const r = await a.fetch(new Request(new URL("/admin.html", url).toString(), request));
+        const r = await a.fetch(new Request(new URL("/admin", url).toString(), request));
         if (r.status === 200) {
           const out = new Response(r.body, r);
           out.headers.set("content-type", "text/html; charset=utf-8");
