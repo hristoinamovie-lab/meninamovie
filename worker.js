@@ -860,6 +860,7 @@ function seoShell(opts) {
     '<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">' +
     (opts.keywords ? '<meta name="keywords" content="' + escHtml(opts.keywords) + '">' : "") +
     '<link rel="canonical" href="' + escHtml(canon) + '">' +
+    '<link rel="alternate" type="application/rss+xml" title="Men In A Movie — RSS" href="/feed.xml">' +
     '<meta property="og:type" content="' + (ogType || "article") + '">' +
     '<meta property="og:site_name" content="Men In A Movie">' +
     '<meta property="og:locale" content="bg_BG">' +
@@ -1432,6 +1433,36 @@ function seoSitemap(data, origin) {
     rows.join("\n") + "\n</urlset>\n";
 }
 
+/* RSS carta за читатели — новини, ревюта, зад кадър, подкаст, най-новото отгоре */
+function seoFeed(data, origin) {
+  const items = seoAll(data)
+    .filter((x) => x.kind !== "calendar")
+    .map((x) => Object.assign({ date: seoDate(x.kind, x.it) }, x))
+    .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+    .slice(0, 40);
+  const rows = items.map((x) => {
+    const loc = origin + x.url;
+    const pub = /^\d{4}-\d{2}-\d{2}$/.test(x.date) ? new Date(x.date + "T12:00:00Z").toUTCString() : "";
+    return "<item>" +
+      "<title>" + escHtml(x.it.t) + "</title>" +
+      "<link>" + escHtml(loc) + "</link>" +
+      '<guid isPermaLink="true">' + escHtml(loc) + "</guid>" +
+      (pub ? "<pubDate>" + pub + "</pubDate>" : "") +
+      "<description>" + escHtml(seoDesc(x.it, 300)) + "</description>" +
+      "<category>" + escHtml(SEO_LABEL[x.kind] || x.kind) + "</category>" +
+      "</item>";
+  });
+  return '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<rss version="2.0"><channel>' +
+    "<title>Men In A Movie</title>" +
+    "<link>" + origin + "/</link>" +
+    "<description>Български канал и сайт за комерсиално кино — ревюта, подкаст, новини от индустрията и рубрика „Зад кадър“.</description>" +
+    "<language>bg-BG</language>" +
+    '<atom:link xmlns:atom="http://www.w3.org/2005/Atom" href="' + origin + '/feed.xml" rel="self" type="application/rss+xml"/>' +
+    rows.join("") +
+    "</channel></rss>\n";
+}
+
 /* Търсачките и ботовете, които ЦИТИРАТ, минават. Чисто обучаващите — не. */
 function isTestEnv(env) {
   return String((env && env.MIM_ENV) || "").toLowerCase() === "test";
@@ -1883,6 +1914,7 @@ async function handleRequest(request, env, ctx) {
         "- [Мърч](" + o + "/march): каталог с продукти на канала\n\n" +
         "## Данни\n" +
         "- Пълна карта на адресите: " + o + "/sitemap.xml\n" +
+        "- RSS: " + o + "/feed.xml\n" +
         "- Език: български (bg-BG)\n" +
         "- Контакт: hristoinamovie@gmail.com\n";
       return new Response(txt, {
@@ -1903,6 +1935,14 @@ async function handleRequest(request, env, ctx) {
       const data = (await stored(env)) || {};
       return new Response(seoNewsSitemap(data, url.origin), {
         headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=900" },
+      });
+    }
+
+    /* RSS — за читатели с feed reader и агрегатори */
+    if (path === "/feed.xml" || path === "/rss.xml") {
+      const data = (await stored(env)) || {};
+      return new Response(seoFeed(data, url.origin), {
+        headers: { "content-type": "application/rss+xml; charset=utf-8", "cache-control": "public, max-age=900" },
       });
     }
 
