@@ -75,7 +75,7 @@ a{color:inherit;text-decoration:none}
 .a-warn{color:#e0b34a;font-size:12px;margin-top:5px}
 .a-img{border:1px dashed var(--line);padding:10px;text-align:center;color:var(--tx2);font-size:13px}
 .a-img img{max-height:170px;margin:0 auto 8px;object-fit:contain}
-.tagbox{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.tagbox{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;max-height:132px;overflow-y:auto;padding-right:4px}
 .tagbox span{border:1px solid var(--line);color:var(--y);font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;cursor:pointer}
 .tagbox span:hover{border-color:var(--y)}
 .a-tools{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
@@ -403,6 +403,17 @@ function imgField(label,name,val,shape){
     (val?'<button class="a-btn dan" data-act="rmimg" data-rmf="'+name+'">Махни</button>':'')+
     '</div><p class="a-note">Смалява се автоматично и се реже от центъра.</p></div>';
 }
+function tagKeysByUsage(){
+  var counts={};
+  ["reviews","news","craft","episodes","calendar"].forEach(function(k){
+    (D[k]||[]).forEach(function(it){(it.tags||[]).forEach(function(s){counts[s]=(counts[s]||0)+1;});});
+  });
+  var lab=D.tagLabels||{};
+  return Object.keys(lab).sort(function(a,b){
+    var d=(counts[b]||0)-(counts[a]||0);
+    return d!==0?d:lab[a].localeCompare(lab[b]);
+  });
+}
 function editor(){
   var k=A.editKind, it=A.edit, T=TYPES[k];
   var h='<div class="a-bar"><button class="a-btn" data-act="back">← Назад</button>'+
@@ -487,9 +498,9 @@ function editor(){
   if(k!=="merch"){
     h+='<div class="a-f"><label>Тагове — латиница, през запетая</label>'+
       '<input data-f="tagsTxt" value="'+esc2((it.tags||[]).join(", "))+'">'+
-      '<div class="tagbox">'+Object.keys(D.tagLabels||{}).sort().slice(0,40).map(function(s){
+      '<div class="tagbox">'+tagKeysByUsage().map(function(s){
         return '<span data-act="addtag" data-tag="'+esc2(s)+'">'+esc2(D.tagLabels[s])+'</span>';}).join("")+'</div>'+
-      '<p class="a-note">Тема със страница се появява при два материала с един и същ таг.</p>'+
+      '<p class="a-note">Тема със страница се появява при два материала с един и същ таг. Най-използваните тагове са отгоре.</p>'+
       '<p class="a-warn" id="tagWarn"></p></div>';
   }
   h+='<div class="a-grid">'+

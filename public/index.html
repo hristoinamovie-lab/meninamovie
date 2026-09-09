@@ -456,6 +456,27 @@ footer a:hover{color:#000;text-decoration:underline}
   .art-hd:has(.art-media){min-height:0;display:block;padding:24px 0}
   .art-media{max-width:none;width:100%}
 }
+
+/* ---------- статия (календар/ревю): без жълта лента, вертикален постер вдясно ---------- */
+.art-hd.no-band{background:transparent;color:var(--tx)}
+.art-hd.no-band .art-media{aspect-ratio:2/3;object-fit:cover;flex:0 0 260px;max-width:280px;min-width:0;margin-left:auto;align-self:flex-start;background:var(--card)}
+.art-hd.no-band .art-left .art-lede{color:var(--tx2);border-left-color:var(--line)}
+.art-hd.no-band .art-left .chip{color:var(--tx2);border-color:var(--line)}
+.art-hd.no-band .art-left .tags a{color:var(--y);border-color:var(--line)}
+.art-hd.no-band .art-left .tag-off{color:var(--tx2);border-color:var(--line)}
+.art-hd.no-band .art-left .tags a:hover{background:var(--y);color:var(--black);border-color:var(--y)}
+.art-hd.no-band .art-left .btns .btn{color:var(--tx);border-color:var(--line)}
+.art-hd.no-band .art-left .btns .btn:hover{border-color:var(--y);color:var(--y)}
+.art-hd.no-band .art-left .btns .btn.like.on{color:var(--y);border-color:var(--y)}
+.art-hd.no-band .art-left .btns .btn.gold{background:var(--y);border-color:var(--y);color:var(--black)}
+.art-hd.no-band .art-left .btns .btn.gold:hover{background:#ffd84a}
+.art-hd.no-band .claps-big{font-size:0;text-align:center;margin:20px 0 0}
+.art-hd.no-band .claps-big .clapsrow{gap:6px}
+.art-hd.no-band .claps-big .clap{color:#6A6355;opacity:.55}
+.art-hd.no-band .claps-big .clap.on{color:var(--y);opacity:1}
+@media(max-width:900px){
+  .art-hd.no-band .art-media{width:180px;max-width:180px;flex:none;margin:0 auto}
+}
 .btns{display:flex;gap:9px;flex-wrap:wrap;margin-top:26px;align-items:center}
 .btns .btn{border:1px solid var(--line);background:none;color:var(--tx);font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:7px}
 .btns .btn:hover{border-color:var(--y);color:var(--y)}
@@ -1062,9 +1083,12 @@ function otherTags(cur){
 function article(kindKey,id){
   var it=items(kindKey).filter(function(x){return x.id===id;})[0];
   if(!it){ notFound(); return; }
-  var K=KIND[kindKey], p=picWide(kindKey,it), h="";
+  var K=KIND[kindKey], h="";
+  var noBand = kindKey==="calendar"||kindKey==="reviews";
+  var p = noBand ? (it.poster||"") : picWide(kindKey,it);
 
   /* единна лента за всички видове: текст+тагове+бутони вляво, хоризонтална снимка (1/3 екран) вдясно */
+  /* календар/ревю: без жълта лента, вертикален постер вдясно — виж noBand по-долу */
   var facts=[], extraHead="";
   if(kindKey==="calendar"){
     var past=String(it.when||"")<todayISO();
@@ -1073,7 +1097,7 @@ function article(kindKey,id){
     if(chips.length) extraHead='<div class="ep-meta">'+chips.map(function(x){return '<span class="chip">'+esc(x)+'</span>';}).join("")+'</div>';
   } else if(kindKey==="reviews"){
     facts=[K.label, it.y, it.g, it.mins?it.mins+" мин":""].filter(Boolean);
-    extraHead='<div class="claps-big">'+claps(it.s)+'</div>';
+    extraHead='<div class="claps-big">'+claps(it.s,26)+'</div>';
   } else {
     facts=[K.label];
     if(it.when) facts.push(dt(it.when));
@@ -1084,13 +1108,17 @@ function article(kindKey,id){
   var media = (kindKey==="episodes"&&ytId(it.yt))
     ? '<div class="embed art-media"><iframe src="https://www.youtube.com/embed/'+ytId(it.yt)+'" title="'+esc(it.t)+'" allowfullscreen loading="lazy"></iframe></div>'
     : (p?'<img class="art-media" src="'+esc(p)+'" alt="'+esc(it.t)+'">':'<div class="art-media"></div>');
-  h+='<div class="art-hd"><div class="wrap"><div class="crumbs">Начало › '+esc(K.label)+'</div>'+
+  var topInner = '<div class="facts">'+esc(facts.join(" · "))+'</div><h1>'+esc(it.t)+'</h1>';
+  if(kindKey==="reviews"){
+    topInner += (it.lead?'<div class="answer art-lede">'+esc(txt(it.lead))+'</div>':'')+extraHead;
+  } else {
+    topInner += extraHead+tagsHTML(it)+
+      (it.lead?'<div class="answer art-lede">'+esc(txt(it.lead))+'</div>':'')+
+      likeShareHTML(kindKey,it);
+  }
+  h+='<div class="art-hd'+(noBand?" no-band":"")+'"><div class="wrap"><div class="crumbs">Начало › '+esc(K.label)+'</div>'+
     '<div class="art-split">'+
-    '<div class="art-left"><div class="facts">'+esc(facts.join(" · "))+'</div><h1>'+esc(it.t)+'</h1>'+
-    extraHead+tagsHTML(it)+
-    (it.lead?'<div class="answer art-lede">'+esc(txt(it.lead))+'</div>':'')+
-    likeShareHTML(kindKey,it)+
-    '</div>'+media+
+    '<div class="art-left">'+topInner+'</div>'+media+
     '</div></div></div>';
 
   h+='<div class="art-body">';
@@ -1109,6 +1137,7 @@ function article(kindKey,id){
   if(kindKey==="episodes"&&it.sp) h+='<a class="btn" href="'+esc(it.sp)+'" target="_blank" rel="noopener">Слушай в Spotify</a>';
 
   if(it.authorName) h+='<div class="sign">— '+esc(it.authorName)+'</div>';
+  if(kindKey==="reviews") h+=likeShareHTML(kindKey,it)+tagsHTML(it);
 
   var rel=[]; (it.tags||[]).forEach(function(s){byTag(s).forEach(function(x){
     if(x.i.id!==it.id&&rel.filter(function(y){return y.i.id===x.i.id;}).length===0) rel.push(x);});});
