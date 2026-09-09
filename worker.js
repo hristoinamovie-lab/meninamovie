@@ -649,6 +649,14 @@ function tagChipsHTML(it, big) {
       : '<span class="tag">' + escHtml(t.name) + "</span>")).join("") + "</div>";
 }
 
+/* тагове от типа ![подпис](inline:N) → истинския адрес на снимката, пазена отделно в it.inlineImages */
+function resolveInlineImages(text, images) {
+  if (!images || !images.length) return text;
+  return String(text || "").replace(/\(inline:(\d+)\)/g, (m, idx) => {
+    const img = images[+idx];
+    return img && img.data ? "(" + img.data + ")" : m;
+  });
+}
 /* ---------- скромен markdown → html ---------- */
 function seoBody(txt) {
   const src = String(txt || "").replace(/\r/g, "");
@@ -664,6 +672,9 @@ function seoBody(txt) {
   for (const raw of src.split("\n")) {
     const line = raw.trim();
     if (!line) { if (list) { out.push("<ul>" + list.join("") + "</ul>"); list = null; } continue; }
+    const img = /^!\[([^\]]*)\]\(([^)\s]+)\)$/.exec(line);
+    if (img) { if (list) { out.push("<ul>" + list.join("") + "</ul>"); list = null; }
+      out.push('<figure><img src="' + esc(img[2]) + '" alt="' + esc(img[1]) + '" loading="lazy">' + (img[1] ? "<figcaption>" + esc(img[1]) + "</figcaption>" : "") + "</figure>"); continue; }
     const h = /^(#{2,4})\s+(.*)$/.exec(line);
     if (h) { if (list) { out.push("<ul>" + list.join("") + "</ul>"); list = null; }
       const lvl = Math.min(h[1].length + 1, 4); out.push("<h" + lvl + ">" + inline(h[2]) + "</h" + lvl + ">"); continue; }
@@ -1248,7 +1259,7 @@ async function seoItemPage(kind, it, data, origin, env) {
 
   const html = band +
     '<div class="col">' +
-    seoBody(bodyTxt) +
+    seoBody(resolveInlineImages(bodyTxt, it.inlineImages)) +
     (it.guest ? '<p class="meta" style="margin-top:22px">Гост: ' + escHtml(it.guest) + (it.role ? " · " + escHtml(it.role) : "") + "</p>" : "") +
     (kind === "reviews" ? '<div class="claps-big">' + clapsHTML(it.s) + "</div>" : "") +
     (it.authorName ? '<p class="sig">— ' + escHtml(it.authorName) + "</p>" : "") +
@@ -1375,7 +1386,7 @@ function seoMerchPage(it, origin) {
       : '<span class="shop-cta" aria-disabled="true">Изчерпано</span>') +
     "</div></div>" +
     '<div class="shop-lower"><div><h2>Описание</h2><div class="prose">' +
-    (it.body ? seoBody(it.body) : it.lead ? "<p>" + escHtml(it.lead) + "</p>" : "<p>Няма допълнително описание.</p>") +
+    (it.body ? seoBody(resolveInlineImages(it.body, it.inlineImages)) : it.lead ? "<p>" + escHtml(it.lead) + "</p>" : "<p>Няма допълнително описание.</p>") +
     "</div></div></div>";
   return seoShell({
     title: it.t + " | Мърч — Men In A Movie",
