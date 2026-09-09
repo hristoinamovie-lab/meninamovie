@@ -799,6 +799,8 @@ header.top nav a:hover{border-bottom-color:#141210}
 .band .facts{font-size:12px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;opacity:.85}
 .claps{display:flex;gap:5px;margin:10px 0 0}
 .claps svg{width:20px;height:20px}
+.claps-big{display:flex;gap:6px;justify-content:center;margin:32px 0 0}
+.claps-big svg{width:26px;height:26px}
 .band .tags{margin-top:14px}
 .band .tags .lbl{color:rgba(20,18,16,.55)}
 .band .tag{color:rgba(20,18,16,.6);border-color:rgba(20,18,16,.3)}
@@ -816,8 +818,6 @@ header.top nav a:hover{border-bottom-color:#141210}
 .band.no-band .shot{aspect-ratio:2/3;min-width:0;max-width:280px;flex:0 0 260px;align-self:flex-start;background:#141210}
 .band.no-band .shot img{object-fit:cover}
 .band.no-band .lede{color:#A6A196;border-left-color:#2A2723}
-.band.no-band .claps-big{display:flex;gap:6px;justify-content:center;margin:20px 0 0}
-.band.no-band .claps-big svg{width:26px;height:26px}
 .band.no-band .tag{color:#F6C92B;border-color:#2A2723}
 .band.no-band a.tag:hover{border-color:#F6C92B;color:#141210;background:#F6C92B}
 .band.no-band .btn{color:#F2F0EB;border-color:#2A2723}
@@ -1181,8 +1181,7 @@ async function seoItemPage(kind, it, data, origin, env) {
   let sideInner = '<p class="facts">' + escHtml((kind === "calendar" ? [calKicker] : metaBits).filter(Boolean).join(" · ")) + "</p>" +
     "<h1>" + escHtml(it.t) + "</h1>";
   if (kind === "reviews") {
-    sideInner += (lede ? '<p class="lede">' + escHtml(plain(lede, 400)) + "</p>" : "") +
-      '<div class="claps-big">' + clapsHTML(it.s) + "</div>";
+    sideInner += (lede ? '<p class="lede">' + escHtml(plain(lede, 400)) + "</p>" : "");
   } else {
     sideInner += tagChipsHTML(it, bigTags) +
       (lede ? '<p class="lede">' + escHtml(plain(lede, 400)) + "</p>" : "") +
@@ -1198,6 +1197,7 @@ async function seoItemPage(kind, it, data, origin, env) {
     '<div class="col">' +
     seoBody(bodyTxt) +
     (it.guest ? '<p class="meta" style="margin-top:22px">Гост: ' + escHtml(it.guest) + (it.role ? " · " + escHtml(it.role) : "") + "</p>" : "") +
+    (kind === "reviews" ? '<div class="claps-big">' + clapsHTML(it.s) + "</div>" : "") +
     (it.authorName ? '<p class="sig">— ' + escHtml(it.authorName) + "</p>" : "") +
     (kind === "reviews" ? btnsRow + tagChipsHTML(it, bigTags) : "") +
     (kind === "calendar" ? calItemLinks(data, it) : "") +
