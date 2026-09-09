@@ -6,6 +6,10 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Панел — Men In A Movie</title>
 <meta name="theme-color" content="#F6C92B">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@1,900&family=Oswald:wght@400;500;600&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
@@ -147,7 +151,7 @@ function normalize(raw){
     craft:(raw.craft||[]).map(function(c){return{id:c.id,t:c.t,when:c.when||"",cat:c.tag||"",img:c.img||"",video:c.video||"",trailer:c.trailer||"",guest:c.guest||"",role:c.role||"",lead:c.p||"",body:c.body||"",tags:tg(c.tags),status:c.status||"published",authorName:c.authorName||""};}),
     episodes:(raw.episodes||[]).map(function(e){return{id:e.id,n:e.n,t:e.t,when:e.d||e.when||"",cat:e.tag||"",lead:e.desc||e.lead||"",body:"",yt:e.yt||"",sp:e.sp||"",len:e.len,tags:tg(e.tags),status:"published",authorName:""};}),
     merch:(raw.merch||[]).map(function(m){return{id:m.id,t:m.t,lead:m.d||m.lead||"",body:"",price:+m.p||0,sizes:m.sizes||[],img:m.img||"",on:!!m.on,tags:[],status:"published"};}),
-    calendar:(raw.calendar||[]).filter(function(c){return !c.hidden;})};
+    calendar:(raw.calendar||[])};
   o.calendar.forEach(function(c){c.tags=tg(c.tags);});
   return o;
 }
@@ -323,25 +327,58 @@ function topStatsHTML(field){
 }
 
 /* ---------- списък ---------- */
+var CAT_FIELD = {news:"cat", reviews:"g", craft:"cat", episodes:"cat"};
+function tagLbl(s){ return (D.tagLabels||{})[s]||s; }
+function selBar(id,ph,opts){
+  return '<select id="'+id+'" style="background:#0A0908;border:1px solid var(--line);color:var(--tx);padding:7px 10px;font:inherit">'+
+    '<option value="">'+esc2(ph)+'</option>'+
+    opts.map(function(o){var v=Array.isArray(o)?o[0]:o,t=Array.isArray(o)?o[1]:o;return '<option value="'+esc2(v)+'">'+esc2(t)+'</option>';}).join("")+
+    '</select>';
+}
 function listTab(k){
   var T=TYPES[k], list=all(k).slice().filter(mine);
   list.sort(function(a,b){return String(b.when||"").localeCompare(String(a.when||""));});
   var h='<h2>'+esc2(T.label)+'</h2><div class="a-bar"><button class="a-btn pri" data-act="new" data-k="'+k+'">+ Нов</button>'+
-    '<input id="fltr" placeholder="търси по заглавие" style="background:#0A0908;border:1px solid var(--line);color:var(--tx);padding:7px 10px;font:inherit">'+
-    '<span class="sub" style="color:var(--tx2)">'+list.length+' материала</span></div><div id="aList">';
+    (k==="calendar"&&canPublish()?'<button class="a-btn" data-act="calsync">Опресни от TMDB</button>':"")+
+    '<input id="fltr" placeholder="търси по заглавие" style="background:#0A0908;border:1px solid var(--line);color:var(--tx);padding:7px 10px;font:inherit">';
+
+  var catField=CAT_FIELD[k];
+  if(catField){
+    var cats=[]; list.forEach(function(it){var v=it[catField]; if(v&&cats.indexOf(v)<0)cats.push(v);}); cats.sort();
+    h+=selBar("fCat","всички категории",cats);
+  }
+  var tagSet={}; list.forEach(function(it){(it.tags||[]).forEach(function(tg){tagSet[tg]=1;});});
+  var tagKeys=Object.keys(tagSet).sort(function(a,b){return tagLbl(a).localeCompare(tagLbl(b));});
+  if(tagKeys.length) h+=selBar("fTag","всички тагове",tagKeys.map(function(tg){return [tg,tagLbl(tg)];}));
+
+  if(k==="calendar"){
+    var plats=[]; list.forEach(function(it){var v=it.platform; if(v&&plats.indexOf(v)<0)plats.push(v);}); plats.sort();
+    h+=selBar("fPlat","всички платформи",plats)+
+      selBar("fType","всички типове",[["cinema","Филми (по кината)"],["stream","Сериали / стрийминг"],["event","Събития"]]);
+  }
+
+  h+='<span class="sub" style="color:var(--tx2)">'+list.length+' материала</span></div><div id="aList">';
   h+=list.map(function(it){ return listRowAdm(k,it); }).join("")||'<p class="a-note">Още няма нищо тук.</p>';
   return h+"</div>";
 }
 function listRowAdm(k,it){
   var T=TYPES[k], img = k==="episodes" ? ytThumb(it.yt) : (it[T.img]||"");
+  var isCal=k==="calendar", catField=CAT_FIELD[k];
   var st=it.status||"published", cls = st==="published"?"pub":st==="hidden"?"hid":st==="review"?"rev":"";
   var can2 = canPublish()&&(st==="published"||st==="hidden");
-  return '<div class="a-row" data-title="'+esc2(String(it.t||"").toLowerCase())+'">'+
+  var toggleBtn = isCal
+    ? '<button class="st '+(it.hidden?"hid":"pub")+'" '+(canPublish()?'data-act="calhide" data-k="'+k+'" data-id="'+it.id+'"':"disabled")+'>'+(it.hidden?"Скрито":"Видимо")+'</button>'
+    : '<button class="st '+cls+'" '+(can2?'data-act="toggle" data-k="'+k+'" data-id="'+it.id+'"':"disabled")+'>'+esc2(STATUS[st]||st)+'</button>';
+  return '<div class="a-row" data-title="'+esc2(String(it.t||"").toLowerCase())+'"'+
+    (catField?' data-cat="'+esc2(it[catField]||"")+'"':"")+
+    ' data-tags="'+esc2((it.tags||[]).join(","))+'"'+
+    (isCal?' data-platform="'+esc2(it.platform||"")+'" data-type="'+esc2(it.kind||"")+'"':"")+
+    '>'+
     (img?'<img class="'+(T.shape==="p"?"p":"")+'" src="'+esc2(img)+'" alt="">':'<img class="'+(T.shape==="p"?"p":"")+'" alt="">')+
     '<span class="t">'+esc2(it.t||"(без заглавие)")+'</span>'+
     '<span class="sub">'+esc2(it.when||"")+'</span>'+
     '<span class="sub">'+esc2(it.authorName||"")+'</span>'+
-    '<button class="st '+cls+'" '+(can2?'data-act="toggle" data-k="'+k+'" data-id="'+it.id+'"':"disabled")+'>'+esc2(STATUS[st]||st)+'</button>'+
+    toggleBtn+
     '<button class="a-btn" data-act="edit" data-k="'+k+'" data-id="'+it.id+'">Редактирай</button>'+
     (isAdmin()?'<button class="a-btn dan" data-act="del" data-k="'+k+'" data-id="'+it.id+'">Изтрий</button>':'')+
     '</div>';
@@ -636,6 +673,23 @@ function onClick(e){
   if(act==="approve"){ var o=all(k).filter(function(x){return x.id===id;})[0]; if(o){o.status="published"; persist("Одобрено и публикувано.");} return; }
   if(act==="toggle"){ var o2=all(k).filter(function(x){return x.id===id;})[0];
     if(o2){ o2.status = o2.status==="hidden"?"published":"hidden"; persist(o2.status==="hidden"?"Скрито от сайта.":"Върнато на сайта."); } return; }
+  if(act==="calhide"){ var o3=all(k).filter(function(x){return x.id===id;})[0];
+    if(o3){ o3.hidden=!o3.hidden; persist(o3.hidden?"Скрито от календара.":"Върнато в календара."); } return; }
+  if(act==="calsync"){
+    if(!confirm("Да заредя ли последните премиери и епизоди от TMDB? Ръчно добавените и вече пипнатите елементи не се пипат.")) return;
+    flash("Опреснявам от TMDB…","ok");
+    fetch("/api/calendar/sync",{method:"POST",headers:uHeaders(),body:JSON.stringify({months:3})})
+      .then(function(r){return r.json().catch(function(){return {};}).then(function(j){return {ok:r.ok,j:j};});})
+      .then(function(res){
+        if(!res.ok||res.j.error){ flash("Грешка: "+(res.j.message||res.j.error||"неуспешно опресняване."),"err"); return; }
+        return fetch("/api/content").then(function(r){return r.ok?r.json():null;}).then(function(raw){
+          if(raw){ var n=raw.tagLabels?raw:normalize(raw); if(n) D=n; }
+          flash("Календарът е опреснен от TMDB.","ok");
+        });
+      })
+      .catch(function(){ flash("Няма връзка със сървъра.","err"); });
+    return;
+  }
   if(act==="del"){ if(!confirm("Да изтрия ли „"+(all(k).filter(function(x){return x.id===id;})[0]||{}).t+"“?")) return;
     D[k]=all(k).filter(function(x){return x.id!==id;}); persist("Изтрито."); return; }
   if(act==="rmimg"){ A.edit[t.getAttribute("data-rmf")]=""; draw(); return; }
@@ -664,9 +718,7 @@ function onInput(e){
   var el=e.target;
   if(el.hasAttribute&&el.hasAttribute("data-f")&&A.edit){ collect(); if(el.getAttribute("data-f")==="body"||el.getAttribute("data-f")==="lead") preview();
     if(el.getAttribute("data-f")==="tagsTxt") checkTags(); }
-  if(el.id==="fltr"){ var q=el.value.toLowerCase();
-    [].forEach.call(document.querySelectorAll("#aList .a-row"),function(r){
-      r.style.display = (r.getAttribute("data-title")||"").indexOf(q)>=0 ? "" : "none"; }); }
+  if(el.id==="fltr") applyListFilters();
 }
 function onChange(e){
   var el=e.target;
@@ -674,7 +726,24 @@ function onChange(e){
   if(el.hasAttribute&&el.hasAttribute("data-restore")){ readBackup(el); return; }
   if(el.hasAttribute&&el.hasAttribute("data-head")){ var s=el.getAttribute("data-head");
     D.heads[s]=D.heads[s]||{}; D.heads[s][el.getAttribute("data-hf")]=el.value; return; }
+  if(el.id==="fCat"||el.id==="fTag"||el.id==="fPlat"||el.id==="fType"){ applyListFilters(); return; }
   if(el.hasAttribute&&el.hasAttribute("data-f")&&A.edit) collect();
+}
+function applyListFilters(){
+  var q=((document.getElementById("fltr")||{}).value||"").toLowerCase();
+  var cat=(document.getElementById("fCat")||{}).value||"";
+  var tag=(document.getElementById("fTag")||{}).value||"";
+  var plat=(document.getElementById("fPlat")||{}).value||"";
+  var typ=(document.getElementById("fType")||{}).value||"";
+  [].forEach.call(document.querySelectorAll("#aList .a-row"),function(r){
+    var ok=true;
+    if(q&&(r.getAttribute("data-title")||"").indexOf(q)<0) ok=false;
+    if(ok&&cat&&r.getAttribute("data-cat")!==cat) ok=false;
+    if(ok&&tag&&((r.getAttribute("data-tags")||"").split(",").indexOf(tag)<0)) ok=false;
+    if(ok&&plat&&r.getAttribute("data-platform")!==plat) ok=false;
+    if(ok&&typ&&r.getAttribute("data-type")!==typ) ok=false;
+    r.style.display = ok ? "" : "none";
+  });
 }
 function collect(){
   var it=A.edit; if(!it) return;

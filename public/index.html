@@ -8,7 +8,10 @@
 <link rel="canonical" href="https://meninamovie.com/">
 <link rel="alternate" type="application/rss+xml" title="Men In A Movie — RSS" href="https://meninamovie.com/feed.xml">
 <meta name="theme-color" content="#F6C92B">
-<link rel="icon" href="/og.jpg">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Men In A Movie">
 <meta property="og:locale" content="bg_BG">
@@ -177,10 +180,10 @@ section{margin-top:46px}
 .pcard{background:var(--card2);display:flex;flex-direction:column;position:relative}
 .pcard .shot{aspect-ratio:1/1;background:var(--card);position:relative;overflow:hidden}
 .pcard .shot img{width:100%;height:100%;object-fit:cover}
-.pcard .pbadge{position:absolute;top:10px;left:10px;font-family:Oswald,sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px}
-.pcard .pbadge.ok{background:var(--y);color:var(--black)}
-.pcard .pbadge.out{background:var(--card);color:#e07a76;border:1px solid #7a2320}
-.pcard .shot.dim img{opacity:.35}
+.pbadge{position:absolute;top:10px;left:10px;font-family:Oswald,sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px}
+.pbadge.ok{background:var(--y);color:var(--black)}
+.pbadge.out{background:var(--card);color:#e07a76;border:1px solid #7a2320}
+.pcard .shot.dim img,.ph.dim{opacity:.35}
 .pcard .cbody{padding:14px 15px 16px}
 .pcard .prow{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:12px}
 .pcard .price{font-family:Oswald,sans-serif;font-weight:600;font-size:16px;color:var(--y)}
@@ -223,6 +226,7 @@ section{margin-top:46px}
 
 /* ---------- мърч / за нас ---------- */
 .price{font-family:Oswald,sans-serif;color:var(--y);font-size:15px;letter-spacing:.05em;margin-top:6px}
+.price.mute{color:var(--tx2)}
 .about{background:var(--card2);padding:26px}
 .about h3{margin:0 0 10px;font-family:Montserrat,sans-serif;font-style:italic;font-weight:900;font-size:24px;text-transform:uppercase}
 .btn{display:inline-block;background:var(--y);color:var(--black);font-family:Oswald,sans-serif;font-size:13px;letter-spacing:.08em;text-transform:uppercase;padding:10px 20px;margin-top:12px;border:0;cursor:pointer}
@@ -469,6 +473,7 @@ footer a:hover{color:#000;text-decoration:underline}
 .banner{background:transparent;color:var(--tx);border-bottom:1px solid var(--line)}
 .banner .wrap{min-height:0;padding-top:40px;padding-bottom:28px}
 .banner h1{color:var(--tx)}
+.banner.cal-banner{border-bottom:none}
 </style>
 </head>
 <body>
@@ -559,7 +564,7 @@ function normalize(raw){
     craft:(raw.craft||[]).map(function(c){return{id:c.id,t:c.t,when:c.when||"",cat:c.tag||"",img:c.img||"",video:c.video||"",trailer:c.trailer||"",guest:c.guest||"",role:c.role||"",lead:c.p||"",body:c.body||"",tags:tg(c.tags),status:c.status||"published",authorName:c.authorName||""};}),
     episodes:(raw.episodes||[]).map(function(e){return{id:e.id,n:e.n,t:e.t,when:e.d||"",cat:e.tag||"",lead:e.desc||"",body:"",yt:e.yt||"",sp:e.sp||"",len:e.len,tags:tg(e.tags),status:"published",authorName:""};}),
     merch:(raw.merch||[]).map(function(m){return{id:m.id,t:m.t,lead:m.d||"",body:"",price:+m.p||0,sizes:m.sizes||[],img:m.img||"",on:!!m.on,tags:[],status:"published"};}),
-    calendar:(raw.calendar||[]).filter(function(c){return !c.hidden;})};
+    calendar:(raw.calendar||[])};
   o.calendar.forEach(function(c){c.tags=tg(c.tags);});
   return o;
 }
@@ -650,7 +655,11 @@ var KIND={
 };
 var PER_PAGE=8, EP_HOME=4;
 
-function items(k){return (D[k]||[]).filter(function(i){return (i.status||"published")==="published";});}
+function items(k){return (D[k]||[]).filter(function(i){
+  if((i.status||"published")!=="published") return false;
+  if(k==="calendar"&&i.hidden) return false;
+  return true;
+});}
 function url(k,it){return "/"+KIND[k].path+"/"+slugify(it.t)+"-"+idTail(it.id);}
 function pic(k,it){
   if(k==="episodes") return ytThumb(it.yt);
@@ -690,11 +699,14 @@ function cardH(k,it){
   }
   if(k==="merch"){
     return '<a class="card" href="'+url(k,it)+'" data-nav>'+
-      (p?'<img class="ph r169" src="'+esc(p)+'" alt="'+esc(it.t)+'" loading="lazy">':'<div class="ph r169"></div>')+
+      '<div style="position:relative">'+
+      (p?'<img class="ph r169'+(it.on?"":" dim")+'" src="'+esc(p)+'" alt="'+esc(it.t)+'" loading="lazy">':'<div class="ph r169"></div>')+
+      '<span class="pbadge '+(it.on?"ok":"out")+'">'+(it.on?"Налично":"Изчерпано")+'</span>'+
+      '</div>'+
       '<div class="cbody"><h3 class="ctitle">'+esc(it.t)+'</h3>'+
       (it.lead?'<p class="clead">'+esc(txt(it.lead))+'</p>':'')+
-      '<div class="price">'+it.price+' €</div>'+
-      '<button class="card-btn gold order" type="button">Поръчай</button></div></a>';
+      '<div class="price'+(it.on?"":" mute")+'">'+it.price+' €</div>'+
+      '<button class="card-btn'+(it.on?" gold order":"")+'" type="button"'+(it.on?"":" disabled")+'>'+(it.on?"Поръчай":"Изчерпано")+'</button></div></a>';
   }
   return '<a class="card" href="'+url(k,it)+'" data-nav>'+
     (p?'<img class="ph r169" src="'+esc(p)+'" alt="'+esc(it.t)+'" loading="lazy">':'<div class="ph r169"></div>')+
@@ -914,7 +926,7 @@ function lpCalList(view){
 }
 function calendarListPage(page){
   var head=(D.heads&&D.heads.kalendar)||{};
-  var h='<div class="banner"><div class="wrap"><h1>'+esc(head.title||"Movie calendar")+'</h1></div></div>'+
+  var h='<div class="banner cal-banner"><div class="wrap"><h1>'+esc(head.title||"Movie calendar")+'</h1></div></div>'+
     '<div class="wrap"><div class="filters" id="lpCalFilters"></div><div class="filters sub" id="lpCalSubFilters"></div>'+
     '<div class="grid4" id="lpCalGrid"></div><div id="lpCalPager"></div></div>';
   document.getElementById("app").innerHTML=h;
@@ -1128,7 +1140,22 @@ function enrichCalTmdb(it){
     }
     if(x.overview){
       var lede=document.querySelector(".art-left .art-lede");
+      if(!lede){
+        var left=document.querySelector(".art-left"), btns2=left&&left.querySelector(".btns");
+        if(left){
+          lede=document.createElement("div");
+          lede.className="answer art-lede";
+          if(btns2) left.insertBefore(lede,btns2); else left.appendChild(lede);
+        }
+      }
       if(lede) lede.textContent=x.overview;
+      var body=document.querySelector(".art-body"), prose=body&&body.querySelector(".prose");
+      if(!prose&&body){
+        prose=document.createElement("div");
+        prose.className="prose";
+        body.insertBefore(prose,body.firstChild);
+      }
+      if(prose) prose.textContent=x.overview;
     }
     if(x.rating){
       var facts=document.querySelector(".art-left .facts");
