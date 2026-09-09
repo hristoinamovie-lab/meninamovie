@@ -139,7 +139,8 @@ section{margin-top:46px}
 .art-split .poster{flex:0 0 220px;aspect-ratio:2/3;object-fit:cover;background:var(--card);outline:1px solid rgba(0,0,0,.12)}
 .art-split h1{margin:.1em 0 .3em;font-family:Montserrat,sans-serif;font-style:italic;font-weight:900;font-size:34px;line-height:1.05;text-transform:uppercase;letter-spacing:-.02em}
 .art-split .facts{font-family:Oswald,sans-serif;font-size:13px;letter-spacing:.06em;text-transform:uppercase}
-.claps-big{font-size:22px;letter-spacing:4px;margin-top:10px}
+.claps-big{font-size:0;text-align:center;margin:32px 0 0}
+.claps-big .clapsrow{gap:6px}
 .art-body{max-width:var(--wrap);margin:0 auto;padding:26px 20px 10px}
 
 /* ---------- продукт (мърч): e-shop страница ---------- */
@@ -335,8 +336,6 @@ main section:first-child{border-top:0}
 .clapsrow{display:inline-flex;gap:2px;align-items:center;line-height:0}
 .clap{width:var(--cs,13px);height:var(--cs,13px);display:block;color:#6A6355;opacity:.55}
 .clap.on{color:var(--y);opacity:1}
-.claps-big .clap{color:rgba(0,0,0,.35);opacity:1}
-.claps-big .clap.on{color:var(--black)}
 
 /* ---------- новини: голяма жълта карта + бутони ---------- */
 .news-lead{background:var(--y);color:var(--black);display:flex;flex-direction:column}
@@ -470,10 +469,6 @@ footer a:hover{color:#000;text-decoration:underline}
 .art-hd.no-band .art-left .btns .btn.like.on{color:var(--y);border-color:var(--y)}
 .art-hd.no-band .art-left .btns .btn.gold{background:var(--y);border-color:var(--y);color:var(--black)}
 .art-hd.no-band .art-left .btns .btn.gold:hover{background:#ffd84a}
-.art-hd.no-band .claps-big{font-size:0;text-align:center;margin:20px 0 0}
-.art-hd.no-band .claps-big .clapsrow{gap:6px}
-.art-hd.no-band .claps-big .clap{color:#6A6355;opacity:.55}
-.art-hd.no-band .claps-big .clap.on{color:var(--y);opacity:1}
 @media(max-width:900px){
   .art-hd.no-band .art-media{width:180px;max-width:180px;flex:none;margin:0 auto}
 }
@@ -610,7 +605,7 @@ function ytThumbAlt(u){var i=ytId(u);return i?"https://i.ytimg.com/vi/"+i+"/hqde
 var CLAP='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'+
   '<path d="M2 8.7h20V20a1.5 1.5 0 0 1-1.5 1.5h-17A1.5 1.5 0 0 1 2 20V8.7Z"/>'+
   '<path d="M2.2 4.8 20.3 1.9l.9 4.3L3.1 9.1 2.2 4.8Z"/>'+
-  '<path d="M7 3.6 8.5 7.8M11.9 2.8l1.5 4.2M16.8 2l1.5 4.2" stroke="var(--clapbg,#0A0908)" stroke-width="1.2" fill="none"/></svg>';
+  '<path d="M7 3.6 8.5 7.8M11.9 2.8l1.5 4.2M16.8 2l1.5 4.2" stroke="#0A0908" stroke-width="1.2" fill="none"/></svg>';
 function claps(n,size){
   n=Math.max(0,Math.min(5,Math.round(+n||0)));
   var out='<span class="clapsrow" style="--cs:'+(size||13)+'px" title="'+n+' от 5" aria-label="Оценка '+n+' от 5">';
@@ -1097,7 +1092,6 @@ function article(kindKey,id){
     if(chips.length) extraHead='<div class="ep-meta">'+chips.map(function(x){return '<span class="chip">'+esc(x)+'</span>';}).join("")+'</div>';
   } else if(kindKey==="reviews"){
     facts=[K.label, it.y, it.g, it.mins?it.mins+" мин":""].filter(Boolean);
-    extraHead='<div class="claps-big">'+claps(it.s,26)+'</div>';
   } else {
     facts=[K.label];
     if(it.when) facts.push(dt(it.when));
@@ -1110,7 +1104,7 @@ function article(kindKey,id){
     : (p?'<img class="art-media" src="'+esc(p)+'" alt="'+esc(it.t)+'">':'<div class="art-media"></div>');
   var topInner = '<div class="facts">'+esc(facts.join(" · "))+'</div><h1>'+esc(it.t)+'</h1>';
   if(kindKey==="reviews"){
-    topInner += (it.lead?'<div class="answer art-lede">'+esc(txt(it.lead))+'</div>':'')+extraHead;
+    topInner += (it.lead?'<div class="answer art-lede">'+esc(txt(it.lead))+'</div>':'');
   } else {
     topInner += extraHead+tagsHTML(it)+
       (it.lead?'<div class="answer art-lede">'+esc(txt(it.lead))+'</div>':'')+
@@ -1136,6 +1130,7 @@ function article(kindKey,id){
   }
   if(kindKey==="episodes"&&it.sp) h+='<a class="btn" href="'+esc(it.sp)+'" target="_blank" rel="noopener">Слушай в Spotify</a>';
 
+  if(kindKey==="reviews") h+='<div class="claps-big">'+claps(it.s,26)+'</div>';
   if(it.authorName) h+='<div class="sign">— '+esc(it.authorName)+'</div>';
   if(kindKey==="reviews") h+=likeShareHTML(kindKey,it)+tagsHTML(it);
 
