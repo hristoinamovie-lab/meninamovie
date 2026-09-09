@@ -776,9 +776,11 @@ a{color:#F6C92B;text-decoration:none}
 /* ---- хедър като на сайта ---- */
 header.top{background:#F6C92B;color:#141210}
 header.top .wrap{display:flex;align-items:center;gap:22px;min-height:64px;flex-wrap:wrap}
-.brand{display:flex;flex-direction:column;line-height:1.05;color:#141210;text-decoration:none}
-.brand b{font-family:Montserrat,system-ui,sans-serif;font-weight:900;font-style:italic;text-transform:uppercase;font-size:19px;letter-spacing:-.01em}
-.brand span{font-size:9px;letter-spacing:.22em;text-transform:uppercase;opacity:.75;margin-top:3px}
+.brand{display:flex;align-items:center;gap:10px;color:#141210;text-decoration:none;flex:none}
+.logo-mark{height:34px;width:auto;display:block;color:#141210}
+.logo-mark path,.logo-mark rect{fill:currentColor}
+.btxt b{display:block;font-family:Montserrat,system-ui,sans-serif;font-style:italic;font-weight:900;font-size:16px;letter-spacing:-.02em;text-transform:uppercase;line-height:1.1}
+.btxt i{display:block;font-style:normal;font-family:Oswald,system-ui,sans-serif;font-size:9px;letter-spacing:.14em;text-transform:uppercase;opacity:.65;margin-top:3px}
 header.top nav{display:flex;gap:17px;flex:1;flex-wrap:wrap}
 header.top nav a{color:#141210;font-size:12px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:5px 0;border-bottom:2px solid transparent}
 header.top nav a:hover{border-bottom-color:#141210}
@@ -952,6 +954,10 @@ function seoShell(opts) {
     '<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">' +
     (opts.keywords ? '<meta name="keywords" content="' + escHtml(opts.keywords) + '">' : "") +
     '<link rel="canonical" href="' + escHtml(canon) + '">' +
+    '<link rel="icon" href="/favicon.svg" type="image/svg+xml">' +
+    '<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">' +
+    '<link rel="icon" href="/favicon-192.png" sizes="192x192" type="image/png">' +
+    '<link rel="apple-touch-icon" href="/apple-touch-icon.png">' +
     '<link rel="alternate" type="application/rss+xml" title="Men In A Movie — RSS" href="/feed.xml">' +
     '<meta property="og:type" content="' + (ogType || "article") + '">' +
     '<meta property="og:site_name" content="Men In A Movie">' +
@@ -976,9 +982,16 @@ function seoShell(opts) {
   );
 }
 
+const LOGO_SVG =
+  '<svg class="logo-mark" viewBox="0 0 464.69 331.68" aria-hidden="true">' +
+  '<g><path d="M136.71,279.21v-89.06l-23.57,89.06h-42.09l-26.89-89.06v89.06H1.2v-139.7h76.84l17.46,61.29,17.64-61.29h78.76v139.7h-55.18Z"/><path d="M205.16,279.21v-139.7h55.18v139.7h-55.18Z"/><path d="M409.13,279.21v-89.06l-23.57,89.06h-42.09l-26.89-89.06v89.06h-42.96v-139.7h76.84l17.46,61.29,17.64-61.29h78.76v139.7h-55.18Z"/></g>' +
+  '<g><path d="M38.81,73.56l-2.11-23.33-4.06,23.89-11.02,1-9.16-22.69,2.11,23.33-11.25,1.02L0,40.18l20.13-1.82,6.03,15.64,3.17-16.47,20.63-1.87,3.32,36.59-14.45,1.31Z"/><path d="M56.56,71.95l-3.32-36.59,33.07-3,1,11.07-18.62,1.69.34,3.75,9.06-.82.63,7-9.06.82.34,3.75,18.62-1.69,1,11.02-33.07,3Z"/><path d="M117.8,66.4l-14.31-14.89,1.45,16.06-12.3,1.11-3.32-36.59,12.85-1.16,13.75,14.8-1.44-15.92,12.3-1.11,3.32,36.59-12.3,1.11Z"/><path d="M146.16,63.83l-3.32-36.59,14.46-1.31,3.32,36.59-14.46,1.31Z"/><path d="M189.25,59.93l-14.31-14.89,1.45,16.06-12.3,1.11-3.32-36.59,12.85-1.16,13.75,14.8-1.44-15.92,12.3-1.11,3.32,36.59-12.3,1.11Z"/><path d="M239.33,55.39l-1.99-4.62-11.71,1.06-1.12,4.9-12.03,1.09,10.27-37.83,14.5-1.31,17.08,35.35-15,1.36ZM229.75,33.66l-2.23,9.98,6.4-.58-4.17-9.4Z"/><path d="M300.62,49.84l-2.11-23.33-4.06,23.89-11.02,1-9.16-22.69,2.11,23.33-11.25,1.02-3.32-36.59,20.13-1.82,6.03,15.64,3.17-16.47,20.63-1.87,3.32,36.59-14.45,1.31Z"/><path d="M337.16,47.45c-10.48.95-19.76-6.88-20.72-17.49-.96-10.61,6.77-19.98,17.24-20.93,10.47-.95,19.76,6.88,20.72,17.49.96,10.61-6.77,19.98-17.24,20.93ZM334.65,19.78c-2.43.22-4.2,2.46-3.62,8.86.58,6.4,2.74,8.33,5.16,8.11,2.42-.22,4.2-2.5,3.62-8.91s-2.73-8.28-5.16-8.06Z"/><path d="M380.16,42.63l-11.57,1.05-17.08-35.35,15-1.36,7.81,18.52,4.08-19.6,12.03-1.09-10.27,37.83Z"/><path d="M395.8,41.22l-3.32-36.59,14.46-1.31,3.32,36.59-14.46,1.31Z"/><path d="M413.73,39.59l-3.32-36.59,33.07-3,1,11.07-18.62,1.69.34,3.75,9.06-.82.63,7-9.06.82.34,3.75,18.62-1.69,1,11.02-33.07,3Z"/></g>' +
+  '<rect x=".98" y="303.18" width="463.63" height="28.5"/><rect x="1.06" y="87.7" width="463.63" height="28.5"/>' +
+  '</svg>';
+
 const SEO_HEADER =
   '<header class="top"><div class="wrap">' +
-  '<a class="brand" href="/"><b>Men In A Movie</b><span>кино · подкаст · ревюта · новини</span></a>' +
+  '<a class="brand" href="/">' + LOGO_SVG + '<span class="btxt"><b>Men In A Movie</b><i>кино · подкаст · ревюта · новини</i></span></a>' +
   '<nav>' +
   '<a href="/novini">Новини</a><a href="/revyuta">Ревюта</a><a href="/podkast">Подкаст</a>' +
   '<a href="/zad-kadar">Зад кадър</a><a href="/march">Мърч</a><a href="/#za-nas">За нас</a>' +
