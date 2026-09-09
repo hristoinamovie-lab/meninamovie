@@ -811,6 +811,22 @@ header.top nav a:hover{border-bottom-color:#141210}
 .band .btn.gold:hover{background:#000}
 @media(max-width:900px){.band .in{min-height:0;padding:20px 0}}
 
+/* ---- лента на календар/ревю: без жълто, вертикален постер вдясно ---- */
+.band.no-band{background:transparent;color:#F2F0EB}
+.band.no-band .shot{aspect-ratio:2/3;min-width:0;max-width:280px;flex:0 0 260px;align-self:flex-start;background:#141210}
+.band.no-band .shot img{object-fit:cover}
+.band.no-band .lede{color:#A6A196;border-left-color:#2A2723}
+.band.no-band .claps-big{display:flex;gap:6px;justify-content:center;margin:20px 0 0}
+.band.no-band .claps-big svg{width:26px;height:26px}
+.band.no-band .tag{color:#F6C92B;border-color:#2A2723}
+.band.no-band a.tag:hover{border-color:#F6C92B;color:#141210;background:#F6C92B}
+.band.no-band .btn{color:#F2F0EB;border-color:#2A2723}
+.band.no-band .btn:hover{border-color:#F6C92B;background:none;color:#F6C92B}
+.band.no-band .btn.like.on{border-color:#F6C92B;color:#F6C92B;background:none}
+.band.no-band .btn.gold{background:#F6C92B;border-color:#F6C92B;color:#141210}
+.band.no-band .btn.gold:hover{background:#ffd84a}
+@media(max-width:900px){.band.no-band .shot{width:180px;max-width:180px;flex:none;margin:0 auto}}
+
 /* ---- тяло ---- */
 main{padding-bottom:30px}
 .col{max-width:1180px;margin:0 auto;padding:30px 22px 0}
@@ -1157,16 +1173,25 @@ async function seoItemPage(kind, it, data, origin, env) {
   if (kind === "calendar" && it.kind === "cinema" && data.settings && data.settings.cinemaProgramUrl) bandBtns += '<a class="btn" rel="nofollow" href="' + escHtml(data.settings.cinemaProgramUrl) + '">Програма по кината</a> ';
   if (kind === "merch") bandBtns += '<a class="btn" href="/march">Виж мърча</a> ';
 
-  const band =
-    '<div class="band"><div class="wrap"><p class="crumbs">Начало › ' + escHtml(SEO_LABEL[kind]) + "</p>" +
-    '<div class="in"><div class="side"><p class="facts">' + escHtml((kind === "calendar" ? [calKicker] : metaBits).filter(Boolean).join(" · ")) + "</p>" +
-    "<h1>" + escHtml(it.t) + "</h1>" +
-    (kind === "reviews" ? clapsHTML(it.s) : "") +
-    tagChipsHTML(it, bigTags) +
-    (lede ? '<p class="lede">' + escHtml(plain(lede, 400)) + "</p>" : "") +
-    '<div class="btns">' + likeHTML() + SHARE_BTN + listen + extra + bandBtns +
+  /* календар/ревю: без жълта лента, вертикален постер вдясно; при ревю тагове+бутони слизат долу под подписа */
+  const noBand = kind === "reviews" || kind === "calendar";
+  const btnsRow = '<div class="btns">' + likeHTML() + SHARE_BTN + listen + extra + bandBtns +
       (kind === "calendar" ? '<a class="btn" href="/kalendar">Целият календар</a>' : "") +
-    "</div>" +
+    "</div>";
+  let sideInner = '<p class="facts">' + escHtml((kind === "calendar" ? [calKicker] : metaBits).filter(Boolean).join(" · ")) + "</p>" +
+    "<h1>" + escHtml(it.t) + "</h1>";
+  if (kind === "reviews") {
+    sideInner += (lede ? '<p class="lede">' + escHtml(plain(lede, 400)) + "</p>" : "") +
+      '<div class="claps-big">' + clapsHTML(it.s) + "</div>";
+  } else {
+    sideInner += tagChipsHTML(it, bigTags) +
+      (lede ? '<p class="lede">' + escHtml(plain(lede, 400)) + "</p>" : "") +
+      btnsRow;
+  }
+
+  const band =
+    '<div class="band' + (noBand ? " no-band" : "") + '"><div class="wrap"><p class="crumbs">Начало › ' + escHtml(SEO_LABEL[kind]) + "</p>" +
+    '<div class="in"><div class="side">' + sideInner +
     "</div>" + shotImg + "</div></div></div>";
 
   const html = band +
@@ -1174,6 +1199,7 @@ async function seoItemPage(kind, it, data, origin, env) {
     seoBody(bodyTxt) +
     (it.guest ? '<p class="meta" style="margin-top:22px">Гост: ' + escHtml(it.guest) + (it.role ? " · " + escHtml(it.role) : "") + "</p>" : "") +
     (it.authorName ? '<p class="sig">— ' + escHtml(it.authorName) + "</p>" : "") +
+    (kind === "reviews" ? btnsRow + tagChipsHTML(it, bigTags) : "") +
     (kind === "calendar" ? calItemLinks(data, it) : "") +
     "</div>" +
     seoRelated(data, kind, it, 4);
