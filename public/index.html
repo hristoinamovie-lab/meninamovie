@@ -459,7 +459,7 @@ footer a:hover{color:#000;text-decoration:underline}
 /* ---------- статия (календар/ревю): без жълта лента, вертикален постер вдясно ---------- */
 .art-hd.no-band{background:transparent;color:var(--tx)}
 .art-hd.no-band .art-media{aspect-ratio:2/3;object-fit:cover;flex:0 0 260px;max-width:280px;min-width:0;margin-left:auto;align-self:flex-start;background:var(--card)}
-.art-hd.no-band .art-left .art-lede{color:var(--tx2);border-left-color:var(--line)}
+.art-hd.no-band .art-left .art-lede{color:var(--tx);border-left-color:var(--y);font-size:22px;line-height:1.45;font-style:italic;border-left-width:5px;padding-left:18px;margin-top:22px}
 .art-hd.no-band .art-left .chip{color:var(--tx2);border-color:var(--line)}
 .art-hd.no-band .art-left .tags a{color:var(--y);border-color:var(--line)}
 .art-hd.no-band .art-left .tag-off{color:var(--tx2);border-color:var(--line)}
@@ -677,6 +677,9 @@ function items(k){return (D[k]||[]).filter(function(i){
   return true;
 });}
 function url(k,it){return "/"+KIND[k].path+"/"+slugify(it.t)+"-"+idTail(it.id);}
+/* жанр може да е стар единичен низ или нов списък — навсякъде се показва като списък */
+function genreArr(v){return Array.isArray(v)?v:(v?[v]:[]);}
+function genreTxt(v){return genreArr(v).join(", ");}
 function pic(k,it){
   if(k==="episodes") return ytThumb(it.yt);
   if(k==="calendar") return it.poster||"";
@@ -736,8 +739,8 @@ function cardP(k,it){
     return '<a class="card" href="'+url(k,it)+'" data-nav><div class="rev-wrap r23" style="'+bg+'">'+
       '<div class="score">'+claps(it.s,11)+'<small>MIM</small></div>'+
       '<div class="hl-stack">'+titleBlocks(it.t)+'</div>'+
-      '<div class="yr">'+esc(it.y||"")+(it.g?" • "+esc(it.g):"")+'</div>'+
-      '</div><div class="rev-body">'+(it.g?'<span class="genre">'+esc(it.g)+'</span>':"")+
+      '<div class="yr">'+esc(it.y||"")+(genreArr(it.g).length?" • "+esc(genreTxt(it.g)):"")+'</div>'+
+      '</div><div class="rev-body">'+(genreArr(it.g).length?'<span class="genre">'+esc(genreTxt(it.g))+'</span>':"")+
       (it.lead?'<p>'+esc(txt(it.lead))+'</p>':"")+
       '<span class="rev-more">Прочети ревюто</span></div></a>';
   }
@@ -1088,10 +1091,10 @@ function article(kindKey,id){
   if(kindKey==="calendar"){
     var past=String(it.when||"")<todayISO();
     facts=[calCat(it), it.kind==="stream"?subLabel(it):"", past?"вече е налично":dt(it.when)].filter(Boolean);
-    var chips=[it.time,it.place,it.genre,it.mins?(it.mins+" мин"):"",it.kind!=="stream"?subLabel(it):""].filter(Boolean);
+    var chips=[it.time,it.place].concat(genreArr(it.genre),[it.mins?(it.mins+" мин"):"",it.kind!=="stream"?subLabel(it):""]).filter(Boolean);
     if(chips.length) extraHead='<div class="ep-meta">'+chips.map(function(x){return '<span class="chip">'+esc(x)+'</span>';}).join("")+'</div>';
   } else if(kindKey==="reviews"){
-    facts=[K.label, it.y, it.g, it.mins?it.mins+" мин":""].filter(Boolean);
+    facts=[K.label, it.y, genreTxt(it.g), it.mins?it.mins+" мин":""].filter(Boolean);
   } else {
     facts=[K.label];
     if(it.when) facts.push(dt(it.when));
@@ -1102,7 +1105,8 @@ function article(kindKey,id){
   var media = (kindKey==="episodes"&&ytId(it.yt))
     ? '<div class="embed art-media"><iframe src="https://www.youtube.com/embed/'+ytId(it.yt)+'" title="'+esc(it.t)+'" allowfullscreen loading="lazy"></iframe></div>'
     : (p?'<img class="art-media" src="'+esc(p)+'" alt="'+esc(it.t)+'">':'<div class="art-media"></div>');
-  var topInner = '<div class="facts">'+esc(facts.join(" · "))+'</div><h1>'+esc(it.t)+'</h1>';
+  var titleHTML = noBand ? '<h1 class="hl-stack">'+titleBlocks(it.t,20)+'</h1>' : '<h1>'+esc(it.t)+'</h1>';
+  var topInner = '<div class="facts">'+esc(facts.join(" · "))+'</div>'+titleHTML;
   if(kindKey==="reviews"){
     topInner += (it.lead?'<div class="answer art-lede">'+esc(txt(it.lead))+'</div>':'');
   } else {

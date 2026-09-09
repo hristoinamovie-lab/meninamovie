@@ -78,6 +78,7 @@ a{color:inherit;text-decoration:none}
 .tagbox{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;max-height:132px;overflow-y:auto;padding-right:4px}
 .tagbox span{border:1px solid var(--line);color:var(--y);font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;cursor:pointer}
 .tagbox span:hover{border-color:var(--y)}
+.tagbox span.on{background:var(--y);color:var(--black);border-color:var(--y)}
 .a-tools{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
 .a-tools button{background:#161412;border:1px solid var(--line);color:var(--tx2);font-size:12px;padding:5px 9px;cursor:pointer;font-family:Oswald,sans-serif;letter-spacing:.05em}
 .a-tools button:hover{color:var(--y);border-color:var(--y)}
@@ -395,6 +396,14 @@ function sel(label,name,val,opts){
     opts.map(function(o){var v=Array.isArray(o)?o[0]:o,t=Array.isArray(o)?(o[1]||o[0]):o;return '<option value="'+esc2(v)+'"'+(String(val)===String(v)?" selected":"")+'>'+esc2(t)+'</option>';}).join("")+
     '</select></div>';
 }
+function genreArr(v){ return Array.isArray(v)?v:(v?[v]:[]); }
+function genreField(name,val){
+  var arr=genreArr(val), opts=D.settings.genres||[];
+  return '<div class="a-f"><label>Жанр — избери един или повече</label>'+
+    '<div class="tagbox">'+opts.map(function(g){
+      return '<span data-act="togglegenre" data-gf="'+name+'" data-g="'+esc2(g)+'" class="'+(arr.indexOf(g)>=0?"on":"")+'">'+esc2(g)+'</span>';
+    }).join("")+'</div></div>';
+}
 function imgField(label,name,val,shape){
   var s=SIZE[shape]||SIZE.h;
   return '<div class="a-f"><label>'+esc2(label)+' — '+s[0]+' × '+s[1]+'</label><div class="a-img">'+
@@ -403,12 +412,19 @@ function imgField(label,name,val,shape){
     (val?'<button class="a-btn dan" data-act="rmimg" data-rmf="'+name+'">Махни</button>':'')+
     '</div><p class="a-note">Смалява се автоматично и се реже от центъра.</p></div>';
 }
+function titleCaseTag(slug){
+  return slug.split("-").map(function(w){return w?w[0].toUpperCase()+w.slice(1):w;}).join(" ");
+}
+/* пълни таговете от реално използваните в съдържанието — не разчита само на tagLabels,
+   защото ръчно написан нов таг досега не се регистрираше там (виж и collect()) */
 function tagKeysByUsage(){
-  var counts={};
+  var counts={}, lab=D.tagLabels||(D.tagLabels={});
   ["reviews","news","craft","episodes","calendar"].forEach(function(k){
-    (D[k]||[]).forEach(function(it){(it.tags||[]).forEach(function(s){counts[s]=(counts[s]||0)+1;});});
+    (D[k]||[]).forEach(function(it){(it.tags||[]).forEach(function(s){
+      counts[s]=(counts[s]||0)+1;
+      if(!lab[s]) lab[s]=titleCaseTag(s);
+    });});
   });
-  var lab=D.tagLabels||{};
   return Object.keys(lab).sort(function(a,b){
     var d=(counts[b]||0)-(counts[a]||0);
     return d!==0?d:lab[a].localeCompare(lab[b]);
@@ -438,9 +454,9 @@ function editor(){
   if(k==="reviews"){
     h+='<div class="a-grid">'+f("Дата на публикуване","when",it.when,"date")+
       f("Година на филма","y",it.y)+
-      sel("Жанр","g",it.g,[""].concat((D.settings.genres||[])))+
       sel("Оценка","s",it.s,[[1,"1 клапа"],[2,"2 клапи"],[3,"3 клапи"],[4,"4 клапи"],[5,"5 клапи"]])+
       f("Времетраене в минути","mins",it.mins)+'</div>'+
+      genreField("g",it.g)+
       imgField("Постер","poster",it.poster,"p")+
       imgField("Кадър за споделяне","share",it.share,"h")+
       f("Кратък отговор","lead",it.lead,"area")+body(it)+
@@ -480,8 +496,8 @@ function editor(){
       f("Платформа","platform",it.platform)+
       f("Пояснение под датата — ако е попълнено, замества автоматичния текст за сезон/епизод","note",it.note)+'</div>'+
       '<p class="a-note">Полетата по-долу идват автоматично от TMDB за филми и сериали — провери ги и поправи, ако нещо не е точно.</p>'+
-      '<div class="a-grid">'+sel("Жанр","genre",it.genre,[""].concat((D.settings.genres||[])))+
-      f("Времетраене в минути","mins",it.mins)+'</div>'+
+      genreField("genre",it.genre)+
+      '<div class="a-grid">'+f("Времетраене в минути","mins",it.mins)+'</div>'+
       '<div class="a-grid">'+
         sel("За сериал — какво е новото","sub",it.sub,[["","— няма —"],["series","Нов сериал"],["season","Нов сезон"],["episode","Нов епизод"]])+
         f("Сезон №","season",it.season)+f("Епизод №","episode",it.episode)+
@@ -708,6 +724,10 @@ function onClick(e){
     var arr=inp.value.split(",").map(function(s){return s.trim();}).filter(Boolean);
     var tg=t.getAttribute("data-tag"); if(arr.indexOf(tg)<0)arr.push(tg);
     inp.value=arr.join(", "); A.edit.tags=arr; checkTags(); return; }
+  if(act==="togglegenre"){ var gf=t.getAttribute("data-gf"), g=t.getAttribute("data-g");
+    var garr=genreArr(A.edit[gf]).slice(), gi=garr.indexOf(g);
+    if(gi>=0) garr.splice(gi,1); else garr.push(g);
+    A.edit[gf]=garr; draw(); return; }
   if(act==="inimg"){ pickInlineImage(); return; }
   if(act==="dl"){ download(); return; }
   if(act==="closebk"){ A.backup=null; draw(); return; }
@@ -761,7 +781,15 @@ function collect(){
   [].forEach.call(document.querySelectorAll("#aMain [data-f]"),function(el){
     var n=el.getAttribute("data-f");
     if(n.indexOf("s:")===0||n.indexOf("nu:")===0) return;
-    if(n==="tagsTxt"){ it.tags=el.value.split(",").map(function(s){return s.trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");}).filter(Boolean); return; }
+    if(n==="tagsTxt"){
+      var lab=D.tagLabels||(D.tagLabels={});
+      it.tags=el.value.split(",").map(function(t){
+        var raw=t.trim(), s=raw.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+        if(s&&raw&&!lab[s]) lab[s]=raw;
+        return s;
+      }).filter(Boolean);
+      return;
+    }
     if(n==="sizesTxt"){ it.sizes=el.value.split(",").map(function(s){return s.trim();}).filter(Boolean); return; }
     if(n==="on"){ it.on=!!el.value; return; }
     if(n==="s"){ it.s=+el.value||0; return; }
@@ -828,12 +856,12 @@ function pickInlineImage(){
 function blank(k){
   var b={id:uid(k.slice(0,1)==="e"&&k==="episodes"?"e":k.slice(0,1)),t:"",when:today(),lead:"",body:"",tags:[],
     status:canPublish()?"published":"review",authorName:A.me?A.me.name:""};
-  if(k==="reviews"){b.y="";b.g="";b.s=4;b.mins="";b.poster="";b.share="";b.video="";b.trailer="";}
+  if(k==="reviews"){b.y="";b.g=[];b.s=4;b.mins="";b.poster="";b.share="";b.video="";b.trailer="";}
   if(k==="news"){b.img="";b.cat="";b.video="";b.trailer="";b.source="";b.sourceUrl="";}
   if(k==="craft"){b.img="";b.cat="";b.video="";b.trailer="";b.guest="";b.role="";}
   if(k==="episodes"){b.yt="";b.sp="";b.n="";b.len="";b.cat="";}
   if(k==="merch"){b.img="";b.price=0;b.sizes=[];b.on=true;}
-  if(k==="calendar"){b.kind="cinema";b.platform="";b.poster="";b.src="manual";}
+  if(k==="calendar"){b.kind="cinema";b.platform="";b.poster="";b.src="manual";b.genre=[];}
   return b;
 }
 function save(){
