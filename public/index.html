@@ -755,7 +755,7 @@ function cardP(k,it){
     '<span class="cal-when">'+esc(past?"вече е налично":dt(it.when))+'</span>'+
     '</div>'+
     '<div class="cbody"><h3 class="ctitle">'+esc(it.t)+'</h3>'+
-    '<div class="cdate">'+esc([it.platform,formatTxt].filter(Boolean).join(" · "))+'</div></div></a>';
+    '<div class="cdate">'+esc((it.kind==="event"?[it.price?("от "+it.price+" €"):"",it.place]:[it.platform]).concat([formatTxt]).filter(Boolean).join(" · "))+'</div></div></a>';
 }
 function card(k,it){return KIND[k].shape==="p"?cardP(k,it):cardH(k,it);}
 function rowEp(it){
@@ -1091,7 +1091,7 @@ function article(kindKey,id){
   if(kindKey==="calendar"){
     var past=String(it.when||"")<todayISO();
     facts=[calCat(it), it.kind==="stream"?subLabel(it):"", past?"вече е налично":dt(it.when)].filter(Boolean);
-    var chips=[it.time,it.place].concat(genreArr(it.genre),[it.mins?(it.mins+" мин"):"",it.kind!=="stream"?subLabel(it):""]).filter(Boolean);
+    var chips=[it.time,it.place,it.kind==="event"&&it.price?("от "+it.price+" €"):""].concat(genreArr(it.genre),[it.mins?(it.mins+" мин"):"",it.kind!=="stream"?subLabel(it):""]).filter(Boolean);
     if(chips.length) extraHead='<div class="ep-meta">'+chips.map(function(x){return '<span class="chip">'+esc(x)+'</span>';}).join("")+'</div>';
   } else if(kindKey==="reviews"){
     facts=[K.label, it.y, genreTxt(it.g), it.mins?it.mins+" мин":""].filter(Boolean);

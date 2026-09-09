@@ -79,6 +79,8 @@ a{color:inherit;text-decoration:none}
 .tagbox span{border:1px solid var(--line);color:var(--y);font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;cursor:pointer}
 .tagbox span:hover{border-color:var(--y)}
 .tagbox span.on{background:var(--y);color:var(--black);border-color:var(--y)}
+.tagbox .tagdel{border:0;background:none;color:inherit;cursor:pointer;font:inherit;font-weight:900;padding:0 0 0 7px;opacity:.7}
+.tagbox .tagdel:hover{opacity:1;color:#e07a76}
 .a-tools{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
 .a-tools button{background:#161412;border:1px solid var(--line);color:var(--tx2);font-size:12px;padding:5px 9px;cursor:pointer;font-family:Oswald,sans-serif;letter-spacing:.05em}
 .a-tools button:hover{color:var(--y);border-color:var(--y)}
@@ -415,16 +417,18 @@ function imgField(label,name,val,shape){
 function titleCaseTag(slug){
   return slug.split("-").map(function(w){return w?w[0].toUpperCase()+w.slice(1):w;}).join(" ");
 }
+function tagUsageCounts(){
+  var counts={};
+  ["reviews","news","craft","episodes","calendar"].forEach(function(k){
+    (D[k]||[]).forEach(function(it){(it.tags||[]).forEach(function(s){counts[s]=(counts[s]||0)+1;});});
+  });
+  return counts;
+}
 /* пълни таговете от реално използваните в съдържанието — не разчита само на tagLabels,
    защото ръчно написан нов таг досега не се регистрираше там (виж и collect()) */
 function tagKeysByUsage(){
-  var counts={}, lab=D.tagLabels||(D.tagLabels={});
-  ["reviews","news","craft","episodes","calendar"].forEach(function(k){
-    (D[k]||[]).forEach(function(it){(it.tags||[]).forEach(function(s){
-      counts[s]=(counts[s]||0)+1;
-      if(!lab[s]) lab[s]=titleCaseTag(s);
-    });});
-  });
+  var counts=tagUsageCounts(), lab=D.tagLabels||(D.tagLabels={});
+  Object.keys(counts).forEach(function(s){ if(!lab[s]) lab[s]=titleCaseTag(s); });
   return Object.keys(lab).sort(function(a,b){
     var d=(counts[b]||0)-(counts[a]||0);
     return d!==0?d:lab[a].localeCompare(lab[b]);
@@ -506,6 +510,8 @@ function editor(){
       (typeof it.poster==="string"&&it.poster.indexOf("http")===0?'<p class="a-note">Постерът идва от TMDB: '+esc2(it.poster)+'</p>':"")+
       '<div class="a-grid">'+f("Трейлър","video",it.video)+f("Билети (само за събития)","ticketUrl",it.ticketUrl)+f("Къде се гледа (само за стрийминг)","watchUrl",it.watchUrl)+'</div>'+
       '<div class="a-grid">'+f("Място","place",it.place)+f("Организатор","organizer",it.organizer)+f("Час","time",it.time)+'</div>'+
+      '<div class="a-grid">'+f("Цена в евро (само за събития)","price",it.price,"number")+'</div>'+
+      f("Кратък цитат — показва се под заглавието","lead",it.lead,"area")+
       f("Текст","body",it.body,"area")+
       '<p class="a-note">Ако филмът има свое ревю с точно същото заглавие, на страницата му автоматично се появява бутон „Прочети ревюто“.</p>';
   }
@@ -609,7 +615,17 @@ function settingsTab(){
     f("Бягаща лента — по едно на ред","s:tickerTxt",(s.ticker||[]).join("\n"),"area")+
     f("Жанрове през запетая","s:genresTxt",(s.genres||[]).join(", "))+
     f("Категории на новините през запетая","s:newsTagsTxt",(s.newsTags||[]).join(", "))+
-    '<button class="a-btn pri" data-act="save">Запази</button></div>';
+    '<button class="a-btn pri" data-act="save">Запази</button></div>'+
+    tagManageHTML();
+}
+function tagManageHTML(){
+  var counts=tagUsageCounts(), keys=tagKeysByUsage();
+  return '<div class="a-form"><div class="a-f"><label>Тагове — '+keys.length+' общо. Кликни × за трайно изтриване (маха тага и от всички статии, които го ползват).</label>'+
+    '<div class="tagbox" style="max-height:260px">'+keys.map(function(s){
+      var n=counts[s]||0;
+      return '<span>'+esc2(D.tagLabels[s])+(n?' ('+n+')':'')+
+        '<button type="button" class="tagdel" data-act="deltag" data-tag="'+esc2(s)+'" aria-label="Изтрий">×</button></span>';
+    }).join("")+'</div></div></div>';
 }
 function usersTab(){
   if(A.users===null||A.users===undefined){ loadUsers(); return '<h2>Потребители</h2><p class="a-note">Зарежда…</p>'; }
@@ -728,6 +744,14 @@ function onClick(e){
     var garr=genreArr(A.edit[gf]).slice(), gi=garr.indexOf(g);
     if(gi>=0) garr.splice(gi,1); else garr.push(g);
     A.edit[gf]=garr; draw(); return; }
+  if(act==="deltag"){ var tg2=t.getAttribute("data-tag"), cnt=tagUsageCounts()[tg2]||0;
+    if(!confirm('Да изтрия ли тага „'+(D.tagLabels[tg2]||tg2)+'“ навсякъде?'+(cnt?' Ползва се в '+cnt+' материала — ще изчезне и от тях.':'')+' Действието не може да се отмени.')) return;
+    ["reviews","news","craft","episodes","calendar"].forEach(function(k){
+      (D[k]||[]).forEach(function(it){ if(it.tags&&it.tags.length) it.tags=it.tags.filter(function(s){return s!==tg2;}); });
+    });
+    delete D.tagLabels[tg2];
+    persist("Тагът е изтрит.");
+    return; }
   if(act==="inimg"){ pickInlineImage(); return; }
   if(act==="dl"){ download(); return; }
   if(act==="closebk"){ A.backup=null; draw(); return; }
@@ -861,7 +885,7 @@ function blank(k){
   if(k==="craft"){b.img="";b.cat="";b.video="";b.trailer="";b.guest="";b.role="";}
   if(k==="episodes"){b.yt="";b.sp="";b.n="";b.len="";b.cat="";}
   if(k==="merch"){b.img="";b.price=0;b.sizes=[];b.on=true;}
-  if(k==="calendar"){b.kind="cinema";b.platform="";b.poster="";b.src="manual";b.genre=[];}
+  if(k==="calendar"){b.kind="cinema";b.platform="";b.poster="";b.src="manual";b.genre=[];b.price=0;}
   return b;
 }
 function save(){
