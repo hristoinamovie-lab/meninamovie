@@ -1017,7 +1017,7 @@ function seoShell(opts) {
     '<meta name="twitter:image" content="' + escHtml(image) + '">' +
     '<link rel="preconnect" href="https://fonts.googleapis.com">' +
     '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
-    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@1,800;1,900&family=Manrope:wght@400;600;700&display=swap">' +
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@1,900&family=Oswald:wght@400;500;600&family=Manrope:wght@400;500;700&display=swap">' +
     "<style>" + SEO_CSS + "</style>" + (head || "") +
     "</head><body>" +
     SEO_HEADER +
