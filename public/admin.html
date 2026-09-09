@@ -124,6 +124,14 @@ function slugify(s){
 function ytId(u){var m=/(?:youtu\.be\/|v=|\/embed\/|\/shorts\/|\/live\/)([\w-]{6,})/.exec(u||"");return m?m[1]:"";}
 function ytThumb(u){var i=ytId(u);return i?"https://i.ytimg.com/vi/"+i+"/hqdefault.jpg":"";}
 function txt(s){return String(s||"").replace(/<[^>]+>/g,"").replace(/\s+/g," ").trim();}
+/* тагове от типа ![подпис](inline:N) → истинския адрес на снимката, пазена отделно в inlineImages */
+function resolveInlineImages(text,images){
+  if(!images||!images.length) return text;
+  return String(text||"").replace(/\(inline:(\d+)\)/g,function(m,idx){
+    var img=images[+idx];
+    return img&&img.data?"("+img.data+")":m;
+  });
+}
 function md(s){
   return String(s||"").split(/\n{2,}/).map(function(b){
     b=b.trim(); if(!b) return "";
@@ -546,7 +554,7 @@ function body(it){
 function preview(){
   var p=document.getElementById("aPrev"); if(!p) return;
   var it=A.edit;
-  p.innerHTML='<div class="prose">'+(it.lead?'<div class="answer">'+esc2(it.lead)+'</div>':"")+md(it.body||"")+'</div>';
+  p.innerHTML='<div class="prose">'+(it.lead?'<div class="answer">'+esc2(it.lead)+'</div>':"")+md(resolveInlineImages(it.body||"",it.inlineImages))+'</div>';
 }
 
 /* ---------- резервно копие ---------- */
@@ -620,7 +628,9 @@ function settingsTab(){
 }
 function tagManageHTML(){
   var counts=tagUsageCounts(), keys=tagKeysByUsage();
+  var unused=keys.filter(function(s){return !counts[s];}).length;
   return '<div class="a-form"><div class="a-f"><label>Тагове — '+keys.length+' общо. Кликни × за трайно изтриване (маха тага и от всички статии, които го ползват).</label>'+
+    (unused?'<button type="button" class="a-btn dan" data-act="delunusedtags" style="margin-bottom:8px">Изтрий неизползваните ('+unused+')</button>':'')+
     '<div class="tagbox" style="max-height:260px">'+keys.map(function(s){
       var n=counts[s]||0;
       return '<span>'+esc2(D.tagLabels[s])+(n?' ('+n+')':'')+
@@ -752,6 +762,13 @@ function onClick(e){
     delete D.tagLabels[tg2];
     persist("Тагът е изтрит.");
     return; }
+  if(act==="delunusedtags"){
+    var counts3=tagUsageCounts(), keys3=tagKeysByUsage(), rm=keys3.filter(function(s){return !counts3[s];});
+    if(!rm.length) return;
+    if(!confirm("Да изтрия ли "+rm.length+" неизползвани тага? Действието не може да се отмени.")) return;
+    rm.forEach(function(s){ delete D.tagLabels[s]; });
+    persist("Изтрити "+rm.length+" неизползвани тага.");
+    return; }
   if(act==="inimg"){ pickInlineImage(); return; }
   if(act==="dl"){ download(); return; }
   if(act==="closebk"){ A.backup=null; draw(); return; }
@@ -806,11 +823,8 @@ function collect(){
     var n=el.getAttribute("data-f");
     if(n.indexOf("s:")===0||n.indexOf("nu:")===0) return;
     if(n==="tagsTxt"){
-      var lab=D.tagLabels||(D.tagLabels={});
       it.tags=el.value.split(",").map(function(t){
-        var raw=t.trim(), s=raw.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-        if(s&&raw&&!lab[s]) lab[s]=raw;
-        return s;
+        return t.trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
       }).filter(Boolean);
       return;
     }
@@ -870,7 +884,10 @@ function pickInlineImage(){
   i.onchange=function(){ var file=i.files[0]; if(!file) return;
     resize(file,1200,675,function(uri){
       var cap=prompt("Подпис под изображението (може празно):")||"";
-      insert("\n\n!["+cap+"]("+uri+")\n\n");
+      /* снимката се пази отделно от текста — в него остава само кратък маркер, не целият адрес */
+      var imgs=A.edit.inlineImages||(A.edit.inlineImages=[]);
+      imgs.push({cap:cap,data:uri});
+      insert("\n\n!["+cap+"](inline:"+(imgs.length-1)+")\n\n");
     });
   };
   i.click();
@@ -878,7 +895,7 @@ function pickInlineImage(){
 
 /* ---------- запис ---------- */
 function blank(k){
-  var b={id:uid(k.slice(0,1)==="e"&&k==="episodes"?"e":k.slice(0,1)),t:"",when:today(),lead:"",body:"",tags:[],
+  var b={id:uid(k.slice(0,1)==="e"&&k==="episodes"?"e":k.slice(0,1)),t:"",when:today(),lead:"",body:"",tags:[],inlineImages:[],
     status:canPublish()?"published":"review",authorName:A.me?A.me.name:""};
   if(k==="reviews"){b.y="";b.g=[];b.s=4;b.mins="";b.poster="";b.share="";b.video="";b.trailer="";}
   if(k==="news"){b.img="";b.cat="";b.video="";b.trailer="";b.source="";b.sourceUrl="";}
@@ -891,6 +908,17 @@ function blank(k){
 function save(){
   collect();
   var k=A.editKind, it=A.edit;
+  /* регистрирай нови тагове в общия речник само тук, при явен запис —
+     не при всяко натискане на клавиш, за да не се хващат недовършени думи */
+  var tagsTxtEl=document.querySelector('[data-f="tagsTxt"]');
+  if(tagsTxtEl){
+    var lab=D.tagLabels||(D.tagLabels={});
+    tagsTxtEl.value.split(",").forEach(function(t){
+      var raw=t.trim(); if(!raw) return;
+      var s=raw.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+      if(s&&!lab[s]) lab[s]=raw;
+    });
+  }
   if(!it.t.trim()){ flash("Трябва заглавие.","err"); return; }
   if(!canPublish()) it.status = it.status==="draft" ? "draft" : "review";
   if(!it.authorName&&A.me) it.authorName=A.me.name;
