@@ -531,6 +531,8 @@ function ytIdOf(u) {
 function escHtml(t) {
   return String(t == null ? "" : t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
+/* жанр може да е стар единичен низ или нов списък */
+function genreArr(v) { return Array.isArray(v) ? v : (v ? [v] : []); }
 function plain(t, max) {
   const s = String(t || "").replace(/[*_>#\[\]()]/g, " ").replace(/\s+/g, " ").trim();
   return s.length > max ? s.slice(0, max - 1).trimEnd() + "…" : s;
@@ -720,7 +722,7 @@ function seoJsonLd(kind, it, origin, canon, image) {
   if (kind === "reviews") {
     node = Object.assign({}, base, {
       "@type": "Review",
-      itemReviewed: { "@type": "Movie", name: it.t, ...(it.y ? { dateCreated: String(it.y) } : {}), ...(it.g ? { genre: it.g } : {}) },
+      itemReviewed: { "@type": "Movie", name: it.t, ...(it.y ? { dateCreated: String(it.y) } : {}), ...(genreArr(it.g).length ? { genre: genreArr(it.g) } : {}) },
       reviewRating: { "@type": "Rating", ratingValue: String(it.s || ""), bestRating: "5", worstRating: "1" },
       reviewBody: plain(it.body, 1500),
     });
@@ -817,7 +819,12 @@ header.top nav a:hover{border-bottom-color:#141210}
 .band.no-band{background:transparent;color:#F2F0EB}
 .band.no-band .shot{aspect-ratio:2/3;min-width:0;max-width:280px;flex:0 0 260px;align-self:flex-start;background:#141210}
 .band.no-band .shot img{object-fit:cover}
-.band.no-band .lede{color:#A6A196;border-left-color:#2A2723}
+.band.no-band .lede{color:#F2F0EB;border-left-color:#F6C92B;font-size:22px;line-height:1.45;font-style:italic;border-left-width:5px;padding-left:18px;margin-top:22px}
+.band.no-band h1{margin-top:14px}
+.hl{display:inline-block;background:#F6C92B;color:#141210;font-family:Montserrat,system-ui,sans-serif;font-weight:900;font-style:italic;font-size:clamp(24px,4vw,40px);text-transform:uppercase;letter-spacing:-.02em;padding:.08em .34em .12em;box-shadow:5px 6px 0 rgba(0,0,0,.35);line-height:1.05}
+.hl-stack .hl:nth-child(2){margin-left:16px}
+.hl-stack .hl:nth-child(3){margin-left:32px}
+.hl-notch{clip-path:polygon(0 0,100% 0,100% calc(100% - 13px),calc(100% - 13px) 100%,0 100%)}
 .band.no-band .tag{color:#F6C92B;border-color:#2A2723}
 .band.no-band a.tag:hover{border-color:#F6C92B;color:#141210;background:#F6C92B}
 .band.no-band .btn{color:#F2F0EB;border-color:#2A2723}
@@ -1042,6 +1049,21 @@ function clapsHTML(n) {
   return out + "</div>";
 }
 
+/* заглавие с жълти "плочки", както на началната страница — вместо обикновен текст */
+function titleBlocksHTML(t, limit) {
+  const w = String(t || "").split(" ");
+  const lines = [];
+  let cur = "", L = limit || 15;
+  for (const x of w) {
+    if ((cur + " " + x).trim().length > L) { if (cur) lines.push(cur); cur = x; }
+    else cur = (cur + " " + x).trim();
+  }
+  if (cur) lines.push(cur);
+  return lines.slice(0, 3).map((l, i, a) =>
+    '<span class="hl' + (i === a.length - 1 ? " hl-notch" : "") + '">' + escHtml(l) + "</span>"
+  ).join("");
+}
+
 /* бутон за споделяне — копира адреса */
 const SHARE_BTN =
   '<button class="btn" type="button" id="shr">Сподели</button>';
@@ -1082,7 +1104,7 @@ async function seoItemPage(kind, it, data, origin, env) {
   let title, metaBits = [], lede = "", extra = "";
   if (kind === "reviews") {
     title = it.t + (it.y ? " (" + it.y + ")" : "") + " — ревю | Men In A Movie";
-    metaBits = [SEO_LABEL[kind], it.y, it.g, it.mins ? it.mins + " мин" : ""];
+    metaBits = [SEO_LABEL[kind], it.y, genreArr(it.g).join(", "), it.mins ? it.mins + " мин" : ""];
     lede = it.lead || it.verdict || "";
     if (it.imdb) extra += '<a class="btn" rel="nofollow" href="' + escHtml(/^https?:/.test(it.imdb) ? it.imdb : "https://www.imdb.com/title/" + it.imdb + "/") + '">IMDb</a>';
   } else if (kind === "news") {
@@ -1179,7 +1201,7 @@ async function seoItemPage(kind, it, data, origin, env) {
       (kind === "calendar" ? '<a class="btn" href="/kalendar">Целият календар</a>' : "") +
     "</div>";
   let sideInner = '<p class="facts">' + escHtml((kind === "calendar" ? [calKicker] : metaBits).filter(Boolean).join(" · ")) + "</p>" +
-    "<h1>" + escHtml(it.t) + "</h1>";
+    (noBand ? '<h1 class="hl-stack">' + titleBlocksHTML(it.t, 20) + "</h1>" : "<h1>" + escHtml(it.t) + "</h1>");
   if (kind === "reviews") {
     sideInner += (lede ? '<p class="lede">' + escHtml(plain(lede, 400)) + "</p>" : "");
   } else {
@@ -1244,7 +1266,7 @@ function seoListPage(slug, page, data, origin) {
         (im && !/\/og\.jpg$/.test(im) ? '<img src="' + escHtml(im) + '" alt="' + escHtml(it.t) + '" loading="lazy">' : "") +
         clapsHTML(it.s) +
         '</div><div class="cbody"><h3>' + escHtml(it.t) + '</h3>' +
-        '<p class="kicker">' + escHtml([it.y, it.g].filter(Boolean).join(" · ")) + "</p></div></a>";
+        '<p class="kicker">' + escHtml([it.y, genreArr(it.g).join(", ")].filter(Boolean).join(" · ")) + "</p></div></a>";
     }
     if (kind === "merch") {
       const im = it.img ? origin + "/img/m/" + encodeURIComponent(it.id) : "";
