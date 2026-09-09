@@ -781,17 +781,34 @@ a{color:#F6C92B;text-decoration:none}
 .ital{font-family:Montserrat,system-ui,sans-serif;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:-.02em}
 
 /* ---- хедър като на сайта ---- */
-header.top{background:#F6C92B;color:#141210}
-header.top .wrap{display:flex;align-items:center;gap:22px;min-height:64px;flex-wrap:wrap}
+header.top{background:#F6C92B;color:#141210;position:sticky;top:0;z-index:205}
+header.top .wrap{display:flex;align-items:center;gap:24px;min-height:62px;flex-wrap:wrap;row-gap:10px;padding-top:10px;padding-bottom:10px}
 .brand{display:flex;align-items:center;gap:10px;color:#141210;text-decoration:none;flex:none}
 .logo-mark{height:34px;width:auto;display:block;color:#141210}
 .logo-mark path,.logo-mark rect{fill:currentColor}
 .btxt b{display:block;font-family:Montserrat,system-ui,sans-serif;font-style:italic;font-weight:900;font-size:16px;letter-spacing:-.02em;text-transform:uppercase;line-height:1.1}
 .btxt i{display:block;font-style:normal;font-family:Oswald,system-ui,sans-serif;font-size:9px;letter-spacing:.14em;text-transform:uppercase;opacity:.65;margin-top:3px}
-header.top nav{display:flex;gap:17px;flex:1;flex-wrap:wrap}
-header.top nav a{color:#141210;font-size:12px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:5px 0;border-bottom:2px solid transparent}
-header.top nav a:hover{border-bottom-color:#141210}
-.cal-btn{background:#141210;color:#F6C92B;font-size:12px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:10px 16px}
+nav.main{display:flex;gap:18px;flex-wrap:wrap}
+nav.main a{font-family:Oswald,system-ui,sans-serif;font-weight:500;font-size:14px;letter-spacing:.06em;text-transform:uppercase;padding:4px 0;border-bottom:2px solid transparent;color:#141210}
+nav.main a:hover{border-bottom-color:#141210}
+.hbtns{display:flex;align-items:center;gap:22px;margin-left:auto;flex-wrap:wrap;row-gap:10px}
+.sbtn{width:34px;height:34px;border:1px solid rgba(20,18,16,.35);background:none;color:#141210;cursor:pointer;display:grid;place-items:center;flex:none}
+.sbtn:hover{background:rgba(20,18,16,.08)}
+.btn-cal{display:inline-block;background:#141210;color:#F6C92B;font-family:Oswald,system-ui,sans-serif;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:9px 16px;white-space:nowrap}
+.btn-cal:hover{background:#000;color:#ffd84a}
+.hmenu{display:none;width:38px;height:38px;border:1px solid rgba(20,18,16,.35);background:none;color:#141210;cursor:pointer;place-items:center;flex:none;margin-left:auto}
+.hmenu:hover{background:rgba(20,18,16,.08)}
+@media(max-width:900px){
+  header.top{position:relative}
+  header.top .wrap{flex-wrap:nowrap}
+  .hmenu{display:grid}
+  .hbtns{display:none;position:absolute;top:100%;left:0;right:0;margin-left:0;flex-direction:column;align-items:stretch;gap:0;background:#F6C92B;border-top:1px solid rgba(20,18,16,.15);padding:6px 20px 18px;box-shadow:0 12px 20px rgba(0,0,0,.15);z-index:220}
+  .hbtns.open{display:flex}
+  .hbtns nav.main{flex-direction:column;gap:0;width:100%}
+  .hbtns nav.main a{padding:12px 2px;border-bottom:1px solid rgba(20,18,16,.1)}
+  .hbtns .sbtn{align-self:flex-start;margin-top:12px}
+  .hbtns .btn-cal{margin-top:12px;text-align:center}
+}
 
 /* ---- жълта лента на статията: текст/тагове/цитат/бутони вляво, снимка вдясно ---- */
 .crumbs{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.7;margin:0;padding-top:16px}
@@ -1020,12 +1037,22 @@ const LOGO_SVG =
 const SEO_HEADER =
   '<header class="top"><div class="wrap">' +
   '<a class="brand" href="/">' + LOGO_SVG + '<span class="btxt"><b>Men In A Movie</b><i>кино · подкаст · ревюта · новини</i></span></a>' +
-  '<nav>' +
+  '<button class="hmenu" id="btnMenu" aria-label="Меню" aria-expanded="false">' +
+  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>' +
+  "</button>" +
+  '<div class="hbtns" id="hbtns">' +
+  '<nav class="main">' +
   '<a href="/novini">Новини</a><a href="/revyuta">Ревюта</a><a href="/podkast">Подкаст</a>' +
   '<a href="/zad-kadar">Зад кадър</a><a href="/march">Мърч</a><a href="/#za-nas">За нас</a>' +
   "</nav>" +
-  '<a class="cal-btn" href="/kalendar">Movie calendar</a>' +
-  "</div></header>";
+  '<button class="sbtn" aria-label="Търсене" title="Търсене">' +
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>' +
+  "</button>" +
+  '<a class="btn-cal" href="/kalendar">Movie calendar</a>' +
+  "</div>" +
+  "</div></header>" +
+  '<script>(function(){var b=document.getElementById("btnMenu"),h=document.getElementById("hbtns");if(!b||!h)return;' +
+  'b.addEventListener("click",function(){var o=h.classList.toggle("open");b.setAttribute("aria-expanded",o?"true":"false")});})();<\/script>';
 
 const SEO_FOOTER =
   '<footer class="bot"><div class="wrap"><div class="cols">' +
