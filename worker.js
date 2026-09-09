@@ -686,6 +686,11 @@ function seoDateBg(iso) {
 }
 
 /* movie calendar: същият текст като на сайта, за да не се разминават */
+function calCat(c) {
+  if (c.kind === "event") return c.organizer || "Събитие";
+  if (c.kind === "stream") return c.platform || "Стрийминг";
+  return "По кината";
+}
 function calSubLabel(c) {
   if (String(c.note || "").trim()) return c.note;
   if (c.sub === "series") return "Нов сериал";
@@ -1099,8 +1104,6 @@ async function seoItemPage(kind, it, data, origin, env) {
   for (const t of seoTagList(data)) bigTags[t.slug] = 1;   // кои теми имат своя страница
   const image = seoImage(kind, it, origin);
   const date = seoDate(kind, it);
-  const CK = { cinema: "По кината", stream: "Стрийминг", event: "Събитие" };
-
   let title, metaBits = [], lede = "", extra = "";
   if (kind === "reviews") {
     title = it.t + (it.y ? " (" + it.y + ")" : "") + " — ревю | Men In A Movie";
@@ -1121,9 +1124,8 @@ async function seoItemPage(kind, it, data, origin, env) {
     lede = it.desc || "";
   } else {
     title = it.t + (it.when ? " — " + seoDateBg(it.when) : "") + " | Movie calendar";
-    metaBits = [it.time, it.place, it.genre, it.mins ? it.mins + " мин." : "", it.kind !== "stream" ? calSubLabel(it) : ""];
     lede = it.lead || it.p || it.desc || "";
-    /* билетите/гледането са бутон в жълтата лента */
+    /* билетите/гледането са бутон в жълтата лента; останалите детайли влизат в calKicker по-долу */
   }
   const calPast = kind === "calendar" && String(it.when || "") < ymd(new Date());
   /* трейлър/резюме/оценка от TMDB, теглени "на живо" при отваряне на страницата (не при синхронизацията) */
@@ -1135,7 +1137,9 @@ async function seoItemPage(kind, it, data, origin, env) {
     if (tmdbX.overview) lede = tmdbX.overview;
   }
   const calKicker = kind === "calendar"
-    ? [CK[it.kind] || "Movie calendar", it.kind === "stream" ? calSubLabel(it) : "", calPast ? "вече е налично" : seoDateBg(it.when),
+    ? [calCat(it), it.kind === "stream" ? calSubLabel(it) : "", calPast ? "вече е налично" : seoDateBg(it.when),
+       it.time, it.place, it.kind === "event" && it.price ? "от " + it.price + " €" : "",
+       genreArr(it.genre).join(", "), it.mins ? it.mins + " мин." : "",
        tmdbX.rating ? "TMDB " + tmdbX.rating + "/10" : ""].filter(Boolean).join(" • ")
     : SEO_LABEL[kind];
   const vid = it.video || it.yt || "";
@@ -1402,7 +1406,6 @@ function seoTagPage(tag, data, origin) {
    /kalendar/streaming        — само стрийминга
    /kalendar/netflix          — само една платформа
 */
-const CAL_KIND_LABEL = { cinema: "По кината", stream: "Стрийминг", event: "Събитие" };
 const CAL_SUB_LABEL = { series: "Нов сериал", season: "Нов сезон", episode: "Нов епизод" };
 
 function calMonthName(ym) {
@@ -1488,7 +1491,7 @@ function calWords(v) {
 }
 function calRow(it, origin) {
   const im = it.poster || it.backdrop || "";
-  const tab1 = CAL_KIND_LABEL[it.kind] || (it.platform || "Movie calendar");
+  const tab1 = calCat(it);
   const tab2 = CAL_SUB_LABEL[it.sub] || (it.sub === "episode" && it.season && it.episode ? "S" + it.season + " · E" + it.episode : "");
   const past = it.when < ymd(new Date());
   const formatTxt = it.kind === "event" ? "Събитие" : it.kind === "stream" ? (it.sub ? "Сериал" : "Филм") : "По кината";
@@ -1498,7 +1501,7 @@ function calRow(it, origin) {
     (tab2 ? '<span class="calcard-tab2">' + escHtml(tab2) + "</span>" : "") +
     '<span class="calcard-when">' + escHtml(past ? "вече е налично" : seoDateBg(it.when)) + "</span>" +
     '</div><div class="cbody"><h3>' + escHtml(it.t) + '</h3>' +
-    '<p class="kicker">' + escHtml([it.platform, formatTxt].filter(Boolean).join(" · ")) + "</p></div></a>";
+    '<p class="kicker">' + escHtml((it.kind === "event" ? [it.price ? "от " + it.price + " €" : "", it.place] : [it.platform]).concat([formatTxt]).filter(Boolean).join(" · ")) + "</p></div></a>";
 }
 function calByMonth(items) {
   const order = [], group = {};
