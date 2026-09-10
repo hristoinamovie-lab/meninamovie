@@ -255,6 +255,15 @@ function keepImages(incoming, prev) {
   return incoming;
 }
 
+/* готовият JSON за посетителите — пресметнат СЛЕД всеки запис/синхрон, не при всяко зареждане на сайта.
+   /api/content (без ?full=1) просто го връща както си е — без да пипа целия суров запис при всяко отваряне
+   на сайта, което при много снимки в текстове караше Cloudflare да спира заявката (грешка 1102). */
+async function publishPublicCache(env, data) {
+  const text = JSON.stringify(liftImages(publicCopy(data)));
+  await env.MIM.put("content_public", text);
+  return text;
+}
+const jsonText = (text, status = 200) => new Response(text, { status, headers: JSON_HEADERS });
 
 /* ---------- броячи: прегледи и харесвания ---------- */
 async function counters(env) {
@@ -604,6 +613,7 @@ async function syncCalendar(env, months) {
   data.trending = trending;
   data.settings.calSyncedAt = Date.now();
   await env.MIM.put("content", JSON.stringify(data));
+  await publishPublicCache(env, data);
   return {
     ok: true, count: out.length, added: fresh.length,
     movies: nMovies, series: nSeries, perPlatform: perPlatform,
@@ -2081,15 +2091,20 @@ async function handleRequest(request, env, ctx) {
     /* ---------- съдържание ---------- */
     if (path === "/api/content") {
       if (request.method === "GET") {
-        const data = await stored(env);
-        if (!data) return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
-        const pub = publicCopy(data);
         if (url.searchParams.get("full") === "1") {
+          const data = await stored(env);
+          if (!data) return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
           const who = await whoIs(request, env, data);
           if (!who) return json({ error: "forbidden" }, 403);
-          return json(pub);                       // с всички снимки вътре — за резервното копие
+          return json(publicCopy(data));           // с всички снимки вътре — за резервното копие
         }
-        return json(liftImages(pub));
+        // предварително пресметнат при последния запис/синхрон — без да се пипа целият суров запис тук
+        const cached = await env.MIM.get("content_public");
+        if (cached) return jsonText(cached);
+        const data = await stored(env);
+        if (!data) return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
+        const text = await publishPublicCache(env, data); // кешът още го няма — смятаме веднъж и го пазим за следващия път
+        return jsonText(text);
       }
 
       if (request.method === "POST") {
@@ -2122,6 +2137,7 @@ async function handleRequest(request, env, ctx) {
 
         if (prev) await env.MIM.put("content-prev", JSON.stringify(prev));
         await env.MIM.put("content", text);
+        ctx.waitUntil(publishPublicCache(env, merged));
         return json({
           ok: true, at: Date.now(), by: who ? who.role : "bootstrap",
           scope: who && who.role === "author" ? "own" : "all",
