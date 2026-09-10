@@ -352,7 +352,7 @@ function tvItem(t, pv, sub, when, season, episode) {
     backdrop: t.backdrop_path ? BACKDROP + t.backdrop_path : "",
     p: (t.overview || "").slice(0, 320), platform: pv.name,
     sub: sub, season: season ? +season : null, episode: episode ? +episode : null,
-    video: "", note: "",
+    video: "", note: "", popularity: t.popularity || 0,
   };
 }
 
@@ -440,24 +440,39 @@ async function syncCalendar(env, months) {
         t: m.title || m.original_title || "", when: m.release_date,
         poster: m.poster_path ? POSTER + m.poster_path : "",
         backdrop: m.backdrop_path ? BACKDROP + m.backdrop_path : "",
-        p: (m.overview || "").slice(0, 320), video: "", note: "",
+        p: (m.overview || "").slice(0, 320), video: "", note: "", popularity: m.popularity || 0,
       });
       nMovies++;
     }
     if (!nMovies) notes.push("TMDB няма премиери за България в този период.");
   } catch (e) { notes.push("Филми: " + e.message); }
+
+  // топ 5 филми, които реално вървят по кината в България в момента (за таб "Най-гледани")
+  const trending = { cinema: [], streaming: {}, updatedAt: Date.now() };
+  try {
+    const np = await tmdbGet(env, "/movie/now_playing", { region: "BG", language: "bg-BG", page: "1" });
+    trending.cinema = (np.results || [])
+      .slice()
+      .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
+      .slice(0, 5)
+      .map((m) => ({
+        tmdbId: m.id, t: m.title || m.original_title || "",
+        poster: m.poster_path ? POSTER + m.poster_path : "",
+        popularity: m.popularity || 0, rating: m.vote_average || 0,
+      }));
+  } catch (e) { notes.push("Най-гледани по кината: " + e.message); }
   // сериали по стрийминга — само с истинска дата на излъчване
   const lo = ymd(from), hi = ymd(to);
-  /* Cloudflare пуска 50 запитвания в едно изпълнение. Едно вече отиде за филмите,
-     всяка платформа взима по три за списъците (нови сериали, вървящи сериали, филми) —
-     останалото се дели поравно между тях, за да не изяде първата платформа целия
-     остатък и последните да останат празни. */
+  /* Cloudflare пуска 50 запитвания в едно изпълнение. Две вече отидоха за филмите
+     и за топ 5 по кината, всяка платформа взима по три за списъците (нови сериали,
+     вървящи сериали, филми) — останалото се дели поравно между тях, за да не изяде
+     първата платформа целия остатък и последните да останат празни. */
   const MAX_PROVIDERS = 12;
   const used = providers.length > MAX_PROVIDERS ? providers.slice(0, MAX_PROVIDERS) : providers;
   if (providers.length > MAX_PROVIDERS)
     notes.push("Платформите са " + providers.length + " — обновявам първите " + MAX_PROVIDERS + ".");
   const perPlatform = {};
-  let budget = Math.max(0, 46 - 1 - used.length * 3);
+  let budget = Math.max(0, 46 - 2 - used.length * 3);
   const share = Math.max(1, Math.floor(budget / Math.max(1, used.length)));
   for (const pv of used) {
     const before = nSeries;
@@ -515,13 +530,24 @@ async function syncCalendar(env, months) {
           poster: m.poster_path ? POSTER + m.poster_path : "",
           backdrop: m.backdrop_path ? BACKDROP + m.backdrop_path : "",
           p: (m.overview || "").slice(0, 320), platform: pv.name,
-          sub: "", season: null, episode: null, video: "", note: "",
+          sub: "", season: null, episode: null, video: "", note: "", popularity: m.popularity || 0,
         });
         nMovies++;
       }
     } catch (e) { notes.push(pv.name + " (филми): " + e.message); }
 
     perPlatform[pv.name] = nSeries - before;
+
+    // топ 5 най-популярни (филми + сериали) на тази платформа от вече изтегленото по-горе — без нови заявки
+    trending.streaming[pv.name] = fresh
+      .filter((f) => f.kind === "stream" && f.platform === pv.name)
+      .slice()
+      .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
+      .slice(0, 5)
+      .map((f) => ({
+        tmdbId: f.tmdbId, t: f.t, poster: f.poster,
+        popularity: f.popularity || 0, media: f.sub ? "series" : "movie",
+      }));
   }
   const emptyPv = Object.keys(perPlatform).filter((n) => !perPlatform[n]);
   if (emptyPv.length && emptyPv.length < used.length)
@@ -550,6 +576,7 @@ async function syncCalendar(env, months) {
   }
   out.sort((a, b) => String(a.when).localeCompare(String(b.when)));
   data.calendar = out;
+  data.trending = trending;
   data.settings.calSyncedAt = Date.now();
   await env.MIM.put("content", JSON.stringify(data));
   return {
