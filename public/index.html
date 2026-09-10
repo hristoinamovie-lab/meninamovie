@@ -643,14 +643,6 @@ function reviewFor(c){
   return items("reviews").filter(function(r){return String(r.t||"").trim().toLowerCase()===t;})[0]||null;
 }
 
-/* тагове от типа ![подпис](inline:N) → истинския адрес на снимката, пазена отделно в it.inlineImages */
-function resolveInlineImages(text,images){
-  if(!images||!images.length) return text;
-  return String(text||"").replace(/\(inline:(\d+)\)/g,function(m,idx){
-    var img=images[+idx];
-    return img&&img.data?"("+img.data+")":m;
-  });
-}
 function md(s){
   var out=String(s||"").split(/\n{2,}/).map(function(b){
     b=b.trim(); if(!b) return "";
@@ -1084,7 +1076,7 @@ function merchPage(it){
           :'<span class="shop-cta" aria-disabled="true">Изчерпано</span>')+
     '</div></div></div>'+
     '<div class="shop-lower">'+
-    '<div><h2>Описание</h2><div class="prose">'+(it.body?md(resolveInlineImages(it.body,it.inlineImages)):(it.lead?'<p>'+esc(txt(it.lead))+'</p>':'<p>Няма допълнително описание.</p>'))+'</div></div>'+
+    '<div><h2>Описание</h2><div class="prose">'+(it.body?md(it.body):(it.lead?'<p>'+esc(txt(it.lead))+'</p>':'<p>Няма допълнително описание.</p>'))+'</div></div>'+
     (sizes.length?'<div><h2>Детайли</h2><dl class="spec2"><div class="row"><dt>Размери</dt><dd>'+esc(sizes.join(" · "))+'</dd></div></dl></div>':'')+
     '</div>';
   document.getElementById("app").innerHTML=h;
@@ -1188,7 +1180,7 @@ function article(kindKey,id){
   if(kindKey!=="episodes"&&kindKey!=="calendar"&&it.video&&ytId(it.video))
     h+='<div class="embed"><iframe src="https://www.youtube.com/embed/'+ytId(it.video)+'" title="видео" allowfullscreen loading="lazy"></iframe></div>';
   var bodyTxt=kindKey==="calendar"?(it.body||it.p):it.body;
-  if(bodyTxt) h+='<div class="prose">'+md(resolveInlineImages(bodyTxt,it.inlineImages))+'</div>';
+  if(bodyTxt) h+='<div class="prose">'+md(bodyTxt)+'</div>';
 
   if(kindKey==="merch"){
     h+='<div class="prose"><p class="price">'+it.price+' €</p>'+

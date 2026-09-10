@@ -128,14 +128,6 @@ function slugify(s){
 function ytId(u){var m=/(?:youtu\.be\/|v=|\/embed\/|\/shorts\/|\/live\/)([\w-]{6,})/.exec(u||"");return m?m[1]:"";}
 function ytThumb(u){var i=ytId(u);return i?"https://i.ytimg.com/vi/"+i+"/hqdefault.jpg":"";}
 function txt(s){return String(s||"").replace(/<[^>]+>/g,"").replace(/\s+/g," ").trim();}
-/* тагове от типа ![подпис](inline:N) → истинския адрес на снимката, пазена отделно в inlineImages */
-function resolveInlineImages(text,images){
-  if(!images||!images.length) return text;
-  return String(text||"").replace(/\(inline:(\d+)\)/g,function(m,idx){
-    var img=images[+idx];
-    return img&&img.data?"("+img.data+")":m;
-  });
-}
 function md(s){
   return String(s||"").split(/\n{2,}/).map(function(b){
     b=b.trim(); if(!b) return "";
@@ -627,13 +619,13 @@ function body(it){
   return '<div class="a-f"><label>Текст</label><div class="a-tools">'+
     ['**удебелено**|**','*курсив*|*','## подзаглавие|## ','- списък|- ','> акцент|> ','[текст](линк)|['].map(function(x){
       var p=x.split("|"); return '<button data-md="'+esc2(p[1])+'">'+esc2(p[0])+'</button>';}).join("")+
-    '<button data-act="inimg">+ изображение в текста</button></div>'+
+    '</div>'+
     '<textarea data-f="body">'+esc2(it.body||"")+'</textarea></div>';
 }
 function preview(){
   var p=document.getElementById("aPrev"); if(!p) return;
   var it=A.edit;
-  p.innerHTML='<div class="prose">'+(it.lead?'<div class="answer">'+esc2(it.lead)+'</div>':"")+md(resolveInlineImages(it.body||"",it.inlineImages))+'</div>';
+  p.innerHTML='<div class="prose">'+(it.lead?'<div class="answer">'+esc2(it.lead)+'</div>':"")+md(it.body||"")+'</div>';
 }
 
 /* ---------- резервно копие ---------- */
@@ -895,7 +887,6 @@ function onClick(e){
     D.settings.calProviders=known4.filter(function(p){return p.on;}).map(function(p){return {id:p.id,name:p.name};});
     persist("Платформата е добавена.");
     return; }
-  if(act==="inimg"){ pickInlineImage(); return; }
   if(act==="dl"){ download(); return; }
   if(act==="closebk"){ A.backup=null; draw(); return; }
   if(act==="bkview"){ bkView(k,id); return; }
@@ -1060,23 +1051,9 @@ function readImage(el){
     draw();
   });
 }
-function pickInlineImage(){
-  var i=document.createElement("input"); i.type="file"; i.accept="image/*";
-  i.onchange=function(){ var file=i.files[0]; if(!file) return;
-    resize(file,1200,675,function(uri){
-      var cap=prompt("Подпис под изображението (може празно):")||"";
-      /* снимката се пази отделно от текста — в него остава само кратък маркер, не целият адрес */
-      var imgs=A.edit.inlineImages||(A.edit.inlineImages=[]);
-      imgs.push({cap:cap,data:uri});
-      insert("\n\n!["+cap+"](inline:"+(imgs.length-1)+")\n\n");
-    });
-  };
-  i.click();
-}
-
 /* ---------- запис ---------- */
 function blank(k){
-  var b={id:uid(k.slice(0,1)==="e"&&k==="episodes"?"e":k.slice(0,1)),t:"",when:today(),lead:"",body:"",tags:[],inlineImages:[],
+  var b={id:uid(k.slice(0,1)==="e"&&k==="episodes"?"e":k.slice(0,1)),t:"",when:today(),lead:"",body:"",tags:[],
     status:canPublish()?"published":"review",authorName:A.me?A.me.name:""};
   if(k==="reviews"){b.y="";b.g=[];b.s=4;b.mins="";b.poster="";b.share="";b.video="";b.trailer="";}
   if(k==="news"){b.img="";b.cat="";b.video="";b.trailer="";b.source="";b.sourceUrl="";}
