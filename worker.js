@@ -358,19 +358,25 @@ function tvItem(t, pv, sub, when, season, episode) {
 
 /** Каст, режисьор/създател и франчайз — за предложени тагове в админ панела, тегли се само при натискане на бутон. */
 async function tmdbCredits(env, media, tmdbId) {
-  const out = { cast: [], director: "", collection: "" };
+  const out = { cast: [], director: "", collection: "", titleLatin: "", genres: [], companies: [], keywords: [] };
   if (!env.TMDB_KEY || !tmdbId) return out;
   try {
     // language: en-US нарочно — тук искаме имена на латиница, за да могат да се ползват като тагове
-    const d = await tmdbGet(env, "/" + media + "/" + tmdbId, { append_to_response: "credits", language: "en-US" });
+    const d = await tmdbGet(env, "/" + media + "/" + tmdbId, { append_to_response: "credits,keywords", language: "en-US" });
     const credits = d.credits || {};
     out.cast = (credits.cast || []).slice(0, 5).map((c) => c.name).filter(Boolean);
+    out.titleLatin = d.title || d.name || "";
+    out.genres = (d.genres || []).map((g) => g.name).filter(Boolean);
     if (media === "movie") {
       const dir = (credits.crew || []).find((c) => c.job === "Director");
       out.director = dir ? dir.name : "";
       out.collection = (d.belongs_to_collection && d.belongs_to_collection.name) || "";
+      out.companies = (d.production_companies || []).slice(0, 2).map((c) => c.name).filter(Boolean);
+      out.keywords = ((d.keywords && d.keywords.keywords) || []).slice(0, 5).map((k) => k.name).filter(Boolean);
     } else {
       out.director = ((d.created_by || [])[0] || {}).name || "";
+      // мрежите (HBO, Netflix...) нарочно не се предлагат — вече имаме отделно поле "Платформа"
+      out.keywords = ((d.keywords && d.keywords.results) || []).slice(0, 5).map((k) => k.name).filter(Boolean);
     }
   } catch (e) {}
   return out;
@@ -2102,7 +2108,7 @@ async function handleRequest(request, env, ctx) {
     /* каст/режисьор/франчайз по въведено име — за предложени тагове в админ панела, за всички секции */
     if (path === "/api/tmdb-search-tags" && request.method === "GET") {
       const q = (url.searchParams.get("q") || "").trim();
-      const out = { cast: [], director: "", collection: "", title: "" };
+      const out = { cast: [], director: "", collection: "", titleLatin: "", titleBg: "", genres: [], companies: [], keywords: [] };
       if (!q || !env.TMDB_KEY) return json(out);
       try {
         // тук language си остава bg-BG нарочно — иначе търсенето по кирилско заглавие (напр. взето от статията) може да не намери резултат;
@@ -2111,7 +2117,7 @@ async function handleRequest(request, env, ctx) {
         const hit = (s.results || []).find((r) => r.media_type === "movie" || r.media_type === "tv");
         if (!hit) return json(out);
         const cr = await tmdbCredits(env, hit.media_type, hit.id);
-        cr.title = hit.title || hit.name || "";
+        cr.titleBg = hit.title || hit.name || "";
         return json(cr);
       } catch (e) {
         return json(out);
