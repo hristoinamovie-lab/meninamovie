@@ -443,14 +443,15 @@ async function syncCalendar(env, months) {
   // сериали по стрийминга — само с истинска дата на излъчване
   const lo = ymd(from), hi = ymd(to);
   /* Cloudflare пуска 50 запитвания в едно изпълнение. Едно вече отиде за филмите,
-     всяка платформа взима по две за списъците — останалото се дели поравно между тях,
-     за да не изяде първата платформа целия остатък и последните да останат празни. */
+     всяка платформа взима по три за списъците (нови сериали, вървящи сериали, филми) —
+     останалото се дели поравно между тях, за да не изяде първата платформа целия
+     остатък и последните да останат празни. */
   const MAX_PROVIDERS = 12;
   const used = providers.length > MAX_PROVIDERS ? providers.slice(0, MAX_PROVIDERS) : providers;
   if (providers.length > MAX_PROVIDERS)
     notes.push("Платформите са " + providers.length + " — обновявам първите " + MAX_PROVIDERS + ".");
   const perPlatform = {};
-  let budget = Math.max(0, 46 - 1 - used.length * 2);
+  let budget = Math.max(0, 46 - 1 - used.length * 3);
   const share = Math.max(1, Math.floor(budget / Math.max(1, used.length)));
   for (const pv of used) {
     const before = nSeries;
@@ -490,6 +491,29 @@ async function syncCalendar(env, months) {
         nSeries++;
       }
     } catch (e) { notes.push(pv.name + ": " + e.message); }
+
+    // 3) филми (вкл. документални и всякакви жанрове), налични в стрийминг на тази платформа
+    try {
+      const mvs = await tmdbGet(env, "/discover/movie", {
+        watch_region: "BG", with_watch_providers: String(pv.id), language: "bg-BG",
+        "primary_release_date.gte": lo, "primary_release_date.lte": hi,
+        sort_by: "popularity.desc", include_adult: "false", page: "1",
+      });
+      for (const m of (mvs.results || []).slice(0, 8)) {
+        if (!m.release_date || m.release_date < lo || m.release_date > hi) continue;
+        const key = "tmdb-m-" + m.id;
+        if (fresh.some((f) => f.id === key)) continue; // вече е хванат (напр. от театралния списък)
+        fresh.push({
+          id: key, kind: "stream", src: "tmdb", tmdbId: m.id,
+          t: m.title || m.original_title || "", when: m.release_date,
+          poster: m.poster_path ? POSTER + m.poster_path : "",
+          backdrop: m.backdrop_path ? BACKDROP + m.backdrop_path : "",
+          p: (m.overview || "").slice(0, 320), platform: pv.name,
+          sub: "", season: null, episode: null, video: "", note: "",
+        });
+        nMovies++;
+      }
+    } catch (e) { notes.push(pv.name + " (филми): " + e.message); }
 
     perPlatform[pv.name] = nSeries - before;
   }
