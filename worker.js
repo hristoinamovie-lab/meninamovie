@@ -2074,14 +2074,21 @@ async function handleRequest(request, env, ctx) {
       });
     }
 
-    /* каст/режисьор/франчайз — за предложени тагове в админ панела */
-    if (path === "/api/tmdb-credits" && request.method === "GET") {
-      const media = url.searchParams.get("media") === "movie" ? "movie" : "tv";
-      const tmdbId = url.searchParams.get("id") || "";
-      const out = await tmdbCredits(env, media, tmdbId);
-      return new Response(JSON.stringify(out), {
-        headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=21600" },
-      });
+    /* каст/режисьор/франчайз по въведено име — за предложени тагове в админ панела, за всички секции */
+    if (path === "/api/tmdb-search-tags" && request.method === "GET") {
+      const q = (url.searchParams.get("q") || "").trim();
+      const out = { cast: [], director: "", collection: "", title: "" };
+      if (!q || !env.TMDB_KEY) return json(out);
+      try {
+        const s = await tmdbGet(env, "/search/multi", { query: q, language: "bg-BG", include_adult: "false" });
+        const hit = (s.results || []).find((r) => r.media_type === "movie" || r.media_type === "tv");
+        if (!hit) return json(out);
+        const cr = await tmdbCredits(env, hit.media_type, hit.id);
+        cr.title = hit.title || hit.name || "";
+        return json(cr);
+      } catch (e) {
+        return json(out);
+      }
     }
 
     /* обновяване на календара — ръчно от админа */
