@@ -578,7 +578,12 @@ function editor(){
       '<div class="tagbox">'+tagKeysByUsage().map(function(s){
         return '<span data-act="addtag" data-tag="'+esc2(s)+'">'+esc2(D.tagLabels[s])+'</span>';}).join("")+'</div>'+
       '<p class="a-note">Тема със страница се появява при два материала с един и същ таг. Най-използваните тагове са отгоре.</p>'+
-      '<p class="a-warn" id="tagWarn"></p></div>';
+      '<p class="a-warn" id="tagWarn"></p>'+
+      (k==="calendar"&&it.src==="tmdb"&&it.tmdbId?
+        '<button type="button" class="a-btn" data-act="tmdbtags" style="margin-top:8px">Предложи тагове от TMDB</button>'+
+        '<div class="tagbox" id="tmdbTagSuggest" style="margin-top:8px"></div>'
+        :"")+
+      '</div>';
   }
   h+='<div class="a-grid">'+
     (canPublish()?sel("Състояние","status",it.status,[["published","Публикувано"],["hidden","Скрито"],["draft","Чернова"],["review","За одобрение"]])
@@ -797,6 +802,34 @@ function onClick(e){
     var arr=inp.value.split(",").map(function(s){return s.trim();}).filter(Boolean);
     var tg=t.getAttribute("data-tag"); if(arr.indexOf(tg)<0)arr.push(tg);
     inp.value=arr.join(", "); A.edit.tags=arr; checkTags(); return; }
+  if(act==="addtmdbtag"){
+    var tname=t.getAttribute("data-name"), tslug=tname.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+    if(!tslug) return;
+    var lab5=D.tagLabels||(D.tagLabels={}); if(!lab5[tslug]) lab5[tslug]=tname;
+    var inp2=document.querySelector('[data-f="tagsTxt"]'); if(!inp2) return;
+    var arr2=inp2.value.split(",").map(function(s){return s.trim();}).filter(Boolean);
+    if(arr2.indexOf(tslug)<0) arr2.push(tslug);
+    inp2.value=arr2.join(", "); A.edit.tags=arr2; checkTags();
+    return; }
+  if(act==="tmdbtags"){
+    var media3=A.edit.kind==="cinema"?"movie":"tv";
+    var box3=document.getElementById("tmdbTagSuggest");
+    t.disabled=true; t.textContent="Зарежда…";
+    fetch("/api/tmdb-credits?id="+encodeURIComponent(A.edit.tmdbId)+"&media="+media3)
+      .then(function(r){return r.ok?r.json():null;})
+      .then(function(j){
+        t.disabled=false; t.textContent="Предложи тагове от TMDB";
+        var names=j?(j.cast||[]).concat(j.director?[j.director]:[],j.collection?[j.collection]:[]):[];
+        if(!box3) return;
+        box3.innerHTML=names.length?names.map(function(n){
+          return '<span data-act="addtmdbtag" data-name="'+esc2(n)+'">'+esc2(n)+'</span>';
+        }).join(""):'<p class="a-note">TMDB няма данни за каст/режисьор/франчайз за това заглавие.</p>';
+      })
+      .catch(function(){
+        t.disabled=false; t.textContent="Предложи тагове от TMDB";
+        if(box3) box3.innerHTML='<p class="a-note">Грешка при връзка с TMDB.</p>';
+      });
+    return; }
   if(act==="togglegenre"){ var gf=t.getAttribute("data-gf"), g=t.getAttribute("data-g");
     var garr=genreArr(A.edit[gf]).slice(), gi=garr.indexOf(g);
     if(gi>=0) garr.splice(gi,1); else garr.push(g);
