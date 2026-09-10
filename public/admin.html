@@ -327,16 +327,16 @@ function findByStatKey(key){
 }
 function topStatsHTML(field){
   var obj=(A.stats&&A.stats[field])||{};
-  var arr=Object.keys(obj).map(function(k){return {key:k,n:obj[k]||0};}).filter(function(x){return x.n>0;});
+  var arr=Object.keys(obj).map(function(k){return {key:k,n:obj[k]||0,f:findByStatKey(k)};})
+    .filter(function(x){return x.n>0&&x.f;}); /* прескача изтрити статии — броячът им остава в статистиката, но няма къде да води */
   arr.sort(function(a,b){return b.n-a.n;});
   arr=arr.slice(0,8);
   if(!arr.length) return '<p class="a-note">Още няма данни.</p>';
   var max=arr[0].n;
   return '<div class="a-stats-list">'+arr.map(function(x){
-    var f=findByStatKey(x.key);
-    var title=f?f.it.t:x.key, kindLbl=f?TYPES[f.kind].label:"";
-    return '<div class="a-stats-row"><span class="a-stats-bar" style="width:'+Math.max(6,Math.round(x.n/max*100))+'%"></span>'+
-      '<span class="a-stats-title">'+esc2(title)+'</span><span class="a-stats-kind">'+esc2(kindLbl)+'</span>'+
+    return '<div class="a-stats-row" style="cursor:pointer" data-act="edit" data-k="'+x.f.kind+'" data-id="'+esc2(x.f.it.id)+'">'+
+      '<span class="a-stats-bar" style="width:'+Math.max(6,Math.round(x.n/max*100))+'%"></span>'+
+      '<span class="a-stats-title">'+esc2(x.f.it.t)+'</span><span class="a-stats-kind">'+esc2(TYPES[x.f.kind].label)+'</span>'+
       '<span class="a-stats-n">'+x.n+'</span></div>';
   }).join("")+'</div>';
 }
