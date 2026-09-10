@@ -425,7 +425,7 @@ function listRowAdm(k,it){
   var toggleBtn = isCal
     ? '<button class="st '+(it.hidden?"hid":"pub")+'" '+(canPublish()?'data-act="calhide" data-k="'+k+'" data-id="'+it.id+'"':"disabled")+'>'+(it.hidden?"Скрито":"Видимо")+'</button>'
     : '<button class="st '+cls+'" '+(can2?'data-act="toggle" data-k="'+k+'" data-id="'+it.id+'"':"disabled")+'>'+esc2(STATUS[st]||st)+'</button>';
-  var typeLabel = it.kind==="event" ? "Събитие" : (it.kind==="stream" ? "Сериал" : "Филм");
+  var typeLabel = it.kind==="event" ? "Събитие" : (it.kind==="stream" && it.sub ? "Сериал" : "Филм");
   var subFields = isCal
     ? '<span class="sub">'+esc2([it.platform,typeLabel,ddmmyyyy(it.when)].filter(Boolean).join(" | "))+'</span>'
     : '<span class="sub">'+esc2(it.when||"")+'</span><span class="sub">'+esc2(it.authorName||"")+'</span>';
