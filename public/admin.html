@@ -177,7 +177,7 @@ function route(){}
 (function(){
 "use strict";
 
-var A = { open:false, me:null, tab:"dash", edit:null, editKind:null, backup:null, msg:null, dirty:false, users:null, userEdit:null, usersErr:null };
+var A = { open:false, me:null, tab:"dash", edit:null, editKind:null, backup:null, msg:null, dirty:false, users:null, userEdit:null, usersErr:null, calSort:"date-desc" };
 
 var TYPES = {
   news:     {label:"Новини",     path:"novina",    img:"img",    shape:"h", roles:["admin","moderator","author"]},
@@ -350,9 +350,23 @@ function selBar(id,ph,opts){
     opts.map(function(o){var v=Array.isArray(o)?o[0]:o,t=Array.isArray(o)?o[1]:o;return '<option value="'+esc2(v)+'">'+esc2(t)+'</option>';}).join("")+
     '</select>';
 }
+function calTypeKey(it){
+  if(it.kind==="event") return "event";
+  if(it.kind==="cinema") return "cinema";
+  return it.sub ? "series" : "stream-movie";
+}
+function sortSelHTML(current){
+  var opts=[["date-desc","Най-нови"],["date-asc","Най-стари"],["title-az","Заглавие А-Я"]];
+  return '<select id="fSort" class="a-sel">'+opts.map(function(o){
+    return '<option value="'+o[0]+'"'+(current===o[0]?" selected":"")+'>'+esc2(o[1])+'</option>';
+  }).join("")+'</select>';
+}
 function listTab(k){
   var T=TYPES[k], list=all(k).slice().filter(mine);
-  list.sort(function(a,b){return String(b.when||"").localeCompare(String(a.when||""));});
+  var sortMode = k==="calendar" ? (A.calSort||"date-desc") : "date-desc";
+  if(sortMode==="date-asc") list.sort(function(a,b){return String(a.when||"").localeCompare(String(b.when||""));});
+  else if(sortMode==="title-az") list.sort(function(a,b){return String(a.t||"").localeCompare(String(b.t||""),"bg");});
+  else list.sort(function(a,b){return String(b.when||"").localeCompare(String(a.when||""));});
   var h='<h2>'+esc2(T.label)+'</h2><div class="a-bar"><button class="a-btn pri" data-act="new" data-k="'+k+'">+ Нов</button>'+
     (k==="calendar"&&canPublish()?'<button class="a-btn" data-act="calsync">Опресни от TMDB</button>':"")+
     '<input id="fltr" placeholder="търси по заглавие" style="background:#0A0908;border:1px solid var(--line);color:var(--tx);padding:8px 14px;font:inherit">';
@@ -369,7 +383,8 @@ function listTab(k){
   if(k==="calendar"){
     var plats=[]; list.forEach(function(it){var v=it.platform; if(v&&plats.indexOf(v)<0)plats.push(v);}); plats.sort();
     h+=selBar("fPlat","всички платформи",plats)+
-      selBar("fType","всички типове",[["cinema","Филми (по кината)"],["stream","Сериали / стрийминг"],["event","Събития"]]);
+      selBar("fType","всички типове",[["cinema","Филми (по кината)"],["stream-movie","Филми в стрийминг"],["series","Сериали"],["event","Събития"]])+
+      sortSelHTML(sortMode);
   }
 
   h+='<span class="sub" style="color:var(--tx2)">'+list.length+' материала</span></div>';
@@ -432,7 +447,7 @@ function listRowAdm(k,it){
   return '<div class="a-row" data-title="'+esc2(String(it.t||"").toLowerCase())+'"'+
     (catField?' data-cat="'+esc2(it[catField]||"")+'"':"")+
     ' data-tags="'+esc2((it.tags||[]).join(","))+'"'+
-    (isCal?' data-platform="'+esc2(it.platform||"")+'" data-type="'+esc2(it.kind||"")+'"':"")+
+    (isCal?' data-platform="'+esc2(it.platform||"")+'" data-type="'+esc2(calTypeKey(it))+'"':"")+
     '>'+
     (img?'<img class="'+(T.shape==="p"?"p":"")+'" src="'+esc2(img)+'" alt="">':'<img class="'+(T.shape==="p"?"p":"")+'" alt="">')+
     '<span class="t">'+esc2(it.t||"(без заглавие)")+'</span>'+
@@ -821,10 +836,19 @@ function onClick(e){
       .then(function(r){return r.ok?r.json():null;})
       .then(function(j){
         t.disabled=false; t.textContent="Предложи тагове от TMDB";
-        var names=j?(j.cast||[]).concat(j.director?[j.director]:[],j.collection?[j.collection]:[]):[];
+        var names=j?[].concat(
+          j.titleLatin?[j.titleLatin]:[],
+          j.cast||[],
+          j.director?[j.director]:[],
+          j.collection?[j.collection]:[],
+          j.genres||[],
+          j.companies||[],
+          j.keywords||[]
+        ):[];
+        var seen={}; names=names.filter(function(n){ var k=n.toLowerCase(); if(seen[k])return false; seen[k]=1; return true; });
         if(!box3) return;
-        if(!names.length){ box3.innerHTML='<p class="a-note">TMDB не намери каст/режисьор/франчайз за "'+esc2(q)+'".</p>'; return; }
-        box3.innerHTML=(j.title&&j.title.toLowerCase()!==q.toLowerCase()?'<p class="a-note">Намерено в TMDB: '+esc2(j.title)+'</p>':"")+
+        if(!names.length){ box3.innerHTML='<p class="a-note">TMDB не намери нищо подходящо за "'+esc2(q)+'".</p>'; return; }
+        box3.innerHTML=(j.titleBg&&j.titleBg.toLowerCase()!==q.toLowerCase()?'<p class="a-note">Намерено в TMDB: '+esc2(j.titleBg)+'</p>':"")+
           names.map(function(n){
             return '<span data-act="addtmdbtag" data-name="'+esc2(n)+'">'+esc2(n)+'</span>';
           }).join("");
@@ -900,6 +924,21 @@ function onChange(e){
   if(el.hasAttribute&&el.hasAttribute("data-head")){ var s=el.getAttribute("data-head");
     D.heads[s]=D.heads[s]||{}; D.heads[s][el.getAttribute("data-hf")]=el.value; return; }
   if(el.id==="fCat"||el.id==="fTag"||el.id==="fPlat"||el.id==="fType"){ applyListFilters(); return; }
+  if(el.id==="fSort"){
+    /* смяната на сортировка пресъздава списъка — пазим текущите филтри, за да не се нулират */
+    var savedQ=(document.getElementById("fltr")||{}).value||"",
+        savedCat=(document.getElementById("fCat")||{}).value||"",
+        savedTag=(document.getElementById("fTag")||{}).value||"",
+        savedPlat=(document.getElementById("fPlat")||{}).value||"",
+        savedType=(document.getElementById("fType")||{}).value||"";
+    A.calSort=el.value; draw();
+    var f2=document.getElementById("fltr"); if(f2) f2.value=savedQ;
+    var c2=document.getElementById("fCat"); if(c2) c2.value=savedCat;
+    var tg2=document.getElementById("fTag"); if(tg2) tg2.value=savedTag;
+    var p2=document.getElementById("fPlat"); if(p2) p2.value=savedPlat;
+    var ty2=document.getElementById("fType"); if(ty2) ty2.value=savedType;
+    applyListFilters();
+    return; }
   if(el.hasAttribute&&el.hasAttribute("data-f")&&A.edit) collect();
 }
 function applyListFilters(){
