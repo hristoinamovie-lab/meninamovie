@@ -571,7 +571,6 @@ function editor(){
       '<p class="a-note">Ако филмът има свое ревю с точно същото заглавие, на страницата му автоматично се появява бутон „Прочети ревюто“.</p>';
   }
 
-  if(k!=="merch"&&k!=="calendar"||k==="calendar"){ }
   if(k!=="merch"){
     h+='<div class="a-f"><label>Тагове — латиница, през запетая</label>'+
       '<input data-f="tagsTxt" value="'+esc2((it.tags||[]).join(", "))+'">'+
@@ -579,10 +578,11 @@ function editor(){
         return '<span data-act="addtag" data-tag="'+esc2(s)+'">'+esc2(D.tagLabels[s])+'</span>';}).join("")+'</div>'+
       '<p class="a-note">Тема със страница се появява при два материала с един и същ таг. Най-използваните тагове са отгоре.</p>'+
       '<p class="a-warn" id="tagWarn"></p>'+
-      (k==="calendar"&&it.src==="tmdb"&&it.tmdbId?
-        '<button type="button" class="a-btn" data-act="tmdbtags" style="margin-top:8px">Предложи тагове от TMDB</button>'+
-        '<div class="tagbox" id="tmdbTagSuggest" style="margin-top:8px"></div>'
-        :"")+
+      '<div class="a-bar" style="margin-top:8px">'+
+        '<input id="tmdbQ" placeholder="Име на филм/сериал" value="'+esc2(it.t||"")+'" style="background:#0A0908;border:1px solid var(--line);color:var(--tx);padding:8px 14px;font:inherit">'+
+        '<button type="button" class="a-btn" data-act="tmdbtags">Предложи тагове от TMDB</button>'+
+      '</div>'+
+      '<div class="tagbox" id="tmdbTagSuggest" style="margin-top:8px"></div>'+
       '</div>';
   }
   h+='<div class="a-grid">'+
@@ -812,18 +812,21 @@ function onClick(e){
     inp2.value=arr2.join(", "); A.edit.tags=arr2; checkTags();
     return; }
   if(act==="tmdbtags"){
-    var media3=A.edit.kind==="cinema"?"movie":"tv";
+    var qEl=document.getElementById("tmdbQ"), q=(qEl?qEl.value:"").trim();
     var box3=document.getElementById("tmdbTagSuggest");
+    if(!q){ if(box3) box3.innerHTML='<p class="a-note">Напиши име на филм или сериал.</p>'; return; }
     t.disabled=true; t.textContent="Зарежда…";
-    fetch("/api/tmdb-credits?id="+encodeURIComponent(A.edit.tmdbId)+"&media="+media3)
+    fetch("/api/tmdb-search-tags?q="+encodeURIComponent(q))
       .then(function(r){return r.ok?r.json():null;})
       .then(function(j){
         t.disabled=false; t.textContent="Предложи тагове от TMDB";
         var names=j?(j.cast||[]).concat(j.director?[j.director]:[],j.collection?[j.collection]:[]):[];
         if(!box3) return;
-        box3.innerHTML=names.length?names.map(function(n){
-          return '<span data-act="addtmdbtag" data-name="'+esc2(n)+'">'+esc2(n)+'</span>';
-        }).join(""):'<p class="a-note">TMDB няма данни за каст/режисьор/франчайз за това заглавие.</p>';
+        if(!names.length){ box3.innerHTML='<p class="a-note">TMDB не намери каст/режисьор/франчайз за "'+esc2(q)+'".</p>'; return; }
+        box3.innerHTML=(j.title&&j.title.toLowerCase()!==q.toLowerCase()?'<p class="a-note">Намерено в TMDB: '+esc2(j.title)+'</p>':"")+
+          names.map(function(n){
+            return '<span data-act="addtmdbtag" data-name="'+esc2(n)+'">'+esc2(n)+'</span>';
+          }).join("");
       })
       .catch(function(){
         t.disabled=false; t.textContent="Предложи тагове от TMDB";
