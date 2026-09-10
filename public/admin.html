@@ -118,6 +118,7 @@ var D = {settings:{},heads:{},tagLabels:{},reviews:[],news:[],craft:[],episodes:
 var MON=["януари","февруари","март","април","май","юни","юли","август","септември","октомври","ноември","декември"];
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
 function dt(s){if(!s)return"";var p=String(s).slice(0,10).split("-");if(p.length<3)return s;return (+p[2])+" "+MON[+p[1]-1]+" "+p[0];}
+function ddmmyyyy(s){if(!s)return"";var p=String(s).slice(0,10).split("-");if(p.length<3)return s;return p[2]+"."+p[1]+"."+p[0];}
 function slugify(s){
   var m={"а":"a","б":"b","в":"v","г":"g","д":"d","е":"e","ж":"zh","з":"z","и":"i","й":"y","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ф":"f","х":"h","ц":"ts","ч":"ch","ш":"sh","щ":"sht","ъ":"a","ь":"","ю":"yu","я":"ya"};
   return String(s||"").toLowerCase().split("").map(function(c){return m[c]!==undefined?m[c]:c;}).join("")
@@ -423,6 +424,10 @@ function listRowAdm(k,it){
   var toggleBtn = isCal
     ? '<button class="st '+(it.hidden?"hid":"pub")+'" '+(canPublish()?'data-act="calhide" data-k="'+k+'" data-id="'+it.id+'"':"disabled")+'>'+(it.hidden?"Скрито":"Видимо")+'</button>'
     : '<button class="st '+cls+'" '+(can2?'data-act="toggle" data-k="'+k+'" data-id="'+it.id+'"':"disabled")+'>'+esc2(STATUS[st]||st)+'</button>';
+  var typeLabel = it.kind==="event" ? "Събитие" : (it.kind==="stream" ? "Сериал" : "Филм");
+  var subFields = isCal
+    ? '<span class="sub">'+esc2([it.platform,typeLabel,ddmmyyyy(it.when)].filter(Boolean).join(" | "))+'</span>'
+    : '<span class="sub">'+esc2(it.when||"")+'</span><span class="sub">'+esc2(it.authorName||"")+'</span>';
   return '<div class="a-row" data-title="'+esc2(String(it.t||"").toLowerCase())+'"'+
     (catField?' data-cat="'+esc2(it[catField]||"")+'"':"")+
     ' data-tags="'+esc2((it.tags||[]).join(","))+'"'+
@@ -430,8 +435,7 @@ function listRowAdm(k,it){
     '>'+
     (img?'<img class="'+(T.shape==="p"?"p":"")+'" src="'+esc2(img)+'" alt="">':'<img class="'+(T.shape==="p"?"p":"")+'" alt="">')+
     '<span class="t">'+esc2(it.t||"(без заглавие)")+'</span>'+
-    '<span class="sub">'+esc2(it.when||"")+'</span>'+
-    '<span class="sub">'+esc2(it.authorName||"")+'</span>'+
+    subFields+
     toggleBtn+
     '<button class="a-btn" data-act="edit" data-k="'+k+'" data-id="'+it.id+'">Редактирай</button>'+
     (isAdmin()?'<button class="a-btn dan" data-act="del" data-k="'+k+'" data-id="'+it.id+'">Изтрий</button>':'')+
