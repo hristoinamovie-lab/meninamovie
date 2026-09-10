@@ -71,6 +71,7 @@ a{color:inherit;text-decoration:none}
 .a-f label{display:block;font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--tx2);margin-bottom:5px}
 .a-f input,.a-f select,.a-f textarea{width:100%;background:#0A0908;border:1px solid var(--line);color:var(--tx);font:inherit;font-size:15px;padding:9px 11px}
 .a-f textarea{min-height:220px;line-height:1.6;resize:vertical;font-family:Manrope,sans-serif}
+.a-f select{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:pointer;padding-right:32px;background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="%23A6A196" stroke-width="1.6" fill="none"/></svg>');background-repeat:no-repeat;background-position:right 11px center}
 .a-f input:focus,.a-f textarea:focus,.a-f select:focus{outline:0;border-color:var(--y)}
 .a-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
 .a-note{color:var(--tx2);font-size:12px;margin-top:5px}
@@ -552,8 +553,8 @@ function editor(){
   if(k==="calendar"){
     h+='<div class="a-grid">'+f("Дата","when",it.when,"date")+
       sel("Вид","kind",it.kind,[["cinema","По кината"],["stream","Стрийминг"],["event","Събитие"]])+
-      f("Платформа","platform",it.platform)+
-      f("Пояснение под датата — ако е попълнено, замества автоматичния текст за сезон/епизод","note",it.note)+'</div>'+
+      f("Платформа","platform",it.platform)+'</div>'+
+      f("Пояснение под датата — ако е попълнено, замества автоматичния текст за сезон/епизод","note",it.note)+
       '<p class="a-note">Полетата по-долу идват автоматично от TMDB за филми и сериали — провери ги и поправи, ако нещо не е точно.</p>'+
       genreField("genre",it.genre)+
       '<div class="a-grid">'+f("Времетраене в минути","mins",it.mins)+'</div>'+
