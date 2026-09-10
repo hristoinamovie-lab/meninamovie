@@ -178,88 +178,40 @@ function stamp(str) {
   for (let i = 0; i < str.length; i += 97) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0;
   return (h.toString(36) + str.length.toString(36)).slice(0, 10);
 }
-/* съдържание за браузъра: снимките стават адреси */
-function liftImages(data) {
+/* при запис: нова снимка (base64) се пази в собствен, отделен KV запис — в основното съдържание остава
+   само кратък адрес. Иначе целият сайт трябва да пренася всички снимки при всяко зареждане (причината
+   зад грешка 1102 — Cloudflare спира заявката по средата, щом записът стане твърде тежък). */
+async function keepImages(env, incoming) {
   for (const kind of Object.keys(IMG_FIELDS)) {
     const f = IMG_FIELDS[kind];
-    for (const it of data[kind] || []) {
-      if (it && isDataUri(it[f])) it[f] = "/img/" + KEY_OF[kind] + "/" + encodeURIComponent(it.id) + "?v=" + stamp(it[f]);
-    }
-  }
-  for (const x of EXTRA_IMG) {
-    for (const it of data[x.kind] || []) {
-      if (it && isDataUri(it[x.field]))
-        it[x.field] = "/img/" + x.key + "/" + encodeURIComponent(it.id) + "?v=" + stamp(it[x.field]);
-    }
-  }
-  for (const r of Object.keys(data.heads || {})) {
-    const hd = data.heads[r];
-    if (hd && isDataUri(hd.banner)) hd.banner = "/img/hd/" + encodeURIComponent(r) + "?v=" + stamp(hd.banner);
-  }
-  // снимките в текста (it.inlineImages) — same, иначе цялото base64 тежи всяко зареждане на сайта
-  for (const kind of Object.keys(KIND_KEY)) {
-    for (const it of data[kind] || []) {
-      if (!it || !Array.isArray(it.inlineImages)) continue;
-      it.inlineImages.forEach((im, i) => {
-        if (im && isDataUri(im.data))
-          im.data = "/img/il/" + KIND_KEY[kind] + "/" + encodeURIComponent(it.id) + "/" + i + "?v=" + stamp(im.data);
-      });
-    }
-  }
-  return data;
-}
-/* при запис: адресите се връщат обратно към снимките, които браузърът никога не е виждал */
-function keepImages(incoming, prev) {
-  if (!prev) return incoming;
-  for (const kind of Object.keys(IMG_FIELDS)) {
-    const f = IMG_FIELDS[kind];
-    const old = prev[kind] || [];
     for (const it of incoming[kind] || []) {
-      if (!it || isDataUri(it[f])) continue;
-      if (typeof it[f] === "string" && it[f].indexOf("/img/") === 0) {
-        const o = old.find((x) => x && x.id === it.id);
-        it[f] = o && isDataUri(o[f]) ? o[f] : "";
-      }
+      if (!it || !isDataUri(it[f])) continue;
+      const key = "img/" + KEY_OF[kind] + "/" + encodeURIComponent(it.id);
+      await env.MIM.put(key, it[f]);
+      it[f] = "/" + key;
     }
   }
   for (const x of EXTRA_IMG) {
-    const old = prev[x.kind] || [];
     for (const it of incoming[x.kind] || []) {
-      if (!it || isDataUri(it[x.field])) continue;
-      if (typeof it[x.field] === "string" && it[x.field].indexOf("/img/") === 0) {
-        const o = old.find((y) => y && y.id === it.id);
-        it[x.field] = o && isDataUri(o[x.field]) ? o[x.field] : "";
-      }
+      if (!it || !isDataUri(it[x.field])) continue;
+      const key = "img/" + x.key + "/" + encodeURIComponent(it.id);
+      await env.MIM.put(key, it[x.field]);
+      it[x.field] = "/" + key;
     }
   }
   for (const r of Object.keys(incoming.heads || {})) {
-    const hd = incoming.heads[r], o = (prev.heads || {})[r];
-    if (hd && typeof hd.banner === "string" && hd.banner.indexOf("/img/") === 0)
-      hd.banner = o && isDataUri(o.banner) ? o.banner : "";
-  }
-  for (const kind of Object.keys(KIND_KEY)) {
-    const old = prev[kind] || [];
-    for (const it of incoming[kind] || []) {
-      if (!it || !Array.isArray(it.inlineImages)) continue;
-      const o = old.find((x) => x && x.id === it.id);
-      const oldImgs = o && Array.isArray(o.inlineImages) ? o.inlineImages : [];
-      it.inlineImages.forEach((im, i) => {
-        if (!im || isDataUri(im.data)) return; // ново качена — оставя се както е
-        if (typeof im.data === "string" && im.data.indexOf("/img/il/") === 0) {
-          const oi = oldImgs[i];
-          im.data = oi && isDataUri(oi.data) ? oi.data : "";
-        }
-      });
-    }
+    const hd = incoming.heads[r];
+    if (!hd || !isDataUri(hd.banner)) continue;
+    const key = "img/hd/" + encodeURIComponent(r);
+    await env.MIM.put(key, hd.banner);
+    hd.banner = "/" + key;
   }
   return incoming;
 }
 
-/* готовият JSON за посетителите — пресметнат СЛЕД всеки запис/синхрон, не при всяко зареждане на сайта.
-   /api/content (без ?full=1) просто го връща както си е — без да пипа целия суров запис при всяко отваряне
-   на сайта, което при много снимки в текстове караше Cloudflare да спира заявката (грешка 1102). */
+/* готовият JSON за посетителите — пресметнат СЛЕД всеки запис/синхрон, не при всяко зареждане на сайта. */
 async function publishPublicCache(env, data) {
-  const text = JSON.stringify(liftImages(publicCopy(data)));
+  const text = JSON.stringify(publicCopy(data));
   await env.MIM.put("content_public", text);
   return text;
 }
@@ -623,7 +575,6 @@ async function syncCalendar(env, months) {
 
 /* ---------- споделяне: страница с картинка за Facebook, Viber и т.н. ---------- */
 const KINDS = { r: "reviews", n: "news", c: "craft", e: "episodes", m: "merch", k: "calendar" };
-const KIND_KEY = { reviews: "r", news: "n", craft: "c", episodes: "e", merch: "m", calendar: "k" };
 const SECTION = { reviews: "revyuta", news: "novini", craft: "zad-kadar", episodes: "podcast", merch: "merch", calendar: "kalendar" };
 
 function findItem(data, kindKey, id) {
@@ -768,14 +719,6 @@ function tagChipsHTML(it, big) {
       : '<span class="tag">' + escHtml(t.name) + "</span>")).join("") + "</div>";
 }
 
-/* тагове от типа ![подпис](inline:N) → истинския адрес на снимката, пазена отделно в it.inlineImages */
-function resolveInlineImages(text, images) {
-  if (!images || !images.length) return text;
-  return String(text || "").replace(/\(inline:(\d+)\)/g, (m, idx) => {
-    const img = images[+idx];
-    return img && img.data ? "(" + img.data + ")" : m;
-  });
-}
 /* ---------- скромен markdown → html ---------- */
 function seoBody(txt) {
   const src = String(txt || "").replace(/\r/g, "");
@@ -1378,7 +1321,7 @@ async function seoItemPage(kind, it, data, origin, env) {
 
   const html = band +
     '<div class="col">' +
-    seoBody(resolveInlineImages(bodyTxt, it.inlineImages)) +
+    seoBody(bodyTxt) +
     (it.guest ? '<p class="meta" style="margin-top:22px">Гост: ' + escHtml(it.guest) + (it.role ? " · " + escHtml(it.role) : "") + "</p>" : "") +
     (kind === "reviews" ? '<div class="claps-big">' + clapsHTML(it.s) + "</div>" : "") +
     (it.authorName ? '<p class="sig">— ' + escHtml(it.authorName) + "</p>" : "") +
@@ -1505,7 +1448,7 @@ function seoMerchPage(it, origin) {
       : '<span class="shop-cta" aria-disabled="true">Изчерпано</span>') +
     "</div></div>" +
     '<div class="shop-lower"><div><h2>Описание</h2><div class="prose">' +
-    (it.body ? seoBody(resolveInlineImages(it.body, it.inlineImages)) : it.lead ? "<p>" + escHtml(it.lead) + "</p>" : "<p>Няма допълнително описание.</p>") +
+    (it.body ? seoBody(it.body) : it.lead ? "<p>" + escHtml(it.lead) + "</p>" : "<p>Няма допълнително описание.</p>") +
     "</div></div></div>";
   return seoShell({
     title: it.t + " | Мърч — Men In A Movie",
@@ -2130,7 +2073,7 @@ async function handleRequest(request, env, ctx) {
 
         // авторът стига само до собствените си материали
         const shaped = who && who.role === "author" ? authorMerge(body, prev, who) : body;
-        const merged = keepImages(keepSecrets(shaped, prev), prev);
+        const merged = await keepImages(env, keepSecrets(shaped, prev));
         const text = JSON.stringify(merged);
         if (text.length > 20 * 1024 * 1024)
           return json({ error: "too_large", message: "Съдържанието е над 20 MB." }, 413);
@@ -2246,61 +2189,31 @@ async function handleRequest(request, env, ctx) {
         const hit = await caches.default.match(request);
         if (hit) return hit;
       }
+      /* снимката се пази в собствен KV запис под точно този адрес (без водещото "/") — бърз директен прочит,
+         без изобщо да се пипа целият запис на сайта за най-честия случай */
+      const key = path.slice(1);
+      const raw = await env.MIM.get(key);
+      if (raw) {
+        const resp = dataUriToResponse(raw);
+        if (resp) {
+          if (url.searchParams.get("v")) {
+            resp.headers.set("cache-control", "public, max-age=31536000, immutable");
+            ctx.waitUntil(caches.default.put(request, resp.clone()));
+          }
+          return resp;
+        }
+      }
+      /* няма собствен запис — филм от TMDB (външен адрес), клип от YouTube, или изобщо нищо */
       const parts = path.split("/").filter(Boolean); // img, kind, id
       const kindKey = parts[1], id = decodeURIComponent(parts[2] || "");
-
-      /* кадър за споделяне и банер на рубрика */
-      const extra = EXTRA_IMG.find((x) => x.key === kindKey);
-      if (extra || kindKey === "hd") {
-        const d2 = await stored(env);
-        let raw = "";
-        if (extra) {
-          const it2 = (d2 && d2[extra.kind] || []).find((x) => x && String(x.id) === id);
-          raw = it2 ? it2[extra.field] : "";
-        } else {
-          raw = ((d2 && d2.heads || {})[id] || {}).banner || "";
-        }
-        const r2 = raw && dataUriToResponse(raw);
-        if (!r2) return new Response("no", { status: 404 });
-        if (url.searchParams.get("v")) {
-          r2.headers.set("cache-control", "public, max-age=31536000, immutable");
-          ctx.waitUntil(caches.default.put(request, r2.clone()));
-        }
-        return r2;
-      }
-
-      /* снимка вкарана в текста на статия — /img/il/<кратко-k>/<id>/<индекс> */
-      if (kindKey === "il") {
-        const ik = parts[2], iid = decodeURIComponent(parts[3] || ""), idx = +parts[4];
-        if (!KINDS[ik]) return new Response("no", { status: 404 });
-        const d3 = await stored(env);
-        const it3 = findItem(d3, ik, iid);
-        const im = it3 && Array.isArray(it3.inlineImages) ? it3.inlineImages[idx] : null;
-        const r3 = im && dataUriToResponse(im.data);
-        if (!r3) return new Response("no", { status: 404 });
-        if (url.searchParams.get("v")) {
-          r3.headers.set("cache-control", "public, max-age=31536000, immutable");
-          ctx.waitUntil(caches.default.put(request, r3.clone()));
-        }
-        return r3;
-      }
-
       if (!KINDS[kindKey]) return new Response("no", { status: 404 });
       const data = await stored(env);
       const it = findItem(data, kindKey, id);
       if (!it) return new Response("no", { status: 404 });
-      const yt = ytIdOf(it.yt || it.video);
       const img = itemImage(it);
-      if (!img && yt) return Response.redirect("https://i.ytimg.com/vi/" + yt + "/maxresdefault.jpg", 302);
-      const resp = img && dataUriToResponse(img);
-      if (resp) {
-        if (url.searchParams.get("v")) {
-          resp.headers.set("cache-control", "public, max-age=31536000, immutable");
-          ctx.waitUntil(caches.default.put(request, resp.clone()));
-        }
-        return resp;
-      }
-      if (img) return Response.redirect(img, 302);
+      if (img && /^https?:/.test(img)) return Response.redirect(img, 302);
+      const yt = ytIdOf(it.yt || it.video);
+      if (yt) return Response.redirect("https://i.ytimg.com/vi/" + yt + "/maxresdefault.jpg", 302);
       return Response.redirect(new URL("/og.jpg", url).toString(), 302);
     }
 
