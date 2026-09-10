@@ -390,6 +390,10 @@ main section:first-child{border-top:0}
 .cal-tab{position:absolute;top:0;left:0;z-index:2;background:var(--y);color:var(--black);font-family:Oswald,sans-serif;font-weight:600;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:6px 13px 6px 9px;clip-path:polygon(0 0,100% 0,calc(100% - 9px) 100%,0 100%)}
 .cal-tab2{position:absolute;top:26px;left:0;z-index:2;background:var(--black);color:var(--y);font-family:Oswald,sans-serif;font-weight:600;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 12px 5px 9px;clip-path:polygon(0 0,100% 0,calc(100% - 9px) 100%,0 100%)}
 .cal-when{position:absolute;left:10px;bottom:10px;z-index:2;font-family:Oswald,sans-serif;font-weight:600;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--y);text-shadow:0 1px 4px rgba(0,0,0,.8)}
+.cal-score{position:absolute;top:8px;right:8px;z-index:2;background:rgba(10,9,8,.75);padding:4px 6px;display:flex}
+.cal-score .clapsrow{gap:2px}
+.cal-card.past .cal-art::after{background:linear-gradient(rgba(246,201,43,.16),rgba(246,201,43,.16)),linear-gradient(to top,rgba(0,0,0,.75),transparent 42%)}
+.cal-claps{justify-content:flex-start;margin:10px 0 0}
 
 /* ---------- подкаст: горни бутони ---------- */
 .pod-actions{display:flex;gap:8px;flex-wrap:wrap}
@@ -501,6 +505,9 @@ footer a:hover{color:#000;text-decoration:underline}
 .banner .wrap{min-height:0;padding-top:40px;padding-bottom:28px}
 .banner h1{color:var(--tx)}
 .banner.cal-banner{border-bottom:none}
+.banner.cal-banner .wrap{display:block}
+.banner.cal-banner h1{margin:0 0 6px}
+.banner.cal-banner .lede{margin:0;font-size:15px;opacity:.75;max-width:60ch}
 </style>
 </head>
 <body>
@@ -772,6 +779,7 @@ function cardP(k,it){
     '<span class="cal-tab">'+esc(tab1)+'</span>'+
     (tab2?'<span class="cal-tab2">'+esc(tab2)+'</span>':'')+
     '<span class="cal-when">'+esc(past?"вече е налично":dt(it.when))+'</span>'+
+    (it.rating?'<div class="cal-score">'+claps(Math.round(it.rating/2),12)+'</div>':'')+
     '</div>'+
     '<div class="cbody"><h3 class="ctitle">'+esc(it.t)+'</h3>'+
     '<div class="cdate">'+esc((it.kind==="event"?[it.price?("от "+it.price+" €"):"",it.place]:[it.platform]).concat([formatTxt]).filter(Boolean).join(" · "))+'</div></div></a>';
@@ -1272,16 +1280,7 @@ function enrichCalTmdb(it){
       }
     }
     if(x.overview){
-      var lede=document.querySelector(".art-left .art-lede");
-      if(!lede){
-        var left=document.querySelector(".art-left"), btns2=left&&left.querySelector(".btns");
-        if(left){
-          lede=document.createElement("div");
-          lede.className="answer art-lede";
-          if(btns2) left.insertBefore(lede,btns2); else left.appendChild(lede);
-        }
-      }
-      if(lede) lede.textContent=x.overview;
+      /* само в текста под снимката — без да се дублира и в краткото поле до заглавието */
       var body=document.querySelector(".art-body"), prose=body&&body.querySelector(".prose");
       if(!prose&&body){
         prose=document.createElement("div");
@@ -1290,13 +1289,21 @@ function enrichCalTmdb(it){
       }
       if(prose) prose.textContent=x.overview;
     }
-    if(x.rating||x.director||x.runtime||(x.cast&&x.cast.length)){
+    if(x.rating){
+      var h1=document.querySelector(".art-left h1");
+      if(h1&&!document.querySelector(".cal-claps")){
+        var cw=document.createElement("div");
+        cw.className="claps-big cal-claps";
+        cw.innerHTML=claps(Math.round(x.rating/2),20);
+        h1.parentNode.insertBefore(cw,h1.nextSibling);
+      }
+    }
+    if(x.director||x.runtime||(x.cast&&x.cast.length)){
       var body2=document.querySelector(".art-body");
       if(body2&&!body2.querySelector(".tmdb-info")){
         var info=[]; if(x.director) info.push("Режисьор: "+x.director); if(x.runtime) info.push(x.runtime+" мин");
         var block=document.createElement("div"); block.className="tmdb-info";
-        block.innerHTML=(x.rating?'<div class="claps-big">'+claps(Math.round(x.rating/2),26)+'</div>':"")+
-          (info.length?'<p class="tmdb-meta">'+esc(info.join(" · "))+'</p>':"")+
+        block.innerHTML=(info.length?'<p class="tmdb-meta">'+esc(info.join(" · "))+'</p>':"")+
           (x.cast&&x.cast.length?'<p class="tmdb-cast">В ролите: '+esc(x.cast.join(", "))+'</p>':"");
         var prose3=body2.querySelector(".prose");
         if(prose3&&prose3.nextSibling) prose3.parentNode.insertBefore(block,prose3.nextSibling);
