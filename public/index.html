@@ -82,7 +82,6 @@ section{margin-top:46px}
 /* карти */
 .card{background:var(--card2);display:block;overflow:hidden}
 .card:hover{outline:2px solid var(--y)}
-.trend-card:hover{outline:none}
 .ph{background:var(--card);width:100%;object-fit:cover;display:block}
 .r169{aspect-ratio:16/9}
 .r23{aspect-ratio:2/3}
@@ -123,6 +122,12 @@ section{margin-top:46px}
 .cal-media{padding-left:14px;border-left:1px solid var(--line)}
 .cal-media button{opacity:.85}
 .cal-when{font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--y)}
+.cal-month-h{grid-column:1/-1;margin:26px 0 14px;font-family:Montserrat,sans-serif;font-style:italic;font-weight:900;font-size:20px;text-transform:uppercase;color:var(--y)}
+.cal-month-h:first-child{margin-top:0}
+.cal-divider{grid-column:1/-1;display:flex;align-items:center;gap:12px;margin:8px 0 4px;color:var(--tx2);font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.cal-divider::before,.cal-divider::after{content:"";flex:1;height:1px;background:var(--line)}
+.cal-card.past{opacity:.55}
+.cal-card.past:hover{opacity:.85}
 .pill{display:inline-block;background:var(--y);color:var(--black);font-family:Oswald,sans-serif;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;margin-top:6px}
 
 /* ---------- жълта лента на рубрика ---------- */
@@ -758,7 +763,7 @@ function cardP(k,it){
   /* movie calendar карта — платформа/тип горе вляво, епизод под нея, дата долу вляво */
   var tab1=calCat(it), tab2=it.kind==="stream"?subLabel(it):"", past=String(it.when||"")<todayISO();
   var formatTxt=it.kind==="event"?"Събитие":(it.kind==="stream"?(it.sub?"Сериал":"Филм"):"По кината");
-  return '<a class="card cal-card" href="'+url(k,it)+'" data-nav>'+
+  return '<a class="card cal-card'+(past?" past":"")+'" href="'+url(k,it)+'" data-nav>'+
     '<div class="cal-art">'+
     (p?'<img class="ph r23" src="'+esc(p)+'" alt="'+esc(it.t)+'" loading="lazy">':'<div class="ph r23"></div>')+
     '<span class="cal-tab">'+esc(tab1)+'</span>'+
@@ -864,8 +869,37 @@ function renderRev(p){
   revPages=p; var rv=items("reviews").slice(0,8*p);
   document.getElementById("revGrid").innerHTML=rv.map(function(i){return card("reviews",i);}).join("");
 }
+/* прозорецът на календара: от 1-во число на текущия месец до +30 дни от днес —
+   показва вече излезлите тази месец заглавия И предстоящите за следващия месец напред */
+function todayISO(){var d=new Date();return d.toISOString().slice(0,10);}
+function calWindowStart(){return todayISO().slice(0,7)+"-01";}
+function calWindowEnd(){var d=new Date();d.setDate(d.getDate()+30);return d.toISOString().slice(0,10);}
+function calInWindow(c){var w=c.when||"";return w>=calWindowStart()&&w<=calWindowEnd();}
+function calMonthLabel(ym){var p=ym.split("-"),m=MON[+p[1]-1]||"";return (m.charAt(0).toUpperCase()+m.slice(1))+" "+p[0];}
+/* карти + разделителна линия "Днес" на мястото, където свършва вече излязлото и почва предстоящото */
+function calGridHTML(list,showCount){
+  var today=todayISO(), show=list.slice(0,showCount);
+  var hasPast=show.some(function(it){return (it.when||"")<today;});
+  var html="", divided=false;
+  show.forEach(function(it){
+    if(hasPast&&!divided&&(it.when||"")>=today){ html+='<div class="cal-divider"><span>Днес</span></div>'; divided=true; }
+    html+=card("calendar",it);
+  });
+  return html;
+}
+/* същото, но групирано по месец — за пълната страница /kalendar, без пагинация (прозорецът вече е ограничен) */
+function calMonthGroupsHTML(list){
+  var today=todayISO(), order=[], group={};
+  list.forEach(function(it){var ym=(it.when||"").slice(0,7); if(!group[ym]){group[ym]=[];order.push(ym);} group[ym].push(it);});
+  return order.map(function(ym){
+    var arr=group[ym], inner="";
+    if(ym===today.slice(0,7)) inner=calGridHTML(arr,arr.length);
+    else inner=arr.map(function(it){return card("calendar",it);}).join("");
+    return '<h2 class="cal-month-h">'+esc(calMonthLabel(ym))+'</h2><div class="grid4">'+inner+'</div>';
+  }).join("");
+}
 function calList(view){
-  var all=items("calendar").filter(function(c){return (c.when||"")>=todayISO();});
+  var all=items("calendar").filter(calInWindow);
   all.sort(function(a,b){return (a.when||"").localeCompare(b.when||"");});
   if(view!=="all") all=all.filter(function(c){return (c.kind||"")===view;});
   if(view==="stream"){
@@ -876,27 +910,34 @@ function calList(view){
   return all;
 }
 function calStreamPlatforms(){
-  var all=items("calendar").filter(function(c){return (c.when||"")>=todayISO()&&c.kind==="stream";});
+  var all=items("calendar").filter(function(c){return calInWindow(c)&&c.kind==="stream";});
   var seen={}, out=[];
   all.forEach(function(c){var p=c.platform||"Друго"; if(!seen[p]){seen[p]=0;out.push(p);} seen[p]++;});
   return out.map(function(p){return [p,seen[p]];});
 }
-function todayISO(){var d=new Date();return d.toISOString().slice(0,10);}
 /* "Най-гледани" — топ 5 по кината (реално вървящи в момента) + топ 5 на всяка активна стрийминг платформа,
    изчислено на сървъра при всяко опресняване от TMDB (D.trending), не е част от обичайния календар с дати */
 function trendingActivePlatforms(){
   var s=(D.trending&&D.trending.streaming)||{}, active=(D.settings&&D.settings.calProviders)||[];
   return active.map(function(p){return p.name;}).filter(function(n){return s[n]&&s[n].length;});
 }
+/* линк за карта в "Най-гледани" — към нашата страница, ако заглавието вече е в календара (по TMDB номер), иначе към TMDB */
+function trendHref(it){
+  var cal=D.calendar||[];
+  for(var i=0;i<cal.length;i++){ if(cal[i].tmdbId===it.tmdbId) return {href:url("calendar",cal[i]),internal:true}; }
+  var kind=it.media==="series"?"tv":"movie";
+  return {href:"https://www.themoviedb.org/"+kind+"/"+it.tmdbId,internal:false};
+}
 function trendCard(it,rank){
-  return '<div class="card cal-card trend-card">'+
+  var h=trendHref(it);
+  return '<a class="card cal-card trend-card" href="'+esc(h.href)+'"'+(h.internal?' data-nav':' target="_blank" rel="noopener"')+'>'+
     '<div class="cal-art">'+
     (it.poster?'<img class="ph r23" src="'+esc(it.poster)+'" alt="'+esc(it.t)+'" loading="lazy">':'<div class="ph r23"></div>')+
     '<span class="cal-tab">Топ '+rank+'</span>'+
     '</div>'+
     '<div class="cbody"><h3 class="ctitle">'+esc(it.t)+'</h3>'+
     (it.media?'<div class="cdate">'+esc(it.media==="series"?"Сериал":"Филм")+'</div>':'')+
-    '</div></div>';
+    '</div></a>';
 }
 function paintTrending(gridEl,subFilterEl,sub,attr){
   attr=attr||"trend";
@@ -944,7 +985,7 @@ function renderCal(view,p){
     } else sf.innerHTML="";
   }
   var list=calList(view), show=list.slice(0,8*p);
-  document.getElementById("calGrid").innerHTML=show.map(function(i){return card("calendar",i);}).join("");
+  document.getElementById("calGrid").innerHTML=calGridHTML(list,8*p);
   var btn=document.querySelector('[data-more="calendar"]');
   if(btn) btn.style.display = list.length>show.length ? "" : "none";
 }
@@ -982,7 +1023,7 @@ function reviewsListPage(page){
 /* ---------- movie calendar: филтри + grid с вертикални постери, като началната ---------- */
 var lpCalView="all", lpCalPlatform="", lpCalMedia="", lpTrendSub="cinema";
 function lpCalList(view){
-  var all=items("calendar").filter(function(c){return (c.when||"")>=todayISO();});
+  var all=items("calendar").filter(calInWindow);
   all.sort(function(a,b){return (a.when||"").localeCompare(b.when||"");});
   if(view!=="all") all=all.filter(function(c){return (c.kind||"")===view;});
   if(view==="stream"){
@@ -996,7 +1037,7 @@ function calendarListPage(page){
   var head=(D.heads&&D.heads.kalendar)||{};
   var h='<div class="banner cal-banner"><div class="wrap"><h1>'+esc(head.title||"Movie calendar")+'</h1></div></div>'+
     '<div class="wrap"><div class="filters" id="lpCalFilters"></div><div class="filters sub" id="lpCalSubFilters"></div>'+
-    '<div class="grid4" id="lpCalGrid"></div><div id="lpCalPager"></div></div>';
+    '<div id="lpCalGrid"></div><div id="lpCalPager"></div></div>';
   document.getElementById("app").innerHTML=h;
   document.title=(head.title||"Movie calendar")+" — Men In A Movie";
   renderLpCal(lpCalView,page||1);
@@ -1012,11 +1053,14 @@ function renderLpCal(view,p){
     var n=lpCalList(kv[0]).length; if(!n&&kv[0]!=="all")return "";
     return '<button data-lpcal="'+kv[0]+'" class="'+(view===kv[0]?"on":"")+'">'+kv[1]+' ('+n+')</button>';}).join("");
   var sf=document.getElementById("lpCalSubFilters");
+  var gridEl=document.getElementById("lpCalGrid");
   if(view==="most"){
-    lpTrendSub=paintTrending(document.getElementById("lpCalGrid"),sf,lpTrendSub,"lptrend");
+    if(gridEl) gridEl.className="grid4";
+    lpTrendSub=paintTrending(gridEl,sf,lpTrendSub,"lptrend");
     var pg=document.getElementById("lpCalPager"); if(pg) pg.innerHTML="";
     return;
   }
+  if(gridEl) gridEl.className="";
   if(sf){
     if(view==="stream"&&calStreamPlatforms().length){
       var pls=calStreamPlatforms();
@@ -1030,10 +1074,9 @@ function renderLpCal(view,p){
         '</div>';
     } else sf.innerHTML="";
   }
-  var list=lpCalList(view), pages=Math.max(1,Math.ceil(list.length/PER_PAGE)), pp=Math.min(Math.max(1,p),pages);
-  var slice=list.slice((pp-1)*PER_PAGE,pp*PER_PAGE);
-  document.getElementById("lpCalGrid").innerHTML=slice.map(function(i){return card("calendar",i);}).join("");
-  document.getElementById("lpCalPager").innerHTML=pager("kalendar",pp,pages);
+  var list=lpCalList(view);
+  document.getElementById("lpCalGrid").innerHTML=calMonthGroupsHTML(list);
+  var pg=document.getElementById("lpCalPager"); if(pg) pg.innerHTML="";
 }
 
 /* ---------- мърч: витрина + e-shop продуктова страница ---------- */

@@ -63,6 +63,9 @@ a{color:inherit;text-decoration:none}
 .a-row .sub{color:var(--tx2);font-size:12px;white-space:nowrap}
 .a-row img{width:64px;height:36px;object-fit:cover;background:#0A0908}
 .a-row img.p{width:26px;height:39px}
+.cal-dot{width:8px;height:8px;flex:none;border-radius:50%!important;background:var(--tx2)}
+.cal-dot.up{background:#3ac26a}
+.cal-dot.past{background:#5a5650}
 .st{font-family:Oswald,sans-serif;font-size:10px;letter-spacing:.09em;text-transform:uppercase;padding:3px 8px;border:1px solid var(--line);color:var(--tx2);cursor:default;background:none}
 .st.pub{background:var(--y);color:var(--black);border-color:var(--y);cursor:pointer}
 .st.hid{background:#7a2320;color:#fff;border-color:#7a2320;cursor:pointer}
@@ -169,7 +172,7 @@ function route(){}
 (function(){
 "use strict";
 
-var A = { open:false, me:null, tab:"dash", edit:null, editKind:null, backup:null, msg:null, dirty:false, users:null, userEdit:null, usersErr:null, calSort:"date-desc" };
+var A = { open:false, me:null, tab:"dash", edit:null, editKind:null, backup:null, msg:null, dirty:false, users:null, userEdit:null, usersErr:null, calSort:"upcoming" };
 
 var TYPES = {
   news:     {label:"Новини",     path:"novina",    img:"img",    shape:"h", roles:["admin","moderator","author"]},
@@ -355,7 +358,7 @@ function calPlatformActive(it){
   return cp.some(function(p){return p.name===it.platform;});
 }
 function sortSelHTML(current){
-  var opts=[["date-desc","Най-нови"],["date-asc","Най-стари"],["title-az","Заглавие А-Я"]];
+  var opts=[["upcoming","Предстоящи напред"],["date-desc","Най-нови"],["date-asc","Най-стари"],["title-az","Заглавие А-Я"]];
   return '<select id="fSort" class="a-sel">'+opts.map(function(o){
     return '<option value="'+o[0]+'"'+(current===o[0]?" selected":"")+'>'+esc2(o[1])+'</option>';
   }).join("")+'</select>';
@@ -363,8 +366,16 @@ function sortSelHTML(current){
 function listTab(k){
   var T=TYPES[k], list=all(k).slice().filter(mine);
   if(k==="calendar") list=list.filter(calPlatformActive); /* изключена платформа не се вижда и в админ списъка, докато не се включи пак */
-  var sortMode = k==="calendar" ? (A.calSort||"date-desc") : "date-desc";
-  if(sortMode==="date-asc") list.sort(function(a,b){return String(a.when||"").localeCompare(String(b.when||""));});
+  var sortMode = k==="calendar" ? (A.calSort||"upcoming") : "date-desc";
+  if(sortMode==="upcoming"){
+    var td=today();
+    list.sort(function(a,b){
+      var ap=(a.when||"")>=td?0:1, bp=(b.when||"")>=td?0:1;
+      if(ap!==bp) return ap-bp;
+      return ap===0 ? String(a.when||"").localeCompare(String(b.when||"")) : String(b.when||"").localeCompare(String(a.when||""));
+    });
+  }
+  else if(sortMode==="date-asc") list.sort(function(a,b){return String(a.when||"").localeCompare(String(b.when||""));});
   else if(sortMode==="title-az") list.sort(function(a,b){return String(a.t||"").localeCompare(String(b.t||""),"bg");});
   else list.sort(function(a,b){return String(b.when||"").localeCompare(String(a.when||""));});
   var h='<h2>'+esc2(T.label)+'</h2><div class="a-bar"><button class="a-btn pri" data-act="new" data-k="'+k+'">+ Нов</button>'+
@@ -444,8 +455,10 @@ function listRowAdm(k,it){
     ? '<button class="st '+calCls+'" '+(canPublish()?'data-act="calhide" data-k="'+k+'" data-id="'+it.id+'"':"disabled")+'>'+calTxt+'</button>'
     : '<button class="st '+cls+'" '+(can2?'data-act="toggle" data-k="'+k+'" data-id="'+it.id+'"':"disabled")+'>'+esc2(STATUS[st]||st)+'</button>';
   var typeLabel = it.kind==="event" ? "Събитие" : (it.kind==="stream" && it.sub ? "Сериал" : "Филм");
+  var isPast = isCal && String(it.when||"")<today();
   var subFields = isCal
-    ? '<span class="sub">'+esc2([it.platform,typeLabel,ddmmyyyy(it.when)].filter(Boolean).join(" | "))+'</span>'
+    ? '<span class="cal-dot '+(isPast?"past":"up")+'" title="'+(isPast?"Вече излезе":"Предстои")+'"></span>'+
+      '<span class="sub">'+esc2([it.platform,typeLabel,ddmmyyyy(it.when)].filter(Boolean).join(" | "))+'</span>'
     : '<span class="sub">'+esc2(it.when||"")+'</span><span class="sub">'+esc2(it.authorName||"")+'</span>';
   return '<div class="a-row" data-title="'+esc2(String(it.t||"").toLowerCase())+'"'+
     (catField?' data-cat="'+esc2(it[catField]||"")+'"':"")+
