@@ -338,7 +338,7 @@ function tvItem(t, pv, sub, when, season, episode) {
     backdrop: t.backdrop_path ? BACKDROP + t.backdrop_path : "",
     p: (t.overview || "").slice(0, 320), platform: pv.name,
     sub: sub, season: season ? +season : null, episode: episode ? +episode : null,
-    video: "", note: "", popularity: t.popularity || 0,
+    video: "", note: "", popularity: t.popularity || 0, rating: t.vote_average || 0,
   };
 }
 
@@ -446,7 +446,7 @@ async function syncCalendar(env, months) {
         t: m.title || m.original_title || "", when: m.release_date,
         poster: m.poster_path ? POSTER + m.poster_path : "",
         backdrop: m.backdrop_path ? BACKDROP + m.backdrop_path : "",
-        p: (m.overview || "").slice(0, 320), video: "", note: "", popularity: m.popularity || 0,
+        p: (m.overview || "").slice(0, 320), video: "", note: "", popularity: m.popularity || 0, rating: m.vote_average || 0,
       });
       nMovies++;
     }
@@ -536,7 +536,7 @@ async function syncCalendar(env, months) {
           poster: m.poster_path ? POSTER + m.poster_path : "",
           backdrop: m.backdrop_path ? BACKDROP + m.backdrop_path : "",
           p: (m.overview || "").slice(0, 320), platform: pv.name,
-          sub: "", season: null, episode: null, video: "", note: "", popularity: m.popularity || 0,
+          sub: "", season: null, episode: null, video: "", note: "", popularity: m.popularity || 0, rating: m.vote_average || 0,
         });
         nMovies++;
       }
@@ -1027,9 +1027,15 @@ a.tag:hover{border-color:#F6C92B;color:#F6C92B}
 .calcard-tab{position:absolute;top:0;left:0;z-index:2;background:#F6C92B;color:#141210;font-family:Oswald,system-ui,sans-serif;font-weight:600;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;padding:5px 11px 5px 8px}
 .calcard-tab2{position:absolute;top:23px;left:0;z-index:2;background:#141210;color:#F6C92B;font-family:Oswald,system-ui,sans-serif;font-weight:600;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;padding:4px 10px 4px 8px}
 .calcard-when{position:absolute;left:9px;bottom:9px;z-index:2;font-family:Oswald,system-ui,sans-serif;font-weight:600;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:#F6C92B}
+.cal-score{position:absolute;top:8px;right:8px;z-index:2;background:rgba(10,9,8,.75);padding:4px 6px;display:flex}
+.cal-score .claps{gap:2px;margin:0}
+.cal-score svg{width:12px;height:12px}
 .calcard h3{margin:0 0 4px;font-size:14px;line-height:1.3;font-weight:700}
 .calcard.past{opacity:.55}
 .calcard.past:hover{opacity:.85}
+.calcard.past .calcard-art::after{background:linear-gradient(rgba(246,201,43,.16),rgba(246,201,43,.16)),linear-gradient(to top,rgba(0,0,0,.75),transparent 42%)}
+.cal-claps{justify-content:flex-start;margin:10px 0 0}
+.cal-claps svg{width:20px;height:20px}
 .cal-divider{grid-column:1/-1;display:flex;align-items:center;gap:12px;margin:8px 0 4px;color:#8C877C;font-family:Oswald,system-ui,sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase}
 .cal-divider::before,.cal-divider::after{content:"";flex:1;height:1px;background:rgba(246,242,230,.15)}
 @media(max-width:900px){.grid-cards{grid-template-columns:repeat(2,1fr)}}
@@ -1251,7 +1257,7 @@ async function seoItemPage(kind, it, data, origin, env) {
     lede = it.desc || "";
   } else {
     title = it.t + (it.when ? " — " + seoDateBg(it.when) : "") + " | Movie calendar";
-    lede = it.lead || it.p || it.desc || "";
+    lede = it.lead || ""; /* без резюме от TMDB тук — то е в текста под снимката, за да не се дублира */
     /* билетите/гледането са бутон в жълтата лента; останалите детайли влизат в calKicker по-долу */
   }
   const calPast = kind === "calendar" && String(it.when || "") < ymd(new Date());
@@ -1261,7 +1267,6 @@ async function seoItemPage(kind, it, data, origin, env) {
     const media = it.kind === "cinema" || (it.kind === "stream" && !it.sub) ? "movie" : "tv";
     const s = it.sub === "episode" ? it.season : "", e = it.sub === "episode" ? it.episode : "";
     tmdbX = await tmdbExtra(env, media, it.tmdbId, s, e);
-    if (tmdbX.overview) lede = tmdbX.overview;
   }
   const calKicker = kind === "calendar"
     ? [calCat(it), it.kind === "stream" ? calSubLabel(it) : "", calPast ? "вече е налично" : seoDateBg(it.when),
@@ -1300,7 +1305,7 @@ async function seoItemPage(kind, it, data, origin, env) {
       "})();<\/script>"
     : "";
 
-  const bodyTxt = kind === "episodes" ? (it.body || it.lead || it.desc) : (kind === "calendar" ? (it.body || it.p) : it.body);
+  const bodyTxt = kind === "episodes" ? (it.body || it.lead || it.desc) : (kind === "calendar" ? (it.body || tmdbX.overview || it.p) : it.body);
   const poster = kind === "reviews" || kind === "calendar";
   const shotImg = image && !/\/og\.jpg$/.test(image)
     ? '<div class="shot' + (poster ? "" : " wide") + '"><img src="' + escHtml(image) + '" alt="' + escHtml(it.t) + '" onerror="this.parentNode.remove()"></div>'
@@ -1331,7 +1336,8 @@ async function seoItemPage(kind, it, data, origin, env) {
       (kind === "calendar" ? '<a class="btn" href="/kalendar">Целият календар</a>' : "") +
     "</div>";
   let sideInner = '<p class="facts">' + escHtml((kind === "calendar" ? [calKicker] : metaBits).filter(Boolean).join(" · ")) + "</p>" +
-    (noBand ? '<h1 class="hl-stack">' + titleBlocksHTML(it.t, 20) + "</h1>" : "<h1>" + escHtml(it.t) + "</h1>");
+    (noBand ? '<h1 class="hl-stack">' + titleBlocksHTML(it.t, 20) + "</h1>" : "<h1>" + escHtml(it.t) + "</h1>") +
+    (kind === "calendar" && tmdbX.rating ? '<div class="claps-big cal-claps">' + clapsHTML(Math.round(tmdbX.rating / 2)) + "</div>" : "");
   if (kind === "reviews") {
     sideInner += (lede ? '<p class="lede">' + escHtml(plain(lede, 400)) + "</p>" : "");
   } else {
@@ -1345,9 +1351,8 @@ async function seoItemPage(kind, it, data, origin, env) {
     '<div class="in"><div class="side">' + sideInner +
     "</div>" + shotImg + "</div></div></div>";
 
-  const tmdbInfo = kind === "calendar" && (tmdbX.rating || tmdbX.director || tmdbX.runtime || tmdbX.cast.length)
+  const tmdbInfo = kind === "calendar" && (tmdbX.director || tmdbX.runtime || tmdbX.cast.length)
     ? '<div class="tmdb-info">' +
-      (tmdbX.rating ? '<div class="claps-big">' + clapsHTML(Math.round(tmdbX.rating / 2)) + "</div>" : "") +
       ([tmdbX.director ? "Режисьор: " + tmdbX.director : "", tmdbX.runtime ? tmdbX.runtime + " мин" : ""].filter(Boolean).length
         ? '<p class="tmdb-meta">' + escHtml([tmdbX.director ? "Режисьор: " + tmdbX.director : "", tmdbX.runtime ? tmdbX.runtime + " мин" : ""].filter(Boolean).join(" · ")) + "</p>" : "") +
       (tmdbX.cast.length ? '<p class="tmdb-cast">В ролите: ' + escHtml(tmdbX.cast.join(", ")) + "</p>" : "") +
@@ -1635,6 +1640,7 @@ function calRow(it, origin) {
     '<span class="calcard-tab">' + escHtml(tab1) + "</span>" +
     (tab2 ? '<span class="calcard-tab2">' + escHtml(tab2) + "</span>" : "") +
     '<span class="calcard-when">' + escHtml(past ? "вече е налично" : seoDateBg(it.when)) + "</span>" +
+    (it.rating ? '<div class="cal-score">' + clapsHTML(Math.round(it.rating / 2)) + "</div>" : "") +
     '</div><div class="cbody"><h3>' + escHtml(it.t) + '</h3>' +
     '<p class="kicker">' + escHtml((it.kind === "event" ? [it.price ? "от " + it.price + " €" : "", it.place] : [it.platform]).concat([formatTxt]).filter(Boolean).join(" · ")) + "</p></div></a>";
 }
