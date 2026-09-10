@@ -701,6 +701,7 @@ function settingsTab(){
   var fields=[["tagline","Подзаглавие"],["aboutTitle","За нас — заглавие"],["about","За нас — текст","area"],
     ["contactEmail","Имейл за контакт"],["orderEmail","Имейл за поръчки"],["shipping","Цена на доставка"],
     ["copyright","Долен ред"],["joinText","Покана"],["joinBtn","Бутон на поканата"],
+    ["calendarLede","Movie calendar — подзаглавие (под заглавието, на началната и на /kalendar)"],
     ["cinemaProgramUrl","Линк към програмата по кината — бутон на страницата на филм „По кината“"]];
   return '<h2>Настройки</h2><div class="a-form">'+
     fields.map(function(x){return f(x[1],"s:"+x[0],s[x[0]],x[2]);}).join("")+
@@ -1076,7 +1077,23 @@ function blank(k){
   if(k==="calendar"){b.kind="cinema";b.platform="";b.poster="";b.src="manual";b.genre=[];b.price=0;}
   return b;
 }
+/* полетата в Настройки (data-f="s:...") не минават през collect() — той изисква отворен редактор (A.edit),
+   а Настройки няма такъв; затова се четат отделно, директно при запис */
+function collectSettings(){
+  var s=D.settings||(D.settings={});
+  [].forEach.call(document.querySelectorAll('[data-f]'),function(el){
+    var n=el.getAttribute("data-f");
+    if(n.indexOf("s:")!==0) return;
+    var key=n.slice(2);
+    if(key==="tickerTxt"){ s.ticker=el.value.split("\n").map(function(x){return x.trim();}).filter(Boolean); return; }
+    if(key==="genresTxt"){ s.genres=el.value.split(",").map(function(x){return x.trim();}).filter(Boolean); return; }
+    if(key==="newsTagsTxt"){ s.newsTags=el.value.split(",").map(function(x){return x.trim();}).filter(Boolean); return; }
+    s[key]=el.value;
+  });
+}
 function save(){
+  collectSettings();
+  if(!A.edit){ persist("Записано."); return; }
   collect();
   var k=A.editKind, it=A.edit;
   /* регистрирай нови тагове в общия речник само тук, при явен запис —
