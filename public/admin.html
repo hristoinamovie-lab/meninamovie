@@ -882,7 +882,16 @@ function onClick(e){
     if(!known3[pidx]) return;
     known3[pidx].on=!known3[pidx].on;
     D.settings.calProviders=known3.filter(function(p){return p.on;}).map(function(p){return {id:p.id,name:p.name};});
-    persist(known3[pidx].on?"Платформата е включена.":"Платформата е изключена.");
+    var pmsg=known3[pidx].on?"Платформата е включена.":"Платформата е изключена.";
+    if(!known3[pidx].on){
+      var pname=known3[pidx].name;
+      var toHide=(D.calendar||[]).filter(function(it){return it.platform===pname&&!it.hidden;});
+      if(toHide.length&&confirm('Да скрия ли и '+toHide.length+' вече заредени заглавия от „'+pname+'" в календара? (Само се скриват от сайта, не се трият — може пак да ги включиш от списъка.)')){
+        toHide.forEach(function(it){ it.hidden=true; });
+        pmsg="Платформата е изключена и "+toHide.length+" заглавия са скрити.";
+      }
+    }
+    persist(pmsg);
     return; }
   if(act==="addprovider"){
     var nameEl=document.getElementById("provNewName"), idEl=document.getElementById("provNewId");
