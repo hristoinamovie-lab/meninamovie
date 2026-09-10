@@ -681,9 +681,17 @@ var KIND={
 };
 var PER_PAGE=8, EP_HOME=4;
 
+/* платформата на календарен запис в момента активна ли е — изключена платформа спира всичко за нея, докато не се включи пак */
+function calPlatformActive(it){
+  if(!it.platform) return true;
+  var cp=D.settings&&D.settings.calProviders;
+  if(!Array.isArray(cp)) return true; // никога не е пипано — не ограничавай нищо
+  return cp.some(function(p){return p.name===it.platform;});
+}
 function items(k){return (D[k]||[]).filter(function(i){
   if((i.status||"published")!=="published") return false;
   if(k==="calendar"&&i.hidden) return false;
+  if(k==="calendar"&&!calPlatformActive(i)) return false;
   return true;
 });}
 function url(k,it){return "/"+KIND[k].path+"/"+slugify(it.t)+"-"+idTail(it.id);}

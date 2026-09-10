@@ -66,6 +66,7 @@ a{color:inherit;text-decoration:none}
 .st{font-family:Oswald,sans-serif;font-size:10px;letter-spacing:.09em;text-transform:uppercase;padding:3px 8px;border:1px solid var(--line);color:var(--tx2);cursor:default;background:none}
 .st.pub{background:var(--y);color:var(--black);border-color:var(--y);cursor:pointer}
 .st.hid{background:#7a2320;color:#fff;border-color:#7a2320;cursor:pointer}
+.st.off{background:#2a2410;color:#c9a227;border-color:#5a4a20;cursor:pointer}
 .st.rev{background:#2b2a12;color:var(--y);border-color:#5a5320}
 .a-form{display:grid;gap:14px;max-width:900px}
 .a-f label{display:block;font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--tx2);margin-bottom:5px}
@@ -355,6 +356,13 @@ function calTypeKey(it){
   if(it.kind==="cinema") return "cinema";
   return it.sub ? "series" : "stream-movie";
 }
+/* платформата на календарен запис в момента активна ли е — изключена платформа спира всичко за нея, докато не се включи пак */
+function calPlatformActive(it){
+  if(!it.platform) return true;
+  var cp=D.settings&&D.settings.calProviders;
+  if(!Array.isArray(cp)) return true;
+  return cp.some(function(p){return p.name===it.platform;});
+}
 function sortSelHTML(current){
   var opts=[["date-desc","Най-нови"],["date-asc","Най-стари"],["title-az","Заглавие А-Я"]];
   return '<select id="fSort" class="a-sel">'+opts.map(function(o){
@@ -417,22 +425,20 @@ function calProvidersKnown(){
 }
 function calProvidersHTML(){
   var known=calProvidersKnown();
-  var offNames={}; known.forEach(function(p){ if(!p.on) offNames[p.name]=1; });
-  var staleCount=(D.calendar||[]).filter(function(it){return offNames[it.platform]&&!it.hidden;}).length;
   return '<div class="a-form" style="margin:0 0 16px"><div class="a-f">'+
     '<label>Стрийминг платформи за обновяване от TMDB — предварително избрани най-гледаните в България, кликни да изключиш/включиш</label>'+
     '<div class="tagbox">'+known.map(function(p,i){
       return '<span class="'+(p.on?"on":"")+'" data-act="toggleprovider" data-pidx="'+i+'">'+esc2(p.name)+'</span>';
     }).join("")+'</div>'+
-    (staleCount?'<button type="button" class="a-btn dan" data-act="hideoffplatforms" style="margin-top:8px">Скрий заглавията от изключени платформи ('+staleCount+')</button>':'')+
     '<div class="a-grid" style="margin-top:10px">'+
       '<input id="provNewName" placeholder="Име на нова платформа">'+
       '<input id="provNewId" placeholder="Номер в TMDB" type="number">'+
     '</div>'+
     '<button type="button" class="a-btn" data-act="addprovider" style="margin-top:8px">+ Добави платформа</button>'+
     '<p class="a-note">Списъкът е ръчно подбран, не се обновява сам. Изключена платформа спира да тегли нова'+
-    ' информация, но остава в списъка, ако решиш да я включиш обратно — вече изтеглените заглавия в'+
-    ' календара не изчезват. Номерата на нови платформи се намират в themoviedb.org.</p>'+
+    ' информация И спира да показва вече изтеглените си заглавия — навсякъде на сайта, докато не я включиш'+
+    ' обратно. Нищо не се трие — статиите просто спират да излизат, докато платформата е изключена.'+
+    ' Номерата на нови платформи се намират в themoviedb.org.</p>'+
     '</div></div>';
 }
 function listRowAdm(k,it){
@@ -440,8 +446,11 @@ function listRowAdm(k,it){
   var isCal=k==="calendar", catField=CAT_FIELD[k];
   var st=it.status||"published", cls = st==="published"?"pub":st==="hidden"?"hid":st==="review"?"rev":"";
   var can2 = canPublish()&&(st==="published"||st==="hidden");
+  var calCls="pub", calTxt="Видимо";
+  if(isCal&&it.hidden){ calCls="hid"; calTxt="Скрито"; }
+  else if(isCal&&!calPlatformActive(it)){ calCls="off"; calTxt="Изкл. платформа"; }
   var toggleBtn = isCal
-    ? '<button class="st '+(it.hidden?"hid":"pub")+'" '+(canPublish()?'data-act="calhide" data-k="'+k+'" data-id="'+it.id+'"':"disabled")+'>'+(it.hidden?"Скрито":"Видимо")+'</button>'
+    ? '<button class="st '+calCls+'" '+(canPublish()?'data-act="calhide" data-k="'+k+'" data-id="'+it.id+'"':"disabled")+'>'+calTxt+'</button>'
     : '<button class="st '+cls+'" '+(can2?'data-act="toggle" data-k="'+k+'" data-id="'+it.id+'"':"disabled")+'>'+esc2(STATUS[st]||st)+'</button>';
   var typeLabel = it.kind==="event" ? "Събитие" : (it.kind==="stream" && it.sub ? "Сериал" : "Филм");
   var subFields = isCal
@@ -881,29 +890,13 @@ function onClick(e){
     persist("Изтрити "+rm.length+" неизползвани тага.");
     return; }
   if(act==="toggleprovider"){
+    /* изключена платформа е "главен прекъсвач" — потиска показването на всичко за нея, докато не се включи пак;
+       не пипа полето Видимо/Скрито на отделните статии (то си остава отделен, независим избор) */
     var pidx=+t.getAttribute("data-pidx"), known3=calProvidersKnown();
     if(!known3[pidx]) return;
     known3[pidx].on=!known3[pidx].on;
     D.settings.calProviders=known3.filter(function(p){return p.on;}).map(function(p){return {id:p.id,name:p.name};});
-    var pmsg=known3[pidx].on?"Платформата е включена.":"Платформата е изключена.";
-    if(!known3[pidx].on){
-      var pname=known3[pidx].name;
-      var toHide=(D.calendar||[]).filter(function(it){return it.platform===pname&&!it.hidden;});
-      if(toHide.length&&confirm('Да скрия ли и '+toHide.length+' вече заредени заглавия от „'+pname+'" в календара? (Само се скриват от сайта, не се трият — може пак да ги включиш от списъка.)')){
-        toHide.forEach(function(it){ it.hidden=true; });
-        pmsg="Платформата е изключена и "+toHide.length+" заглавия са скрити.";
-      }
-    }
-    persist(pmsg);
-    return; }
-  if(act==="hideoffplatforms"){
-    var known6=calProvidersKnown(), offNames6={};
-    known6.forEach(function(p){ if(!p.on) offNames6[p.name]=1; });
-    var toHide6=(D.calendar||[]).filter(function(it){return offNames6[it.platform]&&!it.hidden;});
-    if(!toHide6.length) return;
-    if(!confirm("Да скрия ли "+toHide6.length+" заглавия от вече изключени платформи? (Само се скриват от сайта, не се трият — може пак да ги включиш поединично от списъка.)")) return;
-    toHide6.forEach(function(it){ it.hidden=true; });
-    persist("Скрити "+toHide6.length+" заглавия от изключени платформи.");
+    persist(known3[pidx].on?"Платформата е включена.":"Платформата е изключена.");
     return; }
   if(act==="addprovider"){
     var nameEl=document.getElementById("provNewName"), idEl=document.getElementById("provNewId");
