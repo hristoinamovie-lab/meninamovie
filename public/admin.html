@@ -66,7 +66,6 @@ a{color:inherit;text-decoration:none}
 .st{font-family:Oswald,sans-serif;font-size:10px;letter-spacing:.09em;text-transform:uppercase;padding:3px 8px;border:1px solid var(--line);color:var(--tx2);cursor:default;background:none}
 .st.pub{background:var(--y);color:var(--black);border-color:var(--y);cursor:pointer}
 .st.hid{background:#7a2320;color:#fff;border-color:#7a2320;cursor:pointer}
-.st.off{background:#2a2410;color:#c9a227;border-color:#5a4a20;cursor:pointer}
 .st.rev{background:#2b2a12;color:var(--y);border-color:#5a5320}
 .a-form{display:grid;gap:14px;max-width:900px}
 .a-f label{display:block;font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--tx2);margin-bottom:5px}
@@ -371,6 +370,7 @@ function sortSelHTML(current){
 }
 function listTab(k){
   var T=TYPES[k], list=all(k).slice().filter(mine);
+  if(k==="calendar") list=list.filter(calPlatformActive); /* изключена платформа не се вижда и в админ списъка, докато не се включи пак */
   var sortMode = k==="calendar" ? (A.calSort||"date-desc") : "date-desc";
   if(sortMode==="date-asc") list.sort(function(a,b){return String(a.when||"").localeCompare(String(b.when||""));});
   else if(sortMode==="title-az") list.sort(function(a,b){return String(a.t||"").localeCompare(String(b.t||""),"bg");});
@@ -436,9 +436,9 @@ function calProvidersHTML(){
     '</div>'+
     '<button type="button" class="a-btn" data-act="addprovider" style="margin-top:8px">+ Добави платформа</button>'+
     '<p class="a-note">Списъкът е ръчно подбран, не се обновява сам. Изключена платформа спира да тегли нова'+
-    ' информация И спира да показва вече изтеглените си заглавия — навсякъде на сайта, докато не я включиш'+
-    ' обратно. Нищо не се трие — статиите просто спират да излизат, докато платформата е изключена.'+
-    ' Номерата на нови платформи се намират в themoviedb.org.</p>'+
+    ' информация И спира да показва вече изтеглените си заглавия — навсякъде на сайта и в списъка тук долу,'+
+    ' докато не я включиш обратно. Нищо не се трие — статиите просто изчезват от изгледа, докато платформата'+
+    ' е изключена. Номерата на нови платформи се намират в themoviedb.org.</p>'+
     '</div></div>';
 }
 function listRowAdm(k,it){
@@ -446,9 +446,8 @@ function listRowAdm(k,it){
   var isCal=k==="calendar", catField=CAT_FIELD[k];
   var st=it.status||"published", cls = st==="published"?"pub":st==="hidden"?"hid":st==="review"?"rev":"";
   var can2 = canPublish()&&(st==="published"||st==="hidden");
-  var calCls="pub", calTxt="Видимо";
+  var calCls="pub", calTxt="Видимо"; /* редове от изключена платформа не стигат дотук — listTab() ги маха изцяло от списъка */
   if(isCal&&it.hidden){ calCls="hid"; calTxt="Скрито"; }
-  else if(isCal&&!calPlatformActive(it)){ calCls="off"; calTxt="Изкл. платформа"; }
   var toggleBtn = isCal
     ? '<button class="st '+calCls+'" '+(canPublish()?'data-act="calhide" data-k="'+k+'" data-id="'+it.id+'"':"disabled")+'>'+calTxt+'</button>'
     : '<button class="st '+cls+'" '+(can2?'data-act="toggle" data-k="'+k+'" data-id="'+it.id+'"':"disabled")+'>'+esc2(STATUS[st]||st)+'</button>';
@@ -799,7 +798,8 @@ function onClick(e){
   if(t.hasAttribute("data-tab")){ A.edit=null; A.tab=t.getAttribute("data-tab"); if(A.tab==="users"){A.users=null;A.userEdit=null;A.usersErr=null;} draw(); return; }
   if(t.hasAttribute("data-md")){ insert(t.getAttribute("data-md")); return; }
   if(act==="new"){ A.editKind=k; A.edit=blank(k); draw(); return; }
-  if(act==="edit"){ A.editKind=k; A.edit=JSON.parse(JSON.stringify(all(k).filter(function(x){return x.id===id;})[0]||{})); A.tab=k; draw(); return; }
+  if(act==="edit"){ A.editKind=k; A.edit=JSON.parse(JSON.stringify(all(k).filter(function(x){return x.id===id;})[0]||{})); A.tab=k; draw();
+    if(k==="calendar"||k==="reviews") autoTmdbTags(); return; }
   if(act==="back"){ A.edit=null; draw(); return; }
   if(act==="save"){ save(); return; }
   if(act==="publish"){ A.edit.status="published"; save(); return; }
@@ -831,13 +831,9 @@ function onClick(e){
     var tg=t.getAttribute("data-tag"); if(arr.indexOf(tg)<0)arr.push(tg);
     inp.value=arr.join(", "); A.edit.tags=arr; checkTags(); return; }
   if(act==="addtmdbtag"){
-    var tname=t.getAttribute("data-name"), tslug=tname.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-    if(!tslug) return;
-    var lab5=D.tagLabels||(D.tagLabels={}); if(!lab5[tslug]) lab5[tslug]=tname;
-    var inp2=document.querySelector('[data-f="tagsTxt"]'); if(!inp2) return;
-    var arr2=inp2.value.split(",").map(function(s){return s.trim();}).filter(Boolean);
-    if(arr2.indexOf(tslug)<0) arr2.push(tslug);
-    inp2.value=arr2.join(", "); A.edit.tags=arr2; checkTags();
+    addTagByName(t.getAttribute("data-name"));
+    var inp2=document.querySelector('[data-f="tagsTxt"]'); if(inp2) inp2.value=(A.edit.tags||[]).join(", ");
+    checkTags();
     return; }
   if(act==="tmdbtags"){
     var qEl=document.getElementById("tmdbQ"), q=(qEl?qEl.value:"").trim();
@@ -848,16 +844,7 @@ function onClick(e){
       .then(function(r){return r.ok?r.json():null;})
       .then(function(j){
         t.disabled=false; t.textContent="Предложи тагове от TMDB";
-        var names=j?[].concat(
-          j.titleLatin?[j.titleLatin]:[],
-          j.cast||[],
-          j.director?[j.director]:[],
-          j.collection?[j.collection]:[],
-          j.genres||[],
-          j.companies||[],
-          j.keywords||[]
-        ):[];
-        var seen={}; names=names.filter(function(n){ var k=n.toLowerCase(); if(seen[k])return false; seen[k]=1; return true; });
+        var names=tmdbSuggestNames(j);
         if(!box3) return;
         if(!names.length){ box3.innerHTML='<p class="a-note">TMDB не намери нищо подходящо за "'+esc2(q)+'".</p>'; return; }
         box3.innerHTML=(j.titleBg&&j.titleBg.toLowerCase()!==q.toLowerCase()?'<p class="a-note">Намерено в TMDB: '+esc2(j.titleBg)+'</p>':"")+
@@ -953,7 +940,10 @@ function onChange(e){
     var ty2=document.getElementById("fType"); if(ty2) ty2.value=savedType;
     applyListFilters();
     return; }
-  if(el.hasAttribute&&el.hasAttribute("data-f")&&A.edit) collect();
+  if(el.hasAttribute&&el.hasAttribute("data-f")&&A.edit){
+    collect();
+    if(el.getAttribute("data-f")==="t"&&(A.editKind==="calendar"||A.editKind==="reviews")) autoTmdbTags();
+  }
 }
 function applyListFilters(){
   var q=((document.getElementById("fltr")||{}).value||"").toLowerCase();
@@ -988,6 +978,43 @@ function collect(){
     if(n==="price"){ it.price=+el.value||0; return; }
     it[n]=el.value;
   });
+}
+function addTagByName(name){
+  var slug=String(name||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+  if(!slug||!A.edit) return null;
+  var lab=D.tagLabels||(D.tagLabels={}); if(!lab[slug]) lab[slug]=name;
+  var arr=(A.edit.tags||[]).slice();
+  if(arr.indexOf(slug)<0) arr.push(slug);
+  A.edit.tags=arr;
+  return slug;
+}
+function tmdbSuggestNames(j){
+  var names=j?[].concat(
+    j.titleLatin?[j.titleLatin]:[],
+    j.cast||[],
+    j.director?[j.director]:[],
+    j.collection?[j.collection]:[],
+    j.genres||[],
+    j.companies||[],
+    j.keywords||[]
+  ):[];
+  var seen={}; return names.filter(function(n){ var k=n.toLowerCase(); if(seen[k])return false; seen[k]=1; return true; });
+}
+/* за Календар и Ревюта — тегли и добавя тагове от TMDB автоматично, без клик, но само докато полето е празно
+   (за да не бута обратно тагове, които админ вече е изчистил ръчно при по-предишно отваряне) */
+function autoTmdbTags(){
+  var it=A.edit; if(!it||!it.t||(it.tags&&it.tags.length)) return;
+  var q=String(it.t).trim(); if(!q) return;
+  fetch("/api/tmdb-search-tags?q="+encodeURIComponent(q))
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(j){
+      if(A.edit!==it||(it.tags&&it.tags.length)) return;
+      var names=tmdbSuggestNames(j);
+      if(!names.length) return;
+      names.forEach(function(n){ addTagByName(n); });
+      draw();
+    })
+    .catch(function(){});
 }
 function checkTags(){
   var w=document.getElementById("tagWarn"); if(!w) return;

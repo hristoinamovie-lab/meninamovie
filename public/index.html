@@ -82,6 +82,7 @@ section{margin-top:46px}
 /* карти */
 .card{background:var(--card2);display:block;overflow:hidden}
 .card:hover{outline:2px solid var(--y)}
+.trend-card:hover{outline:none}
 .ph{background:var(--card);width:100%;object-fit:cover;display:block}
 .r169{aspect-ratio:16/9}
 .r23{aspect-ratio:2/3}
@@ -851,7 +852,7 @@ function home(){
   document.getElementById("app").innerHTML=h;
   renderNews(1); renderRev(1); renderCal("all",1);
 }
-var newsPages=1, revPages=1, calPages=1, calView="all", calPlatform="", calMedia="";
+var newsPages=1, revPages=1, calPages=1, calView="all", calPlatform="", calMedia="", calTrendSub="cinema";
 function renderNews(p){
   newsPages=p; var nw=items("news"), lead=nw[0], rest=nw.slice(1,1+4+(p-1)*8);
   var h="";
@@ -889,16 +890,54 @@ function calStreamPlatforms(){
   return out.map(function(p){return [p,seen[p]];});
 }
 function todayISO(){var d=new Date();return d.toISOString().slice(0,10);}
+/* "Най-гледани" — топ 5 по кината (реално вървящи в момента) + топ 5 на всяка активна стрийминг платформа,
+   изчислено на сървъра при всяко опресняване от TMDB (D.trending), не е част от обичайния календар с дати */
+function trendingActivePlatforms(){
+  var s=(D.trending&&D.trending.streaming)||{}, active=(D.settings&&D.settings.calProviders)||[];
+  return active.map(function(p){return p.name;}).filter(function(n){return s[n]&&s[n].length;});
+}
+function trendCard(it,rank){
+  return '<div class="card cal-card trend-card">'+
+    '<div class="cal-art">'+
+    (it.poster?'<img class="ph r23" src="'+esc(it.poster)+'" alt="'+esc(it.t)+'" loading="lazy">':'<div class="ph r23"></div>')+
+    '<span class="cal-tab">Топ '+rank+'</span>'+
+    '</div>'+
+    '<div class="cbody"><h3 class="ctitle">'+esc(it.t)+'</h3>'+
+    (it.media?'<div class="cdate">'+esc(it.media==="series"?"Сериал":"Филм")+'</div>':'')+
+    '</div></div>';
+}
+function paintTrending(gridEl,subFilterEl,sub,attr){
+  attr=attr||"trend";
+  var cinemaN=((D.trending&&D.trending.cinema)||[]).length, plats=trendingActivePlatforms();
+  if(sub!=="cinema"&&plats.indexOf(sub)<0) sub=cinemaN?"cinema":(plats[0]||"cinema");
+  if(subFilterEl){
+    var tabs=[]; if(cinemaN) tabs.push(["cinema","по кината"]);
+    plats.forEach(function(n){tabs.push([n,n]);});
+    subFilterEl.innerHTML=tabs.length?'<div class="cal-plat">'+tabs.map(function(tb){
+      return '<button data-'+attr+'="'+esc(tb[0])+'" class="'+(sub===tb[0]?"on":"")+'">Топ 5 '+esc(tb[1])+'</button>';
+    }).join("")+'</div>':'';
+  }
+  var arr = sub==="cinema" ? ((D.trending&&D.trending.cinema)||[]) : (((D.trending&&D.trending.streaming)||{})[sub]||[]);
+  if(gridEl) gridEl.innerHTML=arr.map(function(it,i){return trendCard(it,i+1);}).join("")||'<p class="a-note">Няма данни все още — опресни от TMDB.</p>';
+  return sub;
+}
 function renderCal(view,p){
   calView=view; calPages=p;
   if(view!=="stream"){ calPlatform=""; calMedia=""; }
-  var kinds=[["all","Всичко"],["cinema","По кината"],["stream","Стрийминг"],["event","Събития"]];
+  var hasTrend=((D.trending&&D.trending.cinema)||[]).length||trendingActivePlatforms().length;
+  var kinds=[["all","Всичко"],["cinema","По кината"],["stream","Стрийминг"],["event","Събития"]].concat(hasTrend?[["most","Най-гледани"]]:[]);
   var f=document.getElementById("calFilters");
   if(f) f.innerHTML=kinds.map(function(kv){
+    if(kv[0]==="most") return '<button data-cal="most" class="'+(view==="most"?"on":"")+'">Най-гледани</button>';
     var n=calList(kv[0]).length; if(!n&&kv[0]!=="all")return "";
     return '<button data-cal="'+kv[0]+'" class="'+(view===kv[0]?"on":"")+'">'+kv[1]+' ('+n+')</button>';}).join("")+
     '<a class="all" href="/kalendar" data-nav style="margin-left:auto">виж всички</a>';
   var sf=document.getElementById("calSubFilters");
+  if(view==="most"){
+    calTrendSub=paintTrending(document.getElementById("calGrid"),sf,calTrendSub);
+    var btn0=document.querySelector('[data-more="calendar"]'); if(btn0) btn0.style.display="none";
+    return;
+  }
   if(sf){
     if(view==="stream"&&calStreamPlatforms().length){
       var pls=calStreamPlatforms();
@@ -949,7 +988,7 @@ function reviewsListPage(page){
 }
 
 /* ---------- movie calendar: филтри + grid с вертикални постери, като началната ---------- */
-var lpCalView="all", lpCalPlatform="", lpCalMedia="";
+var lpCalView="all", lpCalPlatform="", lpCalMedia="", lpTrendSub="cinema";
 function lpCalList(view){
   var all=items("calendar").filter(function(c){return (c.when||"")>=todayISO();});
   all.sort(function(a,b){return (a.when||"").localeCompare(b.when||"");});
@@ -973,12 +1012,19 @@ function calendarListPage(page){
 function renderLpCal(view,p){
   lpCalView=view;
   if(view!=="stream"){ lpCalPlatform=""; lpCalMedia=""; }
-  var kinds=[["all","Всичко"],["cinema","По кината"],["stream","Стрийминг"],["event","Събития"]];
+  var hasTrend=((D.trending&&D.trending.cinema)||[]).length||trendingActivePlatforms().length;
+  var kinds=[["all","Всичко"],["cinema","По кината"],["stream","Стрийминг"],["event","Събития"]].concat(hasTrend?[["most","Най-гледани"]]:[]);
   var f=document.getElementById("lpCalFilters");
   if(f) f.innerHTML=kinds.map(function(kv){
+    if(kv[0]==="most") return '<button data-lpcal="most" class="'+(view==="most"?"on":"")+'">Най-гледани</button>';
     var n=lpCalList(kv[0]).length; if(!n&&kv[0]!=="all")return "";
     return '<button data-lpcal="'+kv[0]+'" class="'+(view===kv[0]?"on":"")+'">'+kv[1]+' ('+n+')</button>';}).join("");
   var sf=document.getElementById("lpCalSubFilters");
+  if(view==="most"){
+    lpTrendSub=paintTrending(document.getElementById("lpCalGrid"),sf,lpTrendSub,"lptrend");
+    var pg=document.getElementById("lpCalPager"); if(pg) pg.innerHTML="";
+    return;
+  }
   if(sf){
     if(view==="stream"&&calStreamPlatforms().length){
       var pls=calStreamPlatforms();
@@ -1329,12 +1375,16 @@ document.addEventListener("click",function(e){
   if(pf){ calPlatform=pf.getAttribute("data-platform"); renderCal("stream",1); return; }
   var md=e.target.closest?e.target.closest("[data-media]"):null;
   if(md){ calMedia=md.getAttribute("data-media"); renderCal("stream",1); return; }
+  var tr=e.target.closest?e.target.closest("[data-trend]"):null;
+  if(tr){ calTrendSub=tr.getAttribute("data-trend"); renderCal("most",1); return; }
   var lc=e.target.closest?e.target.closest("[data-lpcal]"):null;
   if(lc){ renderLpCal(lc.getAttribute("data-lpcal"),1); return; }
   var lpf=e.target.closest?e.target.closest("[data-lpplatform]"):null;
   if(lpf){ lpCalPlatform=lpf.getAttribute("data-lpplatform"); renderLpCal("stream",1); return; }
   var lmd=e.target.closest?e.target.closest("[data-lpmedia]"):null;
   if(lmd){ lpCalMedia=lmd.getAttribute("data-lpmedia"); renderLpCal("stream",1); return; }
+  var ltr=e.target.closest?e.target.closest("[data-lptrend]"):null;
+  if(ltr){ lpTrendSub=ltr.getAttribute("data-lptrend"); renderLpCal("most",1); return; }
 });
 window.addEventListener("popstate",route);
 window.addEventListener("hashchange",function(){ if(location.protocol==="file:") route(); });
