@@ -376,16 +376,29 @@ function tmdbPickTrailer(results) {
 }
 /** Трейлър + резюме (+ оценка на епизод, ако е приложимо) — тегли се при отваряне на страницата, не при синхронизацията. */
 async function tmdbExtra(env, media, tmdbId, season, episode) {
-  const out = { trailer: "", overview: "", rating: null };
+  const out = { trailer: "", overview: "", rating: null, cast: [], director: "", runtime: null };
   if (!env.TMDB_KEY || !tmdbId) return out;
   try {
     if (media === "movie") {
       const vids = await tmdbGet(env, "/movie/" + tmdbId + "/videos", { language: "bg-BG" });
       out.trailer = tmdbPickTrailer(vids.results) || tmdbPickTrailer((await tmdbGet(env, "/movie/" + tmdbId + "/videos", {})).results);
+      const d = await tmdbGet(env, "/movie/" + tmdbId, { language: "bg-BG", append_to_response: "credits" });
+      out.overview = d.overview || "";
+      out.rating = d.vote_average ? Math.round(d.vote_average * 10) / 10 : null;
+      out.runtime = d.runtime || null;
+      const credits = d.credits || {};
+      out.cast = (credits.cast || []).slice(0, 5).map((c) => c.name).filter(Boolean);
+      const dir = (credits.crew || []).find((c) => c.job === "Director");
+      out.director = dir ? dir.name : "";
     } else if (season && episode) {
-      const ep = await tmdbGet(env, "/tv/" + tmdbId + "/season/" + season + "/episode/" + episode, { language: "bg-BG" });
+      const ep = await tmdbGet(env, "/tv/" + tmdbId + "/season/" + season + "/episode/" + episode, { language: "bg-BG", append_to_response: "credits" });
       out.overview = ep.overview || "";
       out.rating = ep.vote_average ? Math.round(ep.vote_average * 10) / 10 : null;
+      out.runtime = ep.runtime || null;
+      const credits = ep.credits || {};
+      out.cast = (credits.cast || []).slice(0, 5).map((c) => c.name).filter(Boolean);
+      const dir = (credits.crew || []).find((c) => c.job === "Director");
+      out.director = dir ? dir.name : "";
       try {
         const vids = await tmdbGet(env, "/tv/" + tmdbId + "/season/" + season + "/episode/" + episode + "/videos", { language: "bg-BG" });
         out.trailer = tmdbPickTrailer(vids.results);
@@ -393,6 +406,13 @@ async function tmdbExtra(env, media, tmdbId, season, episode) {
     } else {
       const vids = await tmdbGet(env, "/tv/" + tmdbId + "/videos", { language: "bg-BG" });
       out.trailer = tmdbPickTrailer(vids.results);
+      const d = await tmdbGet(env, "/tv/" + tmdbId, { language: "bg-BG", append_to_response: "credits" });
+      out.overview = d.overview || "";
+      out.rating = d.vote_average ? Math.round(d.vote_average * 10) / 10 : null;
+      out.runtime = (d.episode_run_time && d.episode_run_time[0]) || null;
+      const credits = d.credits || {};
+      out.cast = (credits.cast || []).slice(0, 5).map((c) => c.name).filter(Boolean);
+      out.director = ((d.created_by || [])[0] || {}).name || "";
     }
   } catch (e) {}
   return out;
@@ -898,6 +918,9 @@ nav.main a:hover{border-bottom-color:#141210}
 .claps svg{width:20px;height:20px}
 .claps-big{display:flex;gap:6px;justify-content:center;margin:32px 0 0}
 .claps-big svg{width:26px;height:26px}
+.tmdb-info{margin:24px 0;padding:16px 18px;background:#161412;border-left:2px solid #F6C92B}
+.tmdb-meta{margin:0 0 6px;color:#8C877C;font-family:Oswald,system-ui,sans-serif;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.tmdb-cast{margin:0;color:#F2F0EB}
 .band .tags{margin-top:14px}
 .band .tags .lbl{color:rgba(20,18,16,.55)}
 .band .tag{color:rgba(20,18,16,.6);border-color:rgba(20,18,16,.3)}
@@ -1235,7 +1258,7 @@ async function seoItemPage(kind, it, data, origin, env) {
   /* трейлър/резюме/оценка от TMDB, теглени "на живо" при отваряне на страницата (не при синхронизацията) */
   let tmdbX = { trailer: "", overview: "", rating: null };
   if (kind === "calendar" && it.src === "tmdb" && it.tmdbId && env) {
-    const media = it.kind === "cinema" ? "movie" : "tv";
+    const media = it.kind === "cinema" || (it.kind === "stream" && !it.sub) ? "movie" : "tv";
     const s = it.sub === "episode" ? it.season : "", e = it.sub === "episode" ? it.episode : "";
     tmdbX = await tmdbExtra(env, media, it.tmdbId, s, e);
     if (tmdbX.overview) lede = tmdbX.overview;
@@ -1243,8 +1266,7 @@ async function seoItemPage(kind, it, data, origin, env) {
   const calKicker = kind === "calendar"
     ? [calCat(it), it.kind === "stream" ? calSubLabel(it) : "", calPast ? "вече е налично" : seoDateBg(it.when),
        it.time, it.place, it.kind === "event" && it.price ? "от " + it.price + " €" : "",
-       genreArr(it.genre).join(", "), it.mins ? it.mins + " мин." : "",
-       tmdbX.rating ? "TMDB " + tmdbX.rating + "/10" : ""].filter(Boolean).join(" • ")
+       genreArr(it.genre).join(", "), it.mins ? it.mins + " мин." : ""].filter(Boolean).join(" • ")
     : SEO_LABEL[kind];
   const vid = it.video || it.yt || "";
   /* видеото вече е бутон в жълтата лента */
@@ -1323,9 +1345,18 @@ async function seoItemPage(kind, it, data, origin, env) {
     '<div class="in"><div class="side">' + sideInner +
     "</div>" + shotImg + "</div></div></div>";
 
+  const tmdbInfo = kind === "calendar" && (tmdbX.rating || tmdbX.director || tmdbX.runtime || tmdbX.cast.length)
+    ? '<div class="tmdb-info">' +
+      (tmdbX.rating ? '<div class="claps-big">' + clapsHTML(Math.round(tmdbX.rating / 2)) + "</div>" : "") +
+      ([tmdbX.director ? "Режисьор: " + tmdbX.director : "", tmdbX.runtime ? tmdbX.runtime + " мин" : ""].filter(Boolean).length
+        ? '<p class="tmdb-meta">' + escHtml([tmdbX.director ? "Режисьор: " + tmdbX.director : "", tmdbX.runtime ? tmdbX.runtime + " мин" : ""].filter(Boolean).join(" · ")) + "</p>" : "") +
+      (tmdbX.cast.length ? '<p class="tmdb-cast">В ролите: ' + escHtml(tmdbX.cast.join(", ")) + "</p>" : "") +
+      "</div>"
+    : "";
   const html = band +
     '<div class="col">' +
     seoBody(bodyTxt) +
+    tmdbInfo +
     (it.guest ? '<p class="meta" style="margin-top:22px">Гост: ' + escHtml(it.guest) + (it.role ? " · " + escHtml(it.role) : "") + "</p>" : "") +
     (kind === "reviews" ? '<div class="claps-big">' + clapsHTML(it.s) + "</div>" : "") +
     (it.authorName ? '<p class="sig">— ' + escHtml(it.authorName) + "</p>" : "") +
@@ -1619,7 +1650,7 @@ function calByMonth(items) {
     let inner;
     if (ym === today.slice(0, 7)) {
       const hasPast = arr.some((it) => it.when < today);
-      let divided = false, out = "";
+      let divided = false, out = hasPast ? '<div class="cal-divider"><span>Вече налично</span></div>' : "";
       for (const it of arr) {
         if (hasPast && !divided && it.when >= today) { out += '<div class="cal-divider"><span>Днес</span></div>'; divided = true; }
         out += calRow(it);
@@ -1686,6 +1717,7 @@ function calListPage(data, origin, view) {
   const today = ymd(new Date());
   const items = view ? view.items : calLive(data).filter((x) => x.when >= calWindowStart() && x.when <= calWindowEnd());
   const w = calWords(view);
+  if (!view && data.settings && data.settings.calendarLede) w.lede = data.settings.calendarLede;
   const canon = origin + "/kalendar" + (view ? "/" + view.slug : "");
   const first = items.find((it) => it.poster && /^https?:/.test(it.poster));
   const image = first ? first.poster : origin + "/og.jpg";
