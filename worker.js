@@ -356,6 +356,24 @@ function tvItem(t, pv, sub, when, season, episode) {
   };
 }
 
+/** Каст, режисьор/създател и франчайз — за предложени тагове в админ панела, тегли се само при натискане на бутон. */
+async function tmdbCredits(env, media, tmdbId) {
+  const out = { cast: [], director: "", collection: "" };
+  if (!env.TMDB_KEY || !tmdbId) return out;
+  try {
+    const d = await tmdbGet(env, "/" + media + "/" + tmdbId, { append_to_response: "credits", language: "bg-BG" });
+    const credits = d.credits || {};
+    out.cast = (credits.cast || []).slice(0, 5).map((c) => c.name).filter(Boolean);
+    if (media === "movie") {
+      const dir = (credits.crew || []).find((c) => c.job === "Director");
+      out.director = dir ? dir.name : "";
+      out.collection = (d.belongs_to_collection && d.belongs_to_collection.name) || "";
+    } else {
+      out.director = ((d.created_by || [])[0] || {}).name || "";
+    }
+  } catch (e) {}
+  return out;
+}
 /** Първо видео от TMDB, дадено с приоритет на official trailer в YouTube. */
 function tmdbPickTrailer(results) {
   if (!Array.isArray(results) || !results.length) return "";
@@ -2051,6 +2069,16 @@ async function handleRequest(request, env, ctx) {
       const season = url.searchParams.get("season") || "";
       const episode = url.searchParams.get("episode") || "";
       const out = await tmdbExtra(env, media, tmdbId, season, episode);
+      return new Response(JSON.stringify(out), {
+        headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=21600" },
+      });
+    }
+
+    /* каст/режисьор/франчайз — за предложени тагове в админ панела */
+    if (path === "/api/tmdb-credits" && request.method === "GET") {
+      const media = url.searchParams.get("media") === "movie" ? "movie" : "tv";
+      const tmdbId = url.searchParams.get("id") || "";
+      const out = await tmdbCredits(env, media, tmdbId);
       return new Response(JSON.stringify(out), {
         headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=21600" },
       });
