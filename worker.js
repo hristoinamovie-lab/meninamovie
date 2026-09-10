@@ -361,7 +361,8 @@ async function tmdbCredits(env, media, tmdbId) {
   const out = { cast: [], director: "", collection: "" };
   if (!env.TMDB_KEY || !tmdbId) return out;
   try {
-    const d = await tmdbGet(env, "/" + media + "/" + tmdbId, { append_to_response: "credits", language: "bg-BG" });
+    // language: en-US нарочно — тук искаме имена на латиница, за да могат да се ползват като тагове
+    const d = await tmdbGet(env, "/" + media + "/" + tmdbId, { append_to_response: "credits", language: "en-US" });
     const credits = d.credits || {};
     out.cast = (credits.cast || []).slice(0, 5).map((c) => c.name).filter(Boolean);
     if (media === "movie") {
@@ -2080,6 +2081,8 @@ async function handleRequest(request, env, ctx) {
       const out = { cast: [], director: "", collection: "", title: "" };
       if (!q || !env.TMDB_KEY) return json(out);
       try {
+        // тук language си остава bg-BG нарочно — иначе търсенето по кирилско заглавие (напр. взето от статията) може да не намери резултат;
+        // латиницата за таговете идва отделно, от tmdbCredits() по-долу
         const s = await tmdbGet(env, "/search/multi", { query: q, language: "bg-BG", include_adult: "false" });
         const hit = (s.results || []).find((r) => r.media_type === "movie" || r.media_type === "tv");
         if (!hit) return json(out);
