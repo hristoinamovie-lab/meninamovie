@@ -615,10 +615,17 @@ function idTail(id) {
 function seoSlug(it) { return slugify(it && it.t) + "-" + idTail(it && it.id); }
 function seoUrl(kind, it) { return "/" + SEO_PATH[kind] + "/" + seoSlug(it); }
 
+/* платформата на календарен запис в момента активна ли е — изключена платформа спира всичко за нея, докато не се включи пак */
+function calPlatformActive(data, it) {
+  if (!it.platform) return true;
+  const s = data && data.settings;
+  if (!s || !Array.isArray(s.calProviders)) return true; // никога не е пипано — не ограничавай нищо
+  return s.calProviders.some((p) => p.name === it.platform);
+}
 /* показва ли се на сайта изобщо */
-function seoLive(kind, it) {
+function seoLive(kind, it, data) {
   if (!it || !it.t) return false;
-  if (kind === "calendar") return !it.hidden;
+  if (kind === "calendar") return !it.hidden && calPlatformActive(data, it);
   if (kind === "merch") return false;
   const st = it.status || "published";
   if (st !== "published") return false;
@@ -644,17 +651,17 @@ function seoImage(kind, it, origin) {
 function seoAll(data) {
   const out = [];
   for (const kind of Object.keys(SEO_PATH)) {
-    for (const it of data[kind] || []) if (seoLive(kind, it)) out.push({ kind, it, url: seoUrl(kind, it) });
+    for (const it of data[kind] || []) if (seoLive(kind, it, data)) out.push({ kind, it, url: seoUrl(kind, it) });
   }
   return out;
 }
 function seoFind(data, kind, slug) {
   const list = (data && data[kind]) || [];
   const want = String(slug || "").toLowerCase();
-  for (const it of list) if (seoLive(kind, it) && seoSlug(it) === want) return it;
+  for (const it of list) if (seoLive(kind, it, data) && seoSlug(it) === want) return it;
   const tail = want.split("-").pop();
-  for (const it of list) if (seoLive(kind, it) && idTail(it.id) === tail) return it;
-  for (const it of list) if (seoLive(kind, it) && String(it.id).toLowerCase() === want) return it;
+  for (const it of list) if (seoLive(kind, it, data) && idTail(it.id) === tail) return it;
+  for (const it of list) if (seoLive(kind, it, data) && String(it.id).toLowerCase() === want) return it;
   return null;
 }
 
@@ -761,7 +768,7 @@ function calSubLabel(c) {
 function calReviewFor(data, it) {
   const t = String(it.t || "").trim().toLowerCase();
   if (!t) return null;
-  return (data.reviews || []).find((r) => seoLive("reviews", r) && String(r.t || "").trim().toLowerCase() === t) || null;
+  return (data.reviews || []).find((r) => seoLive("reviews", r, data) && String(r.t || "").trim().toLowerCase() === t) || null;
 }
 
 /* ---------- структурирани данни ---------- */
@@ -1342,7 +1349,7 @@ function seoListPage(slug, page, data, origin) {
   const hd = heads[slug] || {};
   const banner = hd.banner ? (String(hd.banner).indexOf("/img/") === 0 ? origin + hd.banner : hd.banner) : "";
 
-  let list = (data[kind] || []).filter((it) => it && (kind === "merch" ? (it.status || "published") === "published" : seoLive(kind, it)));
+  let list = (data[kind] || []).filter((it) => it && (kind === "merch" ? (it.status || "published") === "published" : seoLive(kind, it, data)));
   list = list.slice().sort((a, b) => String(seoDate(kind, b) || "").localeCompare(String(seoDate(kind, a) || "")));
 
   const pages = Math.max(1, Math.ceil(list.length / SEO_PER_PAGE));
@@ -1506,7 +1513,7 @@ function calMonthSlug(ym) {
 /* всичко видимо в календара, подредено по дата */
 function calLive(data) {
   return ((data && data.calendar) || [])
-    .filter((it) => seoLive("calendar", it) && /^\d{4}-\d{2}-\d{2}$/.test(String(it.when || "")))
+    .filter((it) => seoLive("calendar", it, data) && /^\d{4}-\d{2}-\d{2}$/.test(String(it.when || "")))
     .slice()
     .sort((a, b) => String(a.when).localeCompare(String(b.when)));
 }
@@ -1703,7 +1710,7 @@ function seoMapPage(data, origin) {
 function seoNewsSitemap(data, origin) {
   const cutoff = Date.now() - 2 * 24 * 60 * 60 * 1000;
   const items = (data.news || []).filter((it) => {
-    if (!seoLive("news", it)) return false;
+    if (!seoLive("news", it, data)) return false;
     const d = seoDate("news", it);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
     return new Date(d + "T12:00:00Z").getTime() >= cutoff;
@@ -2377,7 +2384,7 @@ async function handleRequest(request, env, ctx) {
       const site = (data && data.settings) || {};
       const origin = url.origin;
       /* вече има истински адрес — пращаме там, за да не се дели силата на две */
-      if (it && KINDS[kindKey] && SEO_PATH[KINDS[kindKey]] && seoLive(KINDS[kindKey], it))
+      if (it && KINDS[kindKey] && SEO_PATH[KINDS[kindKey]] && seoLive(KINDS[kindKey], it, data))
         return Response.redirect(origin + seoUrl(KINDS[kindKey], it), 301);
       const target = origin + "/#/" + kindKey + "/" + encodeURIComponent(id);
       if (!it) return Response.redirect(origin + "/", 302);
