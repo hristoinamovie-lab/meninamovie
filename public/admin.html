@@ -368,9 +368,50 @@ function listTab(k){
       selBar("fType","всички типове",[["cinema","Филми (по кината)"],["stream","Сериали / стрийминг"],["event","Събития"]]);
   }
 
-  h+='<span class="sub" style="color:var(--tx2)">'+list.length+' материала</span></div><div id="aList">';
+  h+='<span class="sub" style="color:var(--tx2)">'+list.length+' материала</span></div>';
+  if(k==="calendar"&&canPublish()) h+=calProvidersHTML();
+  h+='<div id="aList">';
   h+=list.map(function(it){ return listRowAdm(k,it); }).join("")||'<p class="a-note">Още няма нищо тук.</p>';
   return h+"</div>";
+}
+/* най-гледаните стрийминг платформи в България — ръчно подбран списък, не се тегли автоматично от TMDB */
+var DEF_PROVIDERS=[
+  {id:8,name:"Netflix"},
+  {id:1899,name:"HBO Max"},
+  {id:337,name:"Disney Plus"},
+  {id:119,name:"Amazon Prime Video"},
+  {id:350,name:"Apple TV Plus"},
+  {id:1773,name:"SkyShowtime"},
+  {id:11,name:"Mubi"}
+];
+function calProvidersKnown(){
+  if(!D.settings.calProvidersKnown||!D.settings.calProvidersKnown.length){
+    var active=D.settings.calProviders||[];
+    var merged=DEF_PROVIDERS.map(function(p){return {id:p.id,name:p.name,on:true};});
+    active.forEach(function(a){
+      var ex=merged.filter(function(m){return m.id===a.id;})[0];
+      if(ex) ex.on=true; else merged.push({id:a.id,name:a.name,on:true});
+    });
+    D.settings.calProvidersKnown=merged;
+  }
+  return D.settings.calProvidersKnown;
+}
+function calProvidersHTML(){
+  var known=calProvidersKnown();
+  return '<div class="a-form" style="margin:0 0 16px"><div class="a-f">'+
+    '<label>Стрийминг платформи за обновяване от TMDB — предварително избрани най-гледаните в България, кликни да изключиш/включиш</label>'+
+    '<div class="tagbox">'+known.map(function(p,i){
+      return '<span class="'+(p.on?"on":"")+'" data-act="toggleprovider" data-pidx="'+i+'">'+esc2(p.name)+'</span>';
+    }).join("")+'</div>'+
+    '<div class="a-grid" style="margin-top:10px">'+
+      '<input id="provNewName" placeholder="Име на нова платформа">'+
+      '<input id="provNewId" placeholder="Номер в TMDB" type="number">'+
+    '</div>'+
+    '<button type="button" class="a-btn" data-act="addprovider" style="margin-top:8px">+ Добави платформа</button>'+
+    '<p class="a-note">Списъкът е ръчно подбран, не се обновява сам. Изключена платформа спира да тегли нова'+
+    ' информация, но остава в списъка, ако решиш да я включиш обратно — вече изтеглените заглавия в'+
+    ' календара не изчезват. Номерата на нови платформи се намират в themoviedb.org.</p>'+
+    '</div></div>';
 }
 function listRowAdm(k,it){
   var T=TYPES[k], img = k==="episodes" ? ytThumb(it.yt) : (it[T.img]||"");
@@ -768,6 +809,23 @@ function onClick(e){
     if(!confirm("Да изтрия ли "+rm.length+" неизползвани тага? Действието не може да се отмени.")) return;
     rm.forEach(function(s){ delete D.tagLabels[s]; });
     persist("Изтрити "+rm.length+" неизползвани тага.");
+    return; }
+  if(act==="toggleprovider"){
+    var pidx=+t.getAttribute("data-pidx"), known3=calProvidersKnown();
+    if(!known3[pidx]) return;
+    known3[pidx].on=!known3[pidx].on;
+    D.settings.calProviders=known3.filter(function(p){return p.on;}).map(function(p){return {id:p.id,name:p.name};});
+    persist(known3[pidx].on?"Платформата е включена.":"Платформата е изключена.");
+    return; }
+  if(act==="addprovider"){
+    var nameEl=document.getElementById("provNewName"), idEl=document.getElementById("provNewId");
+    var pname=(nameEl.value||"").trim(), pid=+idEl.value;
+    if(!pname||!pid){ flash("Трябва име и номер в TMDB.","err"); return; }
+    var known4=calProvidersKnown();
+    if(known4.some(function(p){return p.id===pid;})){ flash("Вече има платформа с този номер.","err"); return; }
+    known4.push({id:pid,name:pname,on:true});
+    D.settings.calProviders=known4.filter(function(p){return p.on;}).map(function(p){return {id:p.id,name:p.name};});
+    persist("Платформата е добавена.");
     return; }
   if(act==="inimg"){ pickInlineImage(); return; }
   if(act==="dl"){ download(); return; }
