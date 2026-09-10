@@ -54,6 +54,8 @@ a{color:inherit;text-decoration:none}
 .a-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
 .a-btn{background:none;border:1px solid var(--line);color:var(--tx);font-family:Oswald,sans-serif;font-size:12px;letter-spacing:.07em;text-transform:uppercase;padding:8px 14px;cursor:pointer}
 .a-btn:hover{border-color:var(--y);color:var(--y)}
+.a-sel{appearance:none;-webkit-appearance:none;-moz-appearance:none;background-color:#0A0908;border:1px solid var(--line);color:var(--tx);font-family:Oswald,sans-serif;font-size:12px;letter-spacing:.07em;text-transform:uppercase;padding:8px 30px 8px 14px;cursor:pointer;background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="%23A6A196" stroke-width="1.6" fill="none"/></svg>');background-repeat:no-repeat;background-position:right 12px center}
+.a-sel:hover{border-color:var(--y)}
 .a-btn.pri{background:var(--y);border-color:var(--y);color:var(--black)}
 .a-btn.dan{border-color:#7a2320;color:#e07a76}
 .a-row{display:flex;align-items:center;gap:12px;background:#161412;border:1px solid var(--line);padding:9px 12px;margin-bottom:6px}
@@ -341,7 +343,7 @@ function topStatsHTML(field){
 var CAT_FIELD = {news:"cat", reviews:"g", craft:"cat", episodes:"cat"};
 function tagLbl(s){ return (D.tagLabels||{})[s]||s; }
 function selBar(id,ph,opts){
-  return '<select id="'+id+'" style="background:#0A0908;border:1px solid var(--line);color:var(--tx);padding:7px 10px;font:inherit">'+
+  return '<select id="'+id+'" class="a-sel">'+
     '<option value="">'+esc2(ph)+'</option>'+
     opts.map(function(o){var v=Array.isArray(o)?o[0]:o,t=Array.isArray(o)?o[1]:o;return '<option value="'+esc2(v)+'">'+esc2(t)+'</option>';}).join("")+
     '</select>';
@@ -351,7 +353,7 @@ function listTab(k){
   list.sort(function(a,b){return String(b.when||"").localeCompare(String(a.when||""));});
   var h='<h2>'+esc2(T.label)+'</h2><div class="a-bar"><button class="a-btn pri" data-act="new" data-k="'+k+'">+ Нов</button>'+
     (k==="calendar"&&canPublish()?'<button class="a-btn" data-act="calsync">Опресни от TMDB</button>':"")+
-    '<input id="fltr" placeholder="търси по заглавие" style="background:#0A0908;border:1px solid var(--line);color:var(--tx);padding:7px 10px;font:inherit">';
+    '<input id="fltr" placeholder="търси по заглавие" style="background:#0A0908;border:1px solid var(--line);color:var(--tx);padding:8px 14px;font:inherit">';
 
   var catField=CAT_FIELD[k];
   if(catField){
