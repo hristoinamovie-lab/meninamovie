@@ -1005,6 +1005,10 @@ a.tag:hover{border-color:#F6C92B;color:#F6C92B}
 .calcard-tab2{position:absolute;top:23px;left:0;z-index:2;background:#141210;color:#F6C92B;font-family:Oswald,system-ui,sans-serif;font-weight:600;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;padding:4px 10px 4px 8px}
 .calcard-when{position:absolute;left:9px;bottom:9px;z-index:2;font-family:Oswald,system-ui,sans-serif;font-weight:600;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:#F6C92B}
 .calcard h3{margin:0 0 4px;font-size:14px;line-height:1.3;font-weight:700}
+.calcard.past{opacity:.55}
+.calcard.past:hover{opacity:.85}
+.cal-divider{grid-column:1/-1;display:flex;align-items:center;gap:12px;margin:8px 0 4px;color:#8C877C;font-family:Oswald,system-ui,sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.cal-divider::before,.cal-divider::after{content:"";flex:1;height:1px;background:rgba(246,242,230,.15)}
 @media(max-width:900px){.grid-cards{grid-template-columns:repeat(2,1fr)}}
 .pcard{display:block;background:#161412;border:1px solid rgba(246,242,230,.09);color:#F2F0EB}
 .pcard:hover{border-color:#F6C92B}
@@ -1595,7 +1599,7 @@ function calRow(it, origin) {
   const tab2 = CAL_SUB_LABEL[it.sub] || (it.sub === "episode" && it.season && it.episode ? "S" + it.season + " · E" + it.episode : "");
   const past = it.when < ymd(new Date());
   const formatTxt = it.kind === "event" ? "Събитие" : it.kind === "stream" ? (it.sub ? "Сериал" : "Филм") : "По кината";
-  return '<a class="calcard" href="' + seoUrl("calendar", it) + '"><div class="calcard-art">' +
+  return '<a class="calcard' + (past ? " past" : "") + '" href="' + seoUrl("calendar", it) + '"><div class="calcard-art">' +
     (im && /^https?:/.test(im) ? '<img src="' + escHtml(im) + '" alt="' + escHtml(it.t) + '" loading="lazy">' : "") +
     '<span class="calcard-tab">' + escHtml(tab1) + "</span>" +
     (tab2 ? '<span class="calcard-tab2">' + escHtml(tab2) + "</span>" : "") +
@@ -1603,11 +1607,27 @@ function calRow(it, origin) {
     '</div><div class="cbody"><h3>' + escHtml(it.t) + '</h3>' +
     '<p class="kicker">' + escHtml((it.kind === "event" ? [it.price ? "от " + it.price + " €" : "", it.place] : [it.platform]).concat([formatTxt]).filter(Boolean).join(" · ")) + "</p></div></a>";
 }
+/* прозорецът на главната /kalendar страница: от 1-во число на текущия месец до +30 дни от днес */
+function calWindowStart() { return ymd(new Date()).slice(0, 7) + "-01"; }
+function calWindowEnd() { const d = new Date(); d.setDate(d.getDate() + 30); return ymd(d); }
 function calByMonth(items) {
+  const today = ymd(new Date());
   const order = [], group = {};
   for (const it of items) { const ym = it.when.slice(0, 7); if (!group[ym]) { group[ym] = []; order.push(ym); } group[ym].push(it); }
-  return order.map((ym) =>
-    "<h2>" + escHtml(calMonthName(ym)) + '</h2><div class="grid-cards">' + group[ym].map((it) => calRow(it)).join("") + "</div>").join("");
+  return order.map((ym) => {
+    const arr = group[ym];
+    let inner;
+    if (ym === today.slice(0, 7)) {
+      const hasPast = arr.some((it) => it.when < today);
+      let divided = false, out = "";
+      for (const it of arr) {
+        if (hasPast && !divided && it.when >= today) { out += '<div class="cal-divider"><span>Днес</span></div>'; divided = true; }
+        out += calRow(it);
+      }
+      inner = out;
+    } else inner = arr.map((it) => calRow(it)).join("");
+    return "<h2>" + escHtml(calMonthName(ym)) + '</h2><div class="grid-cards">' + inner + "</div>";
+  }).join("");
 }
 function calOtherViews(views, currentSlug) {
   const rest = views.filter((v) => v.slug !== currentSlug);
@@ -1664,7 +1684,7 @@ function calJsonLd(items, w, canon, origin) {
 function calListPage(data, origin, view) {
   const views = calViews(data);
   const today = ymd(new Date());
-  const items = view ? view.items : calLive(data).filter((x) => x.when >= today);
+  const items = view ? view.items : calLive(data).filter((x) => x.when >= calWindowStart() && x.when <= calWindowEnd());
   const w = calWords(view);
   const canon = origin + "/kalendar" + (view ? "/" + view.slug : "");
   const first = items.find((it) => it.poster && /^https?:/.test(it.poster));
