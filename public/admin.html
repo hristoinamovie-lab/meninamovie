@@ -417,11 +417,14 @@ function calProvidersKnown(){
 }
 function calProvidersHTML(){
   var known=calProvidersKnown();
+  var offNames={}; known.forEach(function(p){ if(!p.on) offNames[p.name]=1; });
+  var staleCount=(D.calendar||[]).filter(function(it){return offNames[it.platform]&&!it.hidden;}).length;
   return '<div class="a-form" style="margin:0 0 16px"><div class="a-f">'+
     '<label>Стрийминг платформи за обновяване от TMDB — предварително избрани най-гледаните в България, кликни да изключиш/включиш</label>'+
     '<div class="tagbox">'+known.map(function(p,i){
       return '<span class="'+(p.on?"on":"")+'" data-act="toggleprovider" data-pidx="'+i+'">'+esc2(p.name)+'</span>';
     }).join("")+'</div>'+
+    (staleCount?'<button type="button" class="a-btn dan" data-act="hideoffplatforms" style="margin-top:8px">Скрий заглавията от изключени платформи ('+staleCount+')</button>':'')+
     '<div class="a-grid" style="margin-top:10px">'+
       '<input id="provNewName" placeholder="Име на нова платформа">'+
       '<input id="provNewId" placeholder="Номер в TMDB" type="number">'+
@@ -892,6 +895,15 @@ function onClick(e){
       }
     }
     persist(pmsg);
+    return; }
+  if(act==="hideoffplatforms"){
+    var known6=calProvidersKnown(), offNames6={};
+    known6.forEach(function(p){ if(!p.on) offNames6[p.name]=1; });
+    var toHide6=(D.calendar||[]).filter(function(it){return offNames6[it.platform]&&!it.hidden;});
+    if(!toHide6.length) return;
+    if(!confirm("Да скрия ли "+toHide6.length+" заглавия от вече изключени платформи? (Само се скриват от сайта, не се трият — може пак да ги включиш поединично от списъка.)")) return;
+    toHide6.forEach(function(it){ it.hidden=true; });
+    persist("Скрити "+toHide6.length+" заглавия от изключени платформи.");
     return; }
   if(act==="addprovider"){
     var nameEl=document.getElementById("provNewName"), idEl=document.getElementById("provNewId");
