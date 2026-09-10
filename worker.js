@@ -196,6 +196,16 @@ function liftImages(data) {
     const hd = data.heads[r];
     if (hd && isDataUri(hd.banner)) hd.banner = "/img/hd/" + encodeURIComponent(r) + "?v=" + stamp(hd.banner);
   }
+  // снимките в текста (it.inlineImages) — same, иначе цялото base64 тежи всяко зареждане на сайта
+  for (const kind of Object.keys(KIND_KEY)) {
+    for (const it of data[kind] || []) {
+      if (!it || !Array.isArray(it.inlineImages)) continue;
+      it.inlineImages.forEach((im, i) => {
+        if (im && isDataUri(im.data))
+          im.data = "/img/il/" + KIND_KEY[kind] + "/" + encodeURIComponent(it.id) + "/" + i + "?v=" + stamp(im.data);
+      });
+    }
+  }
   return data;
 }
 /* при запис: адресите се връщат обратно към снимките, които браузърът никога не е виждал */
@@ -226,6 +236,21 @@ function keepImages(incoming, prev) {
     const hd = incoming.heads[r], o = (prev.heads || {})[r];
     if (hd && typeof hd.banner === "string" && hd.banner.indexOf("/img/") === 0)
       hd.banner = o && isDataUri(o.banner) ? o.banner : "";
+  }
+  for (const kind of Object.keys(KIND_KEY)) {
+    const old = prev[kind] || [];
+    for (const it of incoming[kind] || []) {
+      if (!it || !Array.isArray(it.inlineImages)) continue;
+      const o = old.find((x) => x && x.id === it.id);
+      const oldImgs = o && Array.isArray(o.inlineImages) ? o.inlineImages : [];
+      it.inlineImages.forEach((im, i) => {
+        if (!im || isDataUri(im.data)) return; // ново качена — оставя се както е
+        if (typeof im.data === "string" && im.data.indexOf("/img/il/") === 0) {
+          const oi = oldImgs[i];
+          im.data = oi && isDataUri(oi.data) ? oi.data : "";
+        }
+      });
+    }
   }
   return incoming;
 }
@@ -588,6 +613,7 @@ async function syncCalendar(env, months) {
 
 /* ---------- споделяне: страница с картинка за Facebook, Viber и т.н. ---------- */
 const KINDS = { r: "reviews", n: "news", c: "craft", e: "episodes", m: "merch", k: "calendar" };
+const KIND_KEY = { reviews: "r", news: "n", craft: "c", episodes: "e", merch: "m", calendar: "k" };
 const SECTION = { reviews: "revyuta", news: "novini", craft: "zad-kadar", episodes: "podcast", merch: "merch", calendar: "kalendar" };
 
 function findItem(data, kindKey, id) {
@@ -2225,6 +2251,22 @@ async function handleRequest(request, env, ctx) {
           ctx.waitUntil(caches.default.put(request, r2.clone()));
         }
         return r2;
+      }
+
+      /* снимка вкарана в текста на статия — /img/il/<кратко-k>/<id>/<индекс> */
+      if (kindKey === "il") {
+        const ik = parts[2], iid = decodeURIComponent(parts[3] || ""), idx = +parts[4];
+        if (!KINDS[ik]) return new Response("no", { status: 404 });
+        const d3 = await stored(env);
+        const it3 = findItem(d3, ik, iid);
+        const im = it3 && Array.isArray(it3.inlineImages) ? it3.inlineImages[idx] : null;
+        const r3 = im && dataUriToResponse(im.data);
+        if (!r3) return new Response("no", { status: 404 });
+        if (url.searchParams.get("v")) {
+          r3.headers.set("cache-control", "public, max-age=31536000, immutable");
+          ctx.waitUntil(caches.default.put(request, r3.clone()));
+        }
+        return r3;
       }
 
       if (!KINDS[kindKey]) return new Response("no", { status: 404 });
