@@ -303,6 +303,7 @@ function authorMerge(incoming, prev, who) {
 const TMDB = "https://api.themoviedb.org/3";
 const POSTER = "https://image.tmdb.org/t/p/w500";
 const BACKDROP = "https://image.tmdb.org/t/p/w780";
+const PROFILE = "https://image.tmdb.org/t/p/w185";
 const DEF_PROVIDERS = [
   { id: 8, name: "Netflix" },
   { id: 1899, name: "HBO Max" },
@@ -387,7 +388,7 @@ async function tmdbExtra(env, media, tmdbId, season, episode) {
       out.rating = d.vote_average ? Math.round(d.vote_average * 10) / 10 : null;
       out.runtime = d.runtime || null;
       const credits = d.credits || {};
-      out.cast = (credits.cast || []).slice(0, 5).map((c) => c.name).filter(Boolean);
+      out.cast = (credits.cast || []).slice(0, 5).filter((c) => c.name).map((c) => ({ name: c.name, photo: c.profile_path ? PROFILE + c.profile_path : "" }));
       const dir = (credits.crew || []).find((c) => c.job === "Director");
       out.director = dir ? dir.name : "";
     } else if (season && episode) {
@@ -396,7 +397,7 @@ async function tmdbExtra(env, media, tmdbId, season, episode) {
       out.rating = ep.vote_average ? Math.round(ep.vote_average * 10) / 10 : null;
       out.runtime = ep.runtime || null;
       const credits = ep.credits || {};
-      out.cast = (credits.cast || []).slice(0, 5).map((c) => c.name).filter(Boolean);
+      out.cast = (credits.cast || []).slice(0, 5).filter((c) => c.name).map((c) => ({ name: c.name, photo: c.profile_path ? PROFILE + c.profile_path : "" }));
       const dir = (credits.crew || []).find((c) => c.job === "Director");
       out.director = dir ? dir.name : "";
       try {
@@ -411,7 +412,7 @@ async function tmdbExtra(env, media, tmdbId, season, episode) {
       out.rating = d.vote_average ? Math.round(d.vote_average * 10) / 10 : null;
       out.runtime = (d.episode_run_time && d.episode_run_time[0]) || null;
       const credits = d.credits || {};
-      out.cast = (credits.cast || []).slice(0, 5).map((c) => c.name).filter(Boolean);
+      out.cast = (credits.cast || []).slice(0, 5).filter((c) => c.name).map((c) => ({ name: c.name, photo: c.profile_path ? PROFILE + c.profile_path : "" }));
       out.director = ((d.created_by || [])[0] || {}).name || "";
     }
   } catch (e) {}
@@ -920,7 +921,31 @@ nav.main a:hover{border-bottom-color:#141210}
 .claps-big svg{width:26px;height:26px}
 .tmdb-info{margin:24px 0;padding:16px 18px;background:#161412;border-left:2px solid #F6C92B}
 .tmdb-meta{margin:0 0 6px;color:#8C877C;font-family:Oswald,system-ui,sans-serif;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
-.tmdb-cast{margin:0;color:#F2F0EB}
+.movie-hero{position:relative;overflow:hidden;padding-top:26px;border-bottom:1px solid rgba(246,242,230,.09)}
+.movie-hero-art{position:absolute;inset:0;z-index:0}
+.movie-hero-art img{width:100%;height:100%;object-fit:cover}
+.movie-hero-scrim{position:absolute;inset:0;z-index:1;background:linear-gradient(to top,#0A0908 0%,rgba(10,9,8,.9) 28%,rgba(10,9,8,.55) 60%,rgba(10,9,8,.25) 100%)}
+.movie-hero-in{position:relative;z-index:2;padding-bottom:34px}
+.movie-hero-row{display:grid;grid-template-columns:200px 1fr;gap:34px;margin-top:14px}
+.movie-poster{aspect-ratio:2/3;background:#1C1916;border:1px solid #2A2723;box-shadow:0 16px 34px rgba(0,0,0,.5)}
+.movie-poster img{width:100%;height:100%;object-fit:cover}
+.movie-hero-body{padding-top:4px}
+.platform-tab{display:inline-flex;background:#F6C92B;color:#141210;font-family:Oswald,system-ui,sans-serif;font-weight:600;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;padding:6px 12px 6px 8px;clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%);margin-bottom:12px}
+.movie-meta{font-family:Oswald,system-ui,sans-serif;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:#A6A196;margin:10px 0 0}
+.movie-hero-body .lede{color:#F2F0EB;border-left-color:#F6C92B;font-size:18px;line-height:1.5;font-style:italic;border-left-width:4px;padding-left:16px;margin-top:16px;max-width:56ch}
+.movie-actions{margin-top:20px}
+.facts-row{display:flex;flex-wrap:wrap;gap:20px 36px;margin-top:22px;padding-top:20px;border-top:1px solid #2A2723}
+.fact-l{font-family:Oswald,system-ui,sans-serif;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#8C877C;margin:0 0 4px}
+.fact-v{font-size:14px;font-weight:700;color:#F2F0EB;margin:0}
+.cast-scroll{display:grid;grid-auto-flow:column;grid-auto-columns:104px;gap:16px;overflow-x:auto;padding-bottom:4px}
+.cast-ph{width:104px;aspect-ratio:2/3;background:#1C1916;border:1px solid #2A2723;display:flex;align-items:center;justify-content:center;margin-bottom:7px;overflow:hidden}
+.cast-ph img{width:100%;height:100%;object-fit:cover}
+.cast-ph span{font-family:Montserrat,system-ui,sans-serif;font-style:italic;font-weight:900;font-size:19px;color:#F6C92B;opacity:.5}
+.cast-name{font-size:12.5px;font-weight:700;color:#F2F0EB;margin:0;line-height:1.3}
+@media(max-width:640px){.movie-hero-row{grid-template-columns:120px 1fr;gap:18px}}
+.section{padding:34px 0}
+.section+.section{border-top:1px solid #2A2723}
+.section h2{font-family:Montserrat,system-ui,sans-serif;font-style:italic;font-weight:900;font-size:20px;text-transform:uppercase;letter-spacing:-.01em;color:#F6C92B;margin:0 0 18px}
 .band .tags{margin-top:14px}
 .band .tags .lbl{color:rgba(20,18,16,.55)}
 .band .tag{color:rgba(20,18,16,.6);border-color:rgba(20,18,16,.3)}
@@ -1250,30 +1275,11 @@ async function seoItemPage(kind, it, data, origin, env) {
     title = it.t + " | Зад кадър — Men In A Movie";
     metaBits = [SEO_LABEL[kind], seoDateBg(date), it.cat || it.tag, [it.guest, it.role].filter(Boolean).join(", ")];
     lede = it.lead || it.p || it.desc || "";
-  } else if (kind === "episodes") {
+  } else {
     title = "Епизод " + (it.n || "") + ": " + it.t + " | Подкаст Men In A Movie";
     metaBits = [SEO_LABEL[kind], seoDateBg(date), it.cat || it.tag, it.n ? "Епизод " + it.n : ""];
     lede = it.desc || "";
-  } else {
-    title = it.t + (it.when ? " — " + seoDateBg(it.when) : "") + " | Movie calendar";
-    lede = it.lead || ""; /* без резюме от TMDB тук — то е в текста под снимката, за да не се дублира */
-    /* билетите/гледането са бутон в жълтата лента; останалите детайли влизат в calKicker по-долу */
   }
-  const calPast = kind === "calendar" && String(it.when || "") < ymd(new Date());
-  /* трейлър/резюме/оценка от TMDB, теглени "на живо" при отваряне на страницата (не при синхронизацията) */
-  let tmdbX = { trailer: "", overview: "", rating: null };
-  if (kind === "calendar" && it.src === "tmdb" && it.tmdbId && env) {
-    const media = it.kind === "cinema" || (it.kind === "stream" && !it.sub) ? "movie" : "tv";
-    const s = it.sub === "episode" ? it.season : "", e = it.sub === "episode" ? it.episode : "";
-    tmdbX = await tmdbExtra(env, media, it.tmdbId, s, e);
-  }
-  const calKicker = kind === "calendar"
-    ? [calCat(it), it.kind === "stream" ? calSubLabel(it) : "", calPast ? "вече е налично" : seoDateBg(it.when),
-       it.time, it.place, it.kind === "event" && it.price ? "от " + it.price + " €" : "",
-       genreArr(it.genre).join(", "), it.mins ? it.mins + " мин." : ""].filter(Boolean).join(" • ")
-    : SEO_LABEL[kind];
-  const vid = it.video || it.yt || "";
-  /* видеото вече е бутон в жълтата лента */
 
   const ckind = SEO_SHARE[kind];
   const countable = !!ckind;
@@ -1304,39 +1310,28 @@ async function seoItemPage(kind, it, data, origin, env) {
       "})();<\/script>"
     : "";
 
-  const bodyTxt = kind === "episodes" ? (it.body || it.lead || it.desc) : (kind === "calendar" ? (it.body || tmdbX.overview || it.p) : it.body);
-  const poster = kind === "reviews" || kind === "calendar";
+  const bodyTxt = kind === "episodes" ? (it.body || it.lead || it.desc) : it.body;
+  const poster = kind === "reviews";
   const shotImg = image && !/\/og\.jpg$/.test(image)
     ? '<div class="shot' + (poster ? "" : " wide") + '"><img src="' + escHtml(image) + '" alt="' + escHtml(it.t) + '" onerror="this.parentNode.remove()"></div>'
     : '<div class="shot' + (poster ? "" : " wide") + '"></div>';
 
-  /* „Чуй повече“ — епизодът, в който сме говорили за материала (не и за календара — там video е трейлърът) */
+  /* „Чуй повече“ — епизодът, в който сме говорили за материала */
   let listen = "";
-  if (kind !== "episodes" && kind !== "calendar" && it.video) listen = '<a class="btn gold" rel="nofollow" href="' + escHtml(it.video) + '">Чуй повече</a> ';
-  if (kind === "calendar") {
-    const rv = calReviewFor(data, it);
-    if (rv) extra += '<a class="btn" href="' + escHtml(seoUrl("reviews", rv)) + '">Прочети ревюто</a> ';
-  }
+  if (kind !== "episodes" && it.video) listen = '<a class="btn gold" rel="nofollow" href="' + escHtml(it.video) + '">Чуй повече</a> ';
 
   /* бутоните в жълтата лента — трейлър, чуй повече, харесай, сподели и т.н. */
   let bandBtns = "";
-  const trailer = kind === "calendar" ? (it.video || tmdbX.trailer || "") : (it.trailer || "");
+  const trailer = it.trailer || "";
   if (trailer) bandBtns += '<a class="btn" rel="nofollow" href="' + escHtml(trailer) + '">Виж трейлъра</a> ';
   if (kind === "episodes" && it.yt) bandBtns += '<a class="btn" rel="nofollow" href="' + escHtml(it.yt) + '">Гледай в YouTube</a> ';
   if (kind === "episodes" && it.sp) bandBtns += '<a class="btn" rel="nofollow" href="' + escHtml(it.sp) + '">Слушай в Spotify</a> ';
-  if (kind === "calendar" && it.kind === "event" && it.ticketUrl) bandBtns += '<a class="btn" rel="nofollow" href="' + escHtml(it.ticketUrl) + '">Билети</a> ';
-  if (kind === "calendar" && it.kind === "stream" && it.watchUrl) bandBtns += '<a class="btn" rel="nofollow" href="' + escHtml(it.watchUrl) + '">Гледай в ' + escHtml(it.platform || "платформата") + '</a> ';
-  if (kind === "calendar" && it.kind === "cinema" && data.settings && data.settings.cinemaProgramUrl) bandBtns += '<a class="btn" rel="nofollow" href="' + escHtml(data.settings.cinemaProgramUrl) + '">Програма по кината</a> ';
-  if (kind === "merch") bandBtns += '<a class="btn" href="/march">Виж мърча</a> ';
 
-  /* календар/ревю: без жълта лента, вертикален постер вдясно; при ревю тагове+бутони слизат долу под подписа */
-  const noBand = kind === "reviews" || kind === "calendar";
-  const btnsRow = '<div class="btns">' + likeHTML() + SHARE_BTN + listen + extra + bandBtns +
-      (kind === "calendar" ? '<a class="btn" href="/kalendar">Целият календар</a>' : "") +
-    "</div>";
-  let sideInner = '<p class="facts">' + escHtml((kind === "calendar" ? [calKicker] : metaBits).filter(Boolean).join(" · ")) + "</p>" +
-    (noBand ? '<h1 class="hl-stack">' + titleBlocksHTML(it.t, 20) + "</h1>" : "<h1>" + escHtml(it.t) + "</h1>") +
-    (kind === "calendar" && tmdbX.rating ? '<div class="claps-big cal-claps">' + clapsHTML(Math.round(tmdbX.rating / 2)) + "</div>" : "");
+  /* ревю: без жълта лента, вертикален постер вдясно; тагове+бутони слизат долу под подписа */
+  const noBand = kind === "reviews";
+  const btnsRow = '<div class="btns">' + likeHTML() + SHARE_BTN + listen + extra + bandBtns + "</div>";
+  let sideInner = '<p class="facts">' + escHtml(metaBits.filter(Boolean).join(" · ")) + "</p>" +
+    (noBand ? '<h1 class="hl-stack">' + titleBlocksHTML(it.t, 20) + "</h1>" : "<h1>" + escHtml(it.t) + "</h1>");
   if (kind === "reviews") {
     sideInner += (lede ? '<p class="lede">' + escHtml(plain(lede, 400)) + "</p>" : "");
   } else {
@@ -1350,22 +1345,13 @@ async function seoItemPage(kind, it, data, origin, env) {
     '<div class="in"><div class="side">' + sideInner +
     "</div>" + shotImg + "</div></div></div>";
 
-  const tmdbInfo = kind === "calendar" && (tmdbX.director || tmdbX.runtime || tmdbX.cast.length)
-    ? '<div class="tmdb-info">' +
-      ([tmdbX.director ? "Режисьор: " + tmdbX.director : "", tmdbX.runtime ? tmdbX.runtime + " мин" : ""].filter(Boolean).length
-        ? '<p class="tmdb-meta">' + escHtml([tmdbX.director ? "Режисьор: " + tmdbX.director : "", tmdbX.runtime ? tmdbX.runtime + " мин" : ""].filter(Boolean).join(" · ")) + "</p>" : "") +
-      (tmdbX.cast.length ? '<p class="tmdb-cast">В ролите: ' + escHtml(tmdbX.cast.join(", ")) + "</p>" : "") +
-      "</div>"
-    : "";
   const html = band +
     '<div class="col">' +
     seoBody(bodyTxt) +
-    tmdbInfo +
     (it.guest ? '<p class="meta" style="margin-top:22px">Гост: ' + escHtml(it.guest) + (it.role ? " · " + escHtml(it.role) : "") + "</p>" : "") +
     (kind === "reviews" ? '<div class="claps-big">' + clapsHTML(it.s) + "</div>" : "") +
     (it.authorName ? '<p class="sig">— ' + escHtml(it.authorName) + "</p>" : "") +
     (kind === "reviews" ? btnsRow + tagChipsHTML(it, bigTags) : "") +
-    (kind === "calendar" ? calItemLinks(data, it) : "") +
     "</div>" +
     seoRelated(data, kind, it, 4);
 
@@ -1374,6 +1360,108 @@ async function seoItemPage(kind, it, data, origin, env) {
     keywords: itemTags(it).map((t) => t.name).join(", "),
     head: seoJsonLd(kind, it, origin, canon, image),
     body: html + countJs + SHARE_JS,
+  });
+}
+
+/* страницата на филм/сериал от календара — оформление по мотив на TMDB (голям фон-кадър горе),
+   с цветовете и елементите на сайта; отделна от seoItemPage() заради много по-различната подредба */
+async function seoCalendarItemPage(it, data, origin, env) {
+  const canon = origin + seoUrl("calendar", it);
+  const image = seoImage("calendar", it, origin);
+  const backdrop = it.backdrop && /^https?:/.test(it.backdrop) ? it.backdrop : (it.poster && /^https?:/.test(it.poster) ? it.poster : "");
+  const bigTags = {};
+  for (const t of seoTagList(data)) bigTags[t.slug] = 1;
+  const calPast = String(it.when || "") < ymd(new Date());
+  let tmdbX = { trailer: "", overview: "", rating: null, cast: [], director: "", runtime: null };
+  if (it.src === "tmdb" && it.tmdbId && env) {
+    const media = it.kind === "cinema" || (it.kind === "stream" && !it.sub) ? "movie" : "tv";
+    const s = it.sub === "episode" ? it.season : "", e = it.sub === "episode" ? it.episode : "";
+    tmdbX = await tmdbExtra(env, media, it.tmdbId, s, e);
+  }
+  const title = it.t + (it.when ? " — " + seoDateBg(it.when) : "") + " | Movie calendar";
+  const bodyTxt = it.body || tmdbX.overview || it.p || "";
+  const platformLabel = calCat(it);
+  const runtimeMin = it.mins || tmdbX.runtime || null;
+  const metaRow = [calPast ? "вече е налично" : seoDateBg(it.when), runtimeMin ? runtimeMin + " мин." : "",
+    genreArr(it.genre).join(", "), it.time, it.place, it.kind === "event" && it.price ? "от " + it.price + " €" : ""]
+    .filter(Boolean).join(" · ");
+
+  const trailer = it.video || tmdbX.trailer || "";
+  const rv = calReviewFor(data, it);
+  let actions = "";
+  if (trailer) actions += '<a class="btn gold" rel="nofollow" href="' + escHtml(trailer) + '">Виж трейлъра</a>';
+  if (it.kind === "event" && it.ticketUrl) actions += '<a class="btn" rel="nofollow" href="' + escHtml(it.ticketUrl) + '">Билети</a>';
+  if (it.kind === "stream" && it.watchUrl) actions += '<a class="btn" rel="nofollow" href="' + escHtml(it.watchUrl) + '">Гледай в ' + escHtml(it.platform || "платформата") + '</a>';
+  if (it.kind === "cinema" && data.settings && data.settings.cinemaProgramUrl) actions += '<a class="btn" rel="nofollow" href="' + escHtml(data.settings.cinemaProgramUrl) + '">Програма по кината</a>';
+  if (rv) actions += '<a class="btn" href="' + escHtml(seoUrl("reviews", rv)) + '">Прочети ревюто</a>';
+
+  const likeBtn = '<button class="btn like" id="lk" type="button" aria-label="Харесай">' +
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+    '<path d="M20.8 5.6a5.5 5.5 0 0 0-7.8 0L12 6.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 22l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>' +
+    '<span id="lkn"></span></button>';
+  const countJs = "<script>(function(){var KIND='k',ID=" + JSON.stringify(String(it.id)) +
+    ",K=KIND+':'+ID,B=document.getElementById('lk'),N=document.getElementById('lkn');" +
+    "function rd(s,k){try{return JSON.parse(s.getItem(k)||'{}')}catch(e){return{}}}" +
+    "function mine(){return !!rd(localStorage,'mim-likes')[K]}" +
+    "function paint(n){if(n!=null&&N)N.textContent=n||'';if(!B)return;B.classList.toggle('on',mine());" +
+    "var v=B.querySelector('svg');if(v)v.setAttribute('fill',mine()?'currentColor':'none')}" +
+    "function hit(o){return fetch('/api/hit',{method:'POST',headers:{'content-type':'application/json'}," +
+    "body:JSON.stringify(o)}).then(function(r){return r.ok?r.json():null}).catch(function(){return null})}" +
+    "paint(null);" +
+    "fetch('/api/stats',{cache:'no-store'}).then(function(r){return r.ok?r.json():null})" +
+    ".then(function(j){if(j)paint((j.likes||{})[K]||0)}).catch(function(){});" +
+    "if(B)B.addEventListener('click',function(){var on=!mine();var m=rd(localStorage,'mim-likes');" +
+    "if(on)m[K]=1;else delete m[K];try{localStorage.setItem('mim-likes',JSON.stringify(m))}catch(e){}" +
+    "paint(null);hit({kind:KIND,id:ID,like:on}).then(function(j){if(j)paint(j.likes)})});" +
+    "try{var seen=rd(sessionStorage,'mim-seen');if(!seen[K]){seen[K]=1;" +
+    "sessionStorage.setItem('mim-seen',JSON.stringify(seen));hit({kind:KIND,id:ID})}}catch(e){}" +
+    "})();<\/script>";
+
+  const hero =
+    '<div class="movie-hero">' +
+    (backdrop ? '<div class="movie-hero-art"><img src="' + escHtml(backdrop) + '" alt=""></div>' : "") +
+    '<div class="movie-hero-scrim"></div>' +
+    '<div class="wrap movie-hero-in"><p class="crumbs">Начало › Movie calendar</p>' +
+    '<div class="movie-hero-row">' +
+    (it.poster && /^https?:/.test(it.poster) ? '<div class="movie-poster"><img src="' + escHtml(it.poster) + '" alt="' + escHtml(it.t) + '"></div>' : "") +
+    '<div class="movie-hero-body">' +
+    '<span class="platform-tab">' + escHtml(platformLabel) + '</span>' +
+    '<h1 class="hl-stack">' + titleBlocksHTML(it.t, 20) + "</h1>" +
+    (tmdbX.rating ? '<div class="claps-big cal-claps">' + clapsHTML(Math.round(tmdbX.rating / 2)) + "</div>" : "") +
+    (metaRow ? '<p class="movie-meta">' + escHtml(metaRow) + "</p>" : "") +
+    (it.lead ? '<p class="lede">' + escHtml(plain(it.lead, 300)) + "</p>" : "") +
+    '<div class="btns movie-actions">' + likeBtn + SHARE_BTN + actions + '<a class="btn" href="/kalendar">Целият календар</a></div>' +
+    "</div></div></div></div>";
+
+  const castRow = tmdbX.cast.length
+    ? '<div class="section"><h2>В ролите</h2><div class="cast-scroll">' +
+      tmdbX.cast.map((c) => '<div class="cast-card">' +
+        (c.photo ? '<div class="cast-ph"><img src="' + escHtml(c.photo) + '" alt="' + escHtml(c.name) + '" loading="lazy"></div>'
+          : '<div class="cast-ph"><span>' + escHtml(c.name.split(" ").map((w) => w[0] || "").join("").slice(0, 2).toUpperCase()) + "</span></div>") +
+        '<p class="cast-name">' + escHtml(c.name) + "</p></div>").join("") +
+      "</div></div>"
+    : "";
+
+  const factsRow = [
+    tmdbX.director ? ["Режисьор", tmdbX.director] : null,
+    genreArr(it.genre).length ? ["Жанр", genreArr(it.genre).join(", ")] : null,
+    runtimeMin ? ["Времетраене", runtimeMin + " мин"] : null,
+    it.when ? [calPast ? "Излезе на" : "Премиера", seoDateBg(it.when)] : null,
+  ].filter(Boolean);
+
+  const body =
+    '<div class="wrap"><div class="section overview">' +
+    (bodyTxt ? seoBody(bodyTxt) : "") +
+    (factsRow.length ? '<div class="facts-row">' + factsRow.map((f) => '<div class="fact"><p class="fact-l">' + escHtml(f[0]) + '</p><p class="fact-v">' + escHtml(f[1]) + "</p></div>").join("") + "</div>" : "") +
+    "</div>" + castRow +
+    '<div class="section">' + calItemLinks(data, it) + "</div></div>" +
+    seoRelated(data, "calendar", it, 4);
+
+  return seoShell({
+    title, desc: seoDesc(it, 180), canon, image, ogType: "article",
+    keywords: itemTags(it).map((t) => t.name).join(", "),
+    head: seoJsonLd("calendar", it, origin, canon, image),
+    body: hero + body + countJs + SHARE_JS,
   });
 }
 
@@ -2422,7 +2510,8 @@ async function handleRequest(request, env, ctx) {
         if (!it) return Response.redirect(url.origin + (kind === "calendar" ? "/kalendar" : "/#" + SEO_ANCHOR[kind]), 302);
         const good = seoUrl(kind, it);
         if (path !== good) return Response.redirect(url.origin + good, 301);
-        return new Response(await seoItemPage(kind, it, data, url.origin, env), {
+        const pageHtml = kind === "calendar" ? await seoCalendarItemPage(it, data, url.origin, env) : await seoItemPage(kind, it, data, url.origin, env);
+        return new Response(pageHtml, {
           headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" },
         });
       }
