@@ -1219,33 +1219,22 @@ function article(kindKey,id){
   var it=items(kindKey).filter(function(x){return x.id===id;})[0];
   if(!it){ notFound(); return; }
   var K=KIND[kindKey], h="";
-  var noBand = kindKey==="reviews";
-  var p = noBand ? (it.poster||"") : picWide(kindKey,it);
+  var p = picWide(kindKey,it);
 
   /* единна лента за всички видове: текст+тагове+бутони вляво, хоризонтална снимка (1/3 екран) вдясно */
-  var facts=[], extraHead="";
-  if(kindKey==="reviews"){
-    facts=[K.label, it.y, genreTxt(it.g), it.mins?it.mins+" мин":""].filter(Boolean);
-  } else {
-    facts=[K.label];
-    if(it.when) facts.push(dt(it.when));
-    if(it.cat) facts.push(it.cat);
-    if(kindKey==="craft"){ var who=[it.guest,it.role].filter(Boolean).join(", "); if(who) facts.push(who); }
-    if(kindKey==="episodes"&&it.n) facts.push("Епизод "+it.n);
-  }
+  var facts=[K.label];
+  if(it.when) facts.push(dt(it.when));
+  if(it.cat) facts.push(it.cat);
+  if(kindKey==="craft"){ var who=[it.guest,it.role].filter(Boolean).join(", "); if(who) facts.push(who); }
+  if(kindKey==="episodes"&&it.n) facts.push("Епизод "+it.n);
   var media = (kindKey==="episodes"&&ytId(it.yt))
     ? '<div class="embed art-media"><iframe src="https://www.youtube.com/embed/'+ytId(it.yt)+'" title="'+esc(it.t)+'" allowfullscreen loading="lazy"></iframe></div>'
     : (p?'<img class="art-media" src="'+esc(p)+'" alt="'+esc(it.t)+'">':'<div class="art-media"></div>');
-  var titleHTML = noBand ? '<h1 class="hl-stack">'+titleBlocks(it.t,20)+'</h1>' : '<h1>'+esc(it.t)+'</h1>';
-  var topInner = '<div class="facts">'+esc(facts.join(" · "))+'</div>'+titleHTML;
-  if(kindKey==="reviews"){
-    topInner += (it.lead?'<div class="answer art-lede">'+esc(txt(it.lead))+'</div>':'');
-  } else {
-    topInner += extraHead+tagsHTML(it)+
-      (it.lead?'<div class="answer art-lede">'+esc(txt(it.lead))+'</div>':'')+
-      likeShareHTML(kindKey,it);
-  }
-  h+='<div class="art-hd'+(noBand?" no-band":"")+'"><div class="wrap"><div class="crumbs">Начало › '+esc(K.label)+'</div>'+
+  var topInner = '<div class="facts">'+esc(facts.join(" · "))+'</div>'+'<h1>'+esc(it.t)+'</h1>'+
+    tagsHTML(it)+
+    (it.lead?'<div class="answer art-lede">'+esc(txt(it.lead))+'</div>':'')+
+    likeShareHTML(kindKey,it);
+  h+='<div class="art-hd"><div class="wrap"><div class="crumbs">Начало › '+esc(K.label)+'</div>'+
     '<div class="art-split">'+
     '<div class="art-left">'+topInner+'</div>'+media+
     '</div></div></div>';
@@ -1264,9 +1253,7 @@ function article(kindKey,id){
   }
   if(kindKey==="episodes"&&it.sp) h+='<a class="btn" href="'+esc(it.sp)+'" target="_blank" rel="noopener">Слушай в Spotify</a>';
 
-  if(kindKey==="reviews") h+='<div class="claps-big">'+claps(it.s,26)+'</div>';
   if(it.authorName) h+='<div class="sign">— '+esc(it.authorName)+'</div>';
-  if(kindKey==="reviews") h+=likeShareHTML(kindKey,it)+tagsHTML(it);
 
   var rel=[]; (it.tags||[]).forEach(function(s){byTag(s).forEach(function(x){
     if(x.i.id!==it.id&&rel.filter(function(y){return y.i.id===x.i.id;}).length===0) rel.push(x);});});
@@ -1275,9 +1262,54 @@ function article(kindKey,id){
 
   h+='</div>';
   document.getElementById("app").innerHTML=h;
-  document.title=(kindKey==="reviews"? it.t+" ("+it.y+") — ревю" : it.t)+" — Men In A Movie";
-  var CKIND={reviews:"r",news:"n",craft:"c",episodes:"e"}[kindKey];
+  document.title=it.t+" — Men In A Movie";
+  var CKIND={news:"n",craft:"c",episodes:"e"}[kindKey];
   if(CKIND) wireLikeShare(CKIND,it.id);
+}
+/* ---------- страница на ревю — hero по мотив на TMDB, както страницата на филм от календара ---------- */
+function reviewItemPage(it){
+  var heroImg = it.poster||"";
+  var metaRow=[it.y, it.mins?(it.mins+" мин."):"", genreTxt(it.g)].filter(Boolean).join(" · ");
+
+  var h='<div class="movie-hero">'+
+    (heroImg?'<div class="movie-hero-art"><img src="'+esc(heroImg)+'" alt=""></div>':'')+
+    '<div class="movie-hero-scrim"></div>'+
+    '<div class="wrap movie-hero-in"><div class="crumbs">Начало › Ревюта</div>'+
+    '<div class="movie-hero-row">'+
+    (heroImg?'<div class="movie-poster"><img src="'+esc(heroImg)+'" alt="'+esc(it.t)+'"></div>':'')+
+    '<div class="movie-hero-body">'+
+    '<span class="platform-tab">Ревю</span>'+
+    '<h1 class="hl-stack">'+titleBlocks(it.t,20)+'</h1>'+
+    (it.s?'<div class="claps-big cal-claps">'+claps(it.s,20)+'</div>':'')+
+    (metaRow?'<p class="movie-meta">'+esc(metaRow)+'</p>':'')+
+    ((it.lead||it.verdict)?'<p class="lede">'+esc(txt(it.lead||it.verdict))+'</p>':'')+
+    '<div class="btns movie-actions">'+
+      '<button class="btn like" id="lk" type="button" aria-label="Харесай">'+
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+
+      '<path d="M20.8 5.6a5.5 5.5 0 0 0-7.8 0L12 6.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 22l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>'+
+      '<span id="lkn"></span></button>'+
+      '<button class="btn" id="shr" type="button">Сподели</button>'+
+      (it.imdb?'<a class="btn" target="_blank" rel="noopener" href="'+esc(/^https?:/.test(it.imdb)?it.imdb:"https://www.imdb.com/title/"+it.imdb+"/")+'">IMDb</a>':'')+
+      (it.video?'<a class="btn gold" target="_blank" rel="noopener" href="'+esc(it.video)+'">Чуй повече</a>':'')+
+      '<a class="btn" href="/revyuta" data-nav>Всички ревюта</a>'+
+    '</div></div></div></div></div>';
+
+  h+='<div class="art-body"><div class="wrap"><div class="section overview">';
+  if(it.body) h+='<div class="prose">'+md(it.body)+'</div>';
+  h+='</div>';
+  if(it.authorName) h+='<div class="section"><div class="sign">— '+esc(it.authorName)+'</div></div>';
+  var tagsH=tagsHTML(it);
+  if(tagsH) h+='<div class="section">'+tagsH+'</div>';
+
+  var rel=[]; (it.tags||[]).forEach(function(s){byTag(s).forEach(function(x){
+    if(x.i.id!==it.id&&rel.filter(function(y){return y.i.id===x.i.id;}).length===0) rel.push(x);});});
+  if(rel.length) h+='<div class="section"><div class="s-head"><h2 style="font-size:20px">Още по темата</h2></div>'+
+    '<div class="grid4">'+rel.slice(0,4).map(function(x){return card(x.k,x.i);}).join("")+'</div></div>';
+  h+='</div></div>';
+
+  document.getElementById("app").innerHTML=h;
+  document.title=it.t+" ("+it.y+") — ревю — Men In A Movie";
+  wireLikeShare("r",it.id);
 }
 /* ---------- страница на филм/сериал от календара — hero по мотив на TMDB, с елементите на сайта ---------- */
 function movieItemPage(it){
@@ -1494,7 +1526,7 @@ function route(){
     var tail=seg[1].split("-").slice(-1)[0].toLowerCase();
     var found=items(k).filter(function(x){return idTail(x.id)===tail;})[0];
     if(!found) found=items(k).filter(function(x){return String(x.id).toLowerCase()===tail||slugify(x.t)+"-"+idTail(x.id)===seg[1];})[0];
-    if(found){ (k==="merch"?merchPage(found):k==="calendar"?movieItemPage(found):article(k,found.id)); markNav(KIND[k].list); window.scrollTo(0,0); return; }
+    if(found){ (k==="merch"?merchPage(found):k==="calendar"?movieItemPage(found):k==="reviews"?reviewItemPage(found):article(k,found.id)); markNav(KIND[k].list); window.scrollTo(0,0); return; }
   }
   notFound(); window.scrollTo(0,0);
 }
