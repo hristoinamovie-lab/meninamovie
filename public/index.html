@@ -148,10 +148,34 @@ section{margin-top:46px}
 .art-split .facts{font-family:Oswald,sans-serif;font-size:13px;letter-spacing:.06em;text-transform:uppercase}
 .claps-big{font-size:0;text-align:center;margin:32px 0 0}
 .claps-big .clapsrow{gap:6px}
-.tmdb-info{margin:24px 0;padding:16px 18px;background:var(--card2);border-left:2px solid var(--y)}
-.tmdb-meta{margin:0 0 6px;color:var(--tx2);font-family:Oswald,sans-serif;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
-.tmdb-cast{margin:0;color:var(--tx)}
 .art-body{max-width:var(--wrap);margin:0 auto;padding:26px 20px 10px}
+
+/* ---------- movie hero (страница на филм/сериал от календара) ---------- */
+.movie-hero{position:relative;overflow:hidden;padding-top:26px;border-bottom:1px solid var(--line)}
+.movie-hero-art{position:absolute;inset:0;z-index:0}
+.movie-hero-art img{width:100%;height:100%;object-fit:cover}
+.movie-hero-scrim{position:absolute;inset:0;z-index:1;background:linear-gradient(to top,var(--bg) 0%,rgba(10,9,8,.9) 28%,rgba(10,9,8,.55) 60%,rgba(10,9,8,.25) 100%)}
+.movie-hero-in{position:relative;z-index:2;padding-bottom:34px}
+.movie-hero-row{display:grid;grid-template-columns:200px 1fr;gap:34px;margin-top:14px}
+.movie-poster{aspect-ratio:2/3;background:var(--card2);border:1px solid var(--line);box-shadow:0 16px 34px rgba(0,0,0,.5)}
+.movie-poster img{width:100%;height:100%;object-fit:cover}
+.movie-hero-body{padding-top:4px}
+.platform-tab{display:inline-flex;background:var(--y);color:var(--black);font-family:Oswald,sans-serif;font-weight:600;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;padding:6px 12px 6px 8px;clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%);margin-bottom:12px}
+.movie-meta{font-family:Oswald,sans-serif;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--tx2);margin:10px 0 0}
+.movie-hero-body .lede{color:var(--tx);border-left-color:var(--y);font-size:18px;line-height:1.5;font-style:italic;border-left-width:4px;padding-left:16px;margin-top:16px;max-width:56ch}
+.movie-actions{margin-top:20px}
+.facts-row{display:flex;flex-wrap:wrap;gap:20px 36px;margin-top:22px;padding-top:20px;border-top:1px solid var(--line)}
+.fact-l{font-family:Oswald,sans-serif;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx2);margin:0 0 4px}
+.fact-v{font-size:14px;font-weight:700;color:var(--tx);margin:0}
+.cast-scroll{display:grid;grid-auto-flow:column;grid-auto-columns:104px;gap:16px;overflow-x:auto;padding-bottom:4px}
+.cast-ph{width:104px;aspect-ratio:2/3;background:var(--card2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;margin-bottom:7px;overflow:hidden}
+.cast-ph img{width:100%;height:100%;object-fit:cover}
+.cast-ph span{font-family:Montserrat,sans-serif;font-style:italic;font-weight:900;font-size:19px;color:var(--y);opacity:.5}
+.cast-name{font-size:12.5px;font-weight:700;color:var(--tx);margin:0;line-height:1.3}
+.section{padding:34px 0}
+.section+.section{border-top:1px solid var(--line)}
+.section h2{font-family:Montserrat,sans-serif;font-style:italic;font-weight:900;font-size:20px;text-transform:uppercase;letter-spacing:-.01em;color:var(--y);margin:0 0 18px}
+@media(max-width:640px){.movie-hero-row{grid-template-columns:120px 1fr;gap:18px}}
 
 /* ---------- продукт (мърч): e-shop страница ---------- */
 .shop-crumbs{font-family:Oswald,sans-serif;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--tx2);margin:20px 0 22px}
@@ -1195,18 +1219,12 @@ function article(kindKey,id){
   var it=items(kindKey).filter(function(x){return x.id===id;})[0];
   if(!it){ notFound(); return; }
   var K=KIND[kindKey], h="";
-  var noBand = kindKey==="calendar"||kindKey==="reviews";
+  var noBand = kindKey==="reviews";
   var p = noBand ? (it.poster||"") : picWide(kindKey,it);
 
   /* единна лента за всички видове: текст+тагове+бутони вляво, хоризонтална снимка (1/3 екран) вдясно */
-  /* календар/ревю: без жълта лента, вертикален постер вдясно — виж noBand по-долу */
   var facts=[], extraHead="";
-  if(kindKey==="calendar"){
-    var past=String(it.when||"")<todayISO();
-    facts=[calCat(it), it.kind==="stream"?subLabel(it):"", past?"вече е налично":dt(it.when)].filter(Boolean);
-    var chips=[it.time,it.place,it.kind==="event"&&it.price?("от "+it.price+" €"):""].concat(genreArr(it.genre),[it.mins?(it.mins+" мин"):"",it.kind!=="stream"?subLabel(it):""]).filter(Boolean);
-    if(chips.length) extraHead='<div class="ep-meta">'+chips.map(function(x){return '<span class="chip">'+esc(x)+'</span>';}).join("")+'</div>';
-  } else if(kindKey==="reviews"){
+  if(kindKey==="reviews"){
     facts=[K.label, it.y, genreTxt(it.g), it.mins?it.mins+" мин":""].filter(Boolean);
   } else {
     facts=[K.label];
@@ -1234,10 +1252,9 @@ function article(kindKey,id){
 
   h+='<div class="art-body">';
   if(it.guest) h+='<div class="art-meta" style="color:var(--tx2)">Гост: '+esc(it.guest)+(it.role?' · '+esc(it.role):'')+'</div>';
-  if(kindKey!=="episodes"&&kindKey!=="calendar"&&it.video&&ytId(it.video))
+  if(kindKey!=="episodes"&&it.video&&ytId(it.video))
     h+='<div class="embed"><iframe src="https://www.youtube.com/embed/'+ytId(it.video)+'" title="видео" allowfullscreen loading="lazy"></iframe></div>';
-  var bodyTxt=kindKey==="calendar"?(it.body||it.p):it.body;
-  if(bodyTxt) h+='<div class="prose">'+md(bodyTxt)+'</div>';
+  if(it.body) h+='<div class="prose">'+md(it.body)+'</div>';
 
   if(kindKey==="merch"){
     h+='<div class="prose"><p class="price">'+it.price+' €</p>'+
@@ -1250,7 +1267,6 @@ function article(kindKey,id){
   if(kindKey==="reviews") h+='<div class="claps-big">'+claps(it.s,26)+'</div>';
   if(it.authorName) h+='<div class="sign">— '+esc(it.authorName)+'</div>';
   if(kindKey==="reviews") h+=likeShareHTML(kindKey,it)+tagsHTML(it);
-  if(kindKey==="calendar") h+=calItemLinksHTML(it);
 
   var rel=[]; (it.tags||[]).forEach(function(s){byTag(s).forEach(function(x){
     if(x.i.id!==it.id&&rel.filter(function(y){return y.i.id===x.i.id;}).length===0) rel.push(x);});});
@@ -1260,9 +1276,67 @@ function article(kindKey,id){
   h+='</div>';
   document.getElementById("app").innerHTML=h;
   document.title=(kindKey==="reviews"? it.t+" ("+it.y+") — ревю" : it.t)+" — Men In A Movie";
-  var CKIND={reviews:"r",news:"n",craft:"c",episodes:"e",calendar:"k"}[kindKey];
+  var CKIND={reviews:"r",news:"n",craft:"c",episodes:"e"}[kindKey];
   if(CKIND) wireLikeShare(CKIND,it.id);
-  if(kindKey==="calendar"&&it.src==="tmdb"&&it.tmdbId) enrichCalTmdb(it);
+}
+/* ---------- страница на филм/сериал от календара — hero по мотив на TMDB, с елементите на сайта ---------- */
+function movieItemPage(it){
+  var past=String(it.when||"")<todayISO();
+  var platformLabel=calCat(it);
+  var metaRow=[past?"вече е налично":dt(it.when), it.mins?(it.mins+" мин."):"", genreArr(it.genre).length?genreTxt(it.genre):"",
+    it.time, it.place, it.kind==="event"&&it.price?("от "+it.price+" €"):""].filter(Boolean).join(" · ");
+  var backdrop=it.backdrop||it.poster||"";
+  var rv=reviewFor(it);
+  var actions="";
+  if(it.kind==="event"&&it.ticketUrl) actions+='<a class="btn gold" target="_blank" rel="noopener" href="'+esc(it.ticketUrl)+'">Билети</a>';
+  if(it.kind==="stream"&&it.watchUrl) actions+='<a class="btn gold" target="_blank" rel="noopener" href="'+esc(it.watchUrl)+'">Гледай в '+esc(it.platform||"платформата")+'</a>';
+  if(it.kind==="cinema"&&D.settings.cinemaProgramUrl) actions+='<a class="btn" target="_blank" rel="noopener" href="'+esc(D.settings.cinemaProgramUrl)+'">Програма по кината</a>';
+  if(rv) actions+='<a class="btn" href="'+url("reviews",rv)+'" data-nav>Прочети ревюто</a>';
+
+  var h='<div class="movie-hero">'+
+    (backdrop?'<div class="movie-hero-art"><img src="'+esc(backdrop)+'" alt=""></div>':'')+
+    '<div class="movie-hero-scrim"></div>'+
+    '<div class="wrap movie-hero-in"><div class="crumbs">Начало › Movie calendar</div>'+
+    '<div class="movie-hero-row">'+
+    (it.poster?'<div class="movie-poster"><img src="'+esc(it.poster)+'" alt="'+esc(it.t)+'"></div>':'')+
+    '<div class="movie-hero-body">'+
+    '<span class="platform-tab">'+esc(platformLabel)+'</span>'+
+    '<h1 class="hl-stack">'+titleBlocks(it.t,20)+'</h1>'+
+    (metaRow?'<p class="movie-meta">'+esc(metaRow)+'</p>':'')+
+    (it.lead?'<p class="lede">'+esc(txt(it.lead))+'</p>':'')+
+    '<div class="btns movie-actions">'+
+      '<button class="btn like" id="lk" type="button" aria-label="Харесай">'+
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+
+      '<path d="M20.8 5.6a5.5 5.5 0 0 0-7.8 0L12 6.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 22l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>'+
+      '<span id="lkn"></span></button>'+
+      '<button class="btn" id="shr" type="button">Сподели</button>'+
+      (it.video?'<a class="btn gold" target="_blank" rel="noopener" href="'+esc(it.video)+'">Виж трейлъра</a>':'')+
+      actions+
+      '<a class="btn" href="/kalendar" data-nav>Целият календар</a>'+
+    '</div></div></div></div></div>';
+
+  h+='<div class="art-body"><div class="wrap"><div class="section overview" id="movieOverview">';
+  var bodyTxt=it.body||it.p||"";
+  if(bodyTxt) h+='<div class="prose">'+md(bodyTxt)+'</div>';
+  var factsRow=[];
+  if(genreArr(it.genre).length) factsRow.push(["Жанр",genreTxt(it.genre)]);
+  if(it.mins) factsRow.push(["Времетраене",it.mins+" мин"]);
+  if(it.when) factsRow.push([past?"Излезе на":"Премиера",dt(it.when)]);
+  if(factsRow.length) h+='<div class="facts-row" id="movieFacts">'+factsRow.map(function(f){
+    return '<div class="fact"><p class="fact-l">'+esc(f[0])+'</p><p class="fact-v">'+esc(f[1])+'</p></div>';}).join("")+'</div>';
+  h+='</div>';
+  h+='<div class="section">'+calItemLinksHTML(it)+'</div>';
+
+  var rel=[]; (it.tags||[]).forEach(function(s){byTag(s).forEach(function(x){
+    if(x.i.id!==it.id&&rel.filter(function(y){return y.i.id===x.i.id;}).length===0) rel.push(x);});});
+  if(rel.length) h+='<div class="section"><div class="s-head"><h2 style="font-size:20px">Още по темата</h2></div>'+
+    '<div class="grid4">'+rel.slice(0,4).map(function(x){return card(x.k,x.i);}).join("")+'</div></div>';
+  h+='</div></div>';
+
+  document.getElementById("app").innerHTML=h;
+  document.title=it.t+" — Men In A Movie";
+  wireLikeShare("k",it.id);
+  if(it.src==="tmdb"&&it.tmdbId) enrichCalTmdb(it);
 }
 /* трейлър/резюме/каст/режисьор/времетраене/оценка от TMDB — теглят се асинхронно, за да не бавят
    зареждането на страницата; важи еднакво за вече излезли и предстоящи заглавия */
@@ -1272,44 +1346,42 @@ function enrichCalTmdb(it){
   if(it.sub==="episode"&&it.season&&it.episode) qs+="&season="+it.season+"&episode="+it.episode;
   fetch("/api/tmdb-extra?"+qs).then(function(r){return r.ok?r.json():null;}).then(function(x){
     if(!x) return;
-    if(x.trailer&&!it.video){
-      var btns=document.querySelector(".art-left .btns");
-      if(btns&&!btns.querySelector('a[href="'+x.trailer+'"]')){
-        var a=document.createElement("a");
-        a.className="btn gold"; a.target="_blank"; a.rel="noopener"; a.href=x.trailer; a.textContent="Виж трейлъра";
-        btns.insertBefore(a,btns.firstChild);
-      }
-    }
     if(x.overview){
-      /* само в текста под снимката — без да се дублира и в краткото поле до заглавието */
-      var body=document.querySelector(".art-body"), prose=body&&body.querySelector(".prose");
-      if(!prose&&body){
-        prose=document.createElement("div");
-        prose.className="prose";
-        body.insertBefore(prose,body.firstChild);
+      var ov=document.querySelector("#movieOverview .prose");
+      if(!ov){
+        var ovwrap=document.getElementById("movieOverview");
+        if(ovwrap){ ov=document.createElement("div"); ov.className="prose"; ovwrap.insertBefore(ov,ovwrap.firstChild); }
       }
-      if(prose) prose.textContent=x.overview;
+      if(ov&&!it.body) ov.textContent=x.overview;
     }
     if(x.rating){
-      var h1=document.querySelector(".art-left h1");
+      var h1=document.querySelector(".movie-hero-body h1");
       if(h1&&!document.querySelector(".cal-claps")){
         var cw=document.createElement("div");
         cw.className="claps-big cal-claps";
-        cw.innerHTML=claps(Math.round(x.rating/2),20);
+        cw.innerHTML=claps(Math.round(x.rating/2),22);
         h1.parentNode.insertBefore(cw,h1.nextSibling);
       }
     }
-    if(x.director||x.runtime||(x.cast&&x.cast.length)){
-      var body2=document.querySelector(".art-body");
-      if(body2&&!body2.querySelector(".tmdb-info")){
-        var info=[]; if(x.director) info.push("Режисьор: "+x.director); if(x.runtime) info.push(x.runtime+" мин");
-        var block=document.createElement("div"); block.className="tmdb-info";
-        block.innerHTML=(info.length?'<p class="tmdb-meta">'+esc(info.join(" · "))+'</p>':"")+
-          (x.cast&&x.cast.length?'<p class="tmdb-cast">В ролите: '+esc(x.cast.join(", "))+'</p>':"");
-        var prose3=body2.querySelector(".prose");
-        if(prose3&&prose3.nextSibling) prose3.parentNode.insertBefore(block,prose3.nextSibling);
-        else if(prose3) prose3.parentNode.appendChild(block);
-        else body2.insertBefore(block,body2.firstChild);
+    if(x.director){
+      var facts=document.getElementById("movieFacts");
+      if(facts&&!facts.querySelector(".fact-director")){
+        var f=document.createElement("div"); f.className="fact fact-director";
+        f.innerHTML='<p class="fact-l">Режисьор</p><p class="fact-v">'+esc(x.director)+"</p>";
+        facts.insertBefore(f,facts.firstChild);
+      }
+    }
+    if(x.cast&&x.cast.length){
+      var ov2=document.getElementById("movieOverview");
+      if(ov2&&!document.querySelector(".cast-scroll")){
+        var section=document.createElement("div"); section.className="section";
+        section.innerHTML='<h2>В ролите</h2><div class="cast-scroll">'+x.cast.map(function(c){
+          return '<div class="cast-card">'+
+            (c.photo?'<div class="cast-ph"><img src="'+esc(c.photo)+'" alt="'+esc(c.name)+'" loading="lazy"></div>'
+              :'<div class="cast-ph"><span>'+esc(c.name.split(" ").map(function(w){return w[0]||"";}).join("").slice(0,2).toUpperCase())+'</span></div>')+
+            '<p class="cast-name">'+esc(c.name)+'</p></div>';
+        }).join("")+'</div>';
+        ov2.parentNode.insertBefore(section,ov2.nextSibling);
       }
     }
   }).catch(function(){});
@@ -1422,7 +1494,7 @@ function route(){
     var tail=seg[1].split("-").slice(-1)[0].toLowerCase();
     var found=items(k).filter(function(x){return idTail(x.id)===tail;})[0];
     if(!found) found=items(k).filter(function(x){return String(x.id).toLowerCase()===tail||slugify(x.t)+"-"+idTail(x.id)===seg[1];})[0];
-    if(found){ (k==="merch"?merchPage(found):article(k,found.id)); markNav(KIND[k].list); window.scrollTo(0,0); return; }
+    if(found){ (k==="merch"?merchPage(found):k==="calendar"?movieItemPage(found):article(k,found.id)); markNav(KIND[k].list); window.scrollTo(0,0); return; }
   }
   notFound(); window.scrollTo(0,0);
 }
