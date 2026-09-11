@@ -1055,7 +1055,7 @@ a.tag:hover{border-color:#F6C92B;color:#F6C92B}
 .calcard h3{margin:0 0 4px;font-size:14px;line-height:1.3;font-weight:700}
 .cal-body-claps{margin:0 0 5px}
 .cal-body-claps svg{width:13px;height:13px}
-.cal-claps{justify-content:flex-start;margin:10px 0 0}
+.cal-claps{display:flex;justify-content:flex-start;text-align:left;margin:10px 0 0}
 .cal-claps svg{width:20px;height:20px}
 .cal-divider{grid-column:1/-1;display:flex;align-items:center;gap:12px;margin:8px 0 4px;color:#8C877C;font-family:Oswald,system-ui,sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase}
 .cal-divider::before,.cal-divider::after{content:"";flex:1;height:1px;background:rgba(246,242,230,.15)}
