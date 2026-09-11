@@ -948,7 +948,7 @@ nav.main a:hover{border-bottom-color:#141210}
 .cast-ph img{width:100%;height:100%;object-fit:cover}
 .cast-ph span{font-family:Montserrat,system-ui,sans-serif;font-style:italic;font-weight:900;font-size:19px;color:#F6C92B;opacity:.5}
 .cast-name{font-size:12.5px;font-weight:700;color:#F2F0EB;margin:0;line-height:1.3}
-@media(max-width:640px){.movie-hero-row{grid-template-columns:120px 1fr;gap:18px}}
+@media(max-width:640px){.movie-hero-row{grid-template-columns:1fr;gap:16px}.movie-poster{max-width:140px}}
 .section{padding:34px 0}
 .section+.section{border-top:1px solid #2A2723}
 .section.overview{font-size:17px;line-height:1.8}
@@ -1075,6 +1075,7 @@ a.tag:hover{border-color:#F6C92B;color:#F6C92B}
 .cal-body-claps svg{width:13px;height:13px}
 .cal-claps{display:flex;justify-content:flex-start;text-align:left;margin:10px 0 0}
 .cal-claps svg{width:20px;height:20px}
+.cal-claps svg{stroke:rgba(242,240,235,.45)}
 .cal-divider{grid-column:1/-1;display:flex;align-items:center;gap:12px;margin:8px 0 4px;color:#8C877C;font-family:Oswald,system-ui,sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase}
 .cal-divider::before,.cal-divider::after{content:"";flex:1;height:1px;background:rgba(246,242,230,.15)}
 .cal-past-zone{grid-column:1/-1;background:rgba(246,201,43,.06);padding:16px 16px 2px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
