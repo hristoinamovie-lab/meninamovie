@@ -910,8 +910,8 @@ nav.main a:hover{border-bottom-color:#141210}
 }
 
 /* ---- жълта лента на статията: текст/тагове/цитат/бутони вляво, снимка вдясно ---- */
-.crumbs{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.7;margin:0;padding-top:16px}
-.band{background:#F6C92B;color:#141210;padding:2px 0 26px}
+.crumbs{font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.09em;text-transform:uppercase;opacity:.7;margin:0;padding-top:16px}
+.band{background:#F6C92B;color:#1A1600;padding:2px 0 26px}
 .band .in{display:flex;gap:26px;align-items:center;flex-wrap:wrap;min-height:30vh;padding-top:8px}
 .band .side{flex:1 1 380px;min-width:280px}
 .band .shot{flex:1 1 380px;min-width:280px;max-width:560px;aspect-ratio:16/9;background:#F6C92B;display:flex}
@@ -1004,14 +1004,14 @@ main{padding-bottom:30px}
 .col{max-width:1180px;margin:0 auto;padding:30px 22px 0}
 .lede{font-size:16px;line-height:1.5;border-left:4px solid rgba(20,18,16,.35);padding-left:16px;margin:14px 0 0;color:rgba(20,18,16,.75)}
 .col h2{font-family:Montserrat,system-ui,sans-serif;font-weight:900;font-style:italic;text-transform:uppercase;font-size:23px;margin:1.7em 0 .5em;letter-spacing:-.01em}
-.col p{margin:0 0 1.15em}
+.col p{margin:1em 0}
 .col ul{padding-left:20px}
 .col blockquote{border-left:4px solid #F6C92B;margin:1.4em 0;padding-left:18px;color:#B9B3A6}
 .col figure{margin:1.8em 0}
 .col figure img{width:100%}
 .col figcaption{font-size:13px;color:#8C877C;margin-top:7px}
 .col a{border-bottom:1px solid rgba(246,201,43,.45)}
-.sig{margin:26px 0 0;padding-top:16px;border-top:1px solid rgba(246,242,230,.14);color:#B9B3A6}
+.sig{margin-top:26px;padding-top:14px;border-top:1px solid #2A2723;color:#A6A196;font-size:15px}
 .kicker{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#F6C92B;margin:0 0 8px}
 .meta{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8C877C;margin:0 0 20px}
 
@@ -1022,7 +1022,7 @@ main{padding-bottom:30px}
 .btn.gold{background:#F6C92B;border-color:#F6C92B;color:#141210}
 .btn.gold:hover{background:#ffd84a;color:#141210}
 .btn.like.on{border-color:#F6C92B;color:#F6C92B}
-.tags{margin:26px 0 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tags{margin:30px 0 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .tags .lbl{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#8C877C}
 .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:6px 12px;border:1px solid rgba(246,242,230,.22);color:#B9B3A6}
 a.tag:hover{border-color:#F6C92B;color:#F6C92B}
