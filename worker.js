@@ -1826,7 +1826,7 @@ function calByMonth(items) {
       out += upcoming.map((it) => calRow(it)).join("");
       inner = out;
     } else inner = arr.map((it) => calRow(it)).join("");
-    return "<h2>" + escHtml(calMonthName(ym)) + '</h2><div class="grid-cards">' + inner + "</div>";
+    return '<div class="wrap"><h2>' + escHtml(calMonthName(ym)) + '</h2></div><div class="grid-cards">' + inner + "</div>";
   }).join("");
 }
 function calOtherViews(views, currentSlug) {
@@ -1891,16 +1891,16 @@ function calListPage(data, origin, view) {
   const first = items.find((it) => it.poster && /^https?:/.test(it.poster));
   const image = first ? first.poster : origin + "/og.jpg";
   const body =
-    '<p class="kicker">' + escHtml(w.kicker) + "</p><h1>" + escHtml(w.h1) + "</h1>" +
+    '<div class="wrap" style="padding-top:26px"><p class="kicker">' + escHtml(w.kicker) + "</p><h1>" + escHtml(w.h1) + "</h1>" +
     '<p class="meta">' + items.length + " заглавия · обновено " + escHtml(seoDateBg(today)) + "</p>" +
-    '<p class="lede">' + escHtml(w.lede) + "</p>" +
+    '<p class="lede">' + escHtml(w.lede) + "</p></div>" +
     '<div class="rel" style="border:0;margin:0;padding:0">' +
     (items.length ? (view && view.type === "month" ? '<div class="grid-cards">' + items.map((it) => calRow(it)).join("") + "</div>" : calByMonth(items))
-                  : "<p>Точно сега няма обявени дати. Върни се след ден-два — календарът се обновява сам.</p>") +
+                  : '<p class="wrap">Точно сега няма обявени дати. Върни се след ден-два — календарът се обновява сам.</p>') +
     "</div>" +
-    '<div class="btns" style="margin-top:34px"><a class="btn gold" href="/#kalendar">Виж календара на сайта</a>' +
+    '<div class="wrap"><div class="btns" style="margin-top:34px"><a class="btn gold" href="/#kalendar">Виж календара на сайта</a>' +
     '<a class="btn" href="/karta">Всички материали</a></div>' +
-    calOtherViews(views, view ? view.slug : "");
+    calOtherViews(views, view ? view.slug : "") + "</div>";
   return seoShell({
     title: w.title, desc: w.desc, canon, image, ogType: "website", keywords: w.keywords,
     head: calJsonLd(items, w, canon, origin), body,
