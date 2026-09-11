@@ -112,6 +112,172 @@ a{color:inherit;text-decoration:none}
 .a-msg.err{border-color:#7a2320;color:#e07a76}
 @media(max-width:800px){.a-wrap{flex-direction:column}.a-side{flex:none;display:flex;overflow-x:auto}.a-side a{white-space:nowrap}.a-cols{grid-template-columns:1fr}}
 
+/* ============ ПАНЕЛ V3 — нова рамка, списъци и редактор (календарният списък по-долу остава непроменен) ============ */
+:root{--card3:#201C18;--line2:#332E28;--tx3:#6E695F;--ok:#3ac26a}
+.a-shell{display:flex;max-width:1480px;margin:0 auto}
+.a-nav{flex:0 0 214px;position:sticky;top:46px;align-self:flex-start;height:calc(100vh - 46px);overflow-y:auto;
+  background:#131210;border-right:1px solid var(--line);padding:14px 0}
+.a-nav-sec{padding:0 10px}
+.a-nav a{display:flex;align-items:center;gap:10px;padding:9px 10px;color:var(--tx2);cursor:pointer;font-family:Oswald,sans-serif;
+  font-size:12px;letter-spacing:.05em;text-transform:uppercase;margin-bottom:1px}
+.a-nav a svg{width:16px;height:16px;flex:none}
+.a-nav a:hover{background:#1C1916;color:var(--tx)}
+.a-nav a.on{background:var(--y);color:var(--black)}
+.a-nav a .nsp{flex:1}
+.a-nav a .ndot{width:6px;height:6px;background:var(--y);flex:none}
+.a-nav a.on .ndot{background:var(--black)}
+.a-nav-div{height:1px;background:var(--line);margin:10px 12px}
+.a-content{flex:1;min-width:0;padding:30px 34px 70px;max-width:1120px}
+.a-content h2{font-family:Oswald,sans-serif;font-weight:600;font-style:normal;font-size:24px;color:var(--tx);text-transform:none;letter-spacing:0;margin:0 0 4px}
+.a-sub{color:var(--tx2);font-size:13px;margin:0 0 20px}
+
+.pbtn{background:none;border:1px solid var(--line2);color:var(--tx2);font-family:Oswald,sans-serif;font-size:11.5px;
+  letter-spacing:.05em;text-transform:uppercase;padding:8px 14px;cursor:pointer}
+.pbtn:hover{border-color:var(--y);color:var(--y)}
+.pbtn.pri{background:var(--y);border-color:var(--y);color:var(--black)}
+.pbtn.pri:hover{background:#d9ad1c;border-color:#d9ad1c}
+.pbtn.sm{padding:5px 10px;font-size:10.5px}
+.pbtn.dan{border-color:#5a2320;color:#e07a76}
+
+/* табло */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(136px,1fr));gap:10px;margin-bottom:22px}
+.stat-card{background:var(--card3);border:1px solid var(--line);padding:15px 16px 13px}
+.stat-card b{display:block;font-family:Oswald,sans-serif;font-size:27px;color:var(--y);font-weight:500}
+.stat-card span{font-family:Oswald,sans-serif;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--tx2)}
+.pending-card2{border:1.5px solid var(--y);background:rgba(246,201,43,.05);padding:14px 16px;margin-bottom:26px}
+.pending-card2 h3{margin:0 0 8px;font-family:Oswald,sans-serif;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--y)}
+.pending-row2{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid rgba(246,201,43,.14)}
+.pending-row2:first-of-type{border-top:0;padding-top:2px}
+.pending-row2 .pt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px}
+.pending-row2 .ps{font-family:Oswald,sans-serif;font-size:10px;color:var(--tx3);letter-spacing:.04em;white-space:nowrap}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.two-col h3{font-family:Oswald,sans-serif;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx2);margin:0 0 10px}
+.rank-row{position:relative;display:flex;align-items:center;gap:10px;padding:9px 11px;background:var(--card3);border:1px solid var(--line);margin-bottom:6px;overflow:hidden;cursor:pointer}
+.rank-row:hover{border-color:rgba(246,201,43,.35)}
+.rank-bar{position:absolute;left:0;top:0;bottom:0;background:rgba(246,201,43,.13);z-index:0}
+.rank-t{position:relative;z-index:1;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px}
+.rank-kind{position:relative;z-index:1;font-family:Oswald,sans-serif;font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--tx3);flex:none}
+.rank-n{position:relative;z-index:1;font-family:Oswald,sans-serif;color:var(--y);font-weight:600;flex:none;font-size:13px}
+.quick-new{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+@media(max-width:900px){.two-col{grid-template-columns:1fr}}
+
+/* списък (некалендарни видове) */
+.p-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
+.p-toolbar input,.p-toolbar select{background:var(--card3);border:1px solid var(--line2);color:var(--tx);font:inherit;
+  font-size:13px;padding:8px 11px}
+.p-toolbar .psp{flex:1}
+.p-toolbar .pcnt{font-family:Oswald,sans-serif;font-size:11px;color:var(--tx3);letter-spacing:.04em}
+.p-row{display:flex;align-items:center;gap:13px;background:var(--card3);border:1px solid var(--line);padding:9px 12px;margin-bottom:7px;cursor:pointer}
+.p-row:hover{border-color:rgba(246,201,43,.4)}
+.p-row img{width:56px;height:34px;flex:none;object-fit:cover;background:var(--card2);display:block}
+.p-row img.p{width:24px;height:36px}
+.p-row .pinfo{flex:1;min-width:0}
+.p-row .pttl{font-size:13.5px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-row .pmeta{font-family:Oswald,sans-serif;font-size:10.5px;color:var(--tx3);letter-spacing:.03em;margin-top:2px}
+.rpill{font-family:Oswald,sans-serif;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;padding:3px 7px;border:1px solid var(--line2);color:var(--tx2);flex:none}
+.rpill.published{background:var(--y);color:var(--black);border-color:var(--y)}
+.rpill.hidden{background:#3a1614;color:#e07a76;border-color:#5a2320}
+.rpill.review{background:#2b2a12;color:var(--y);border-color:#5a5320}
+.p-chev{color:var(--tx3);flex:none;font-size:15px}
+
+/* редактор */
+.ed-topline{position:sticky;top:46px;z-index:15;background:#0D0C0A;display:flex;align-items:center;gap:10px;padding:12px 0;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.ed-crumb{font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.05em;color:var(--tx3);text-transform:uppercase}
+.seg2{display:flex;border:1px solid var(--line2)}
+.seg2 button{flex:1;background:none;border:0;border-right:1px solid var(--line2);color:var(--tx2);
+  font-family:Oswald,sans-serif;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;padding:8px 10px;cursor:pointer}
+.seg2 button:last-child{border-right:0}
+.seg2 button.on{background:var(--y);color:var(--black)}
+.cal-mode-seg{margin:18px 0 0;max-width:420px}
+
+.ed-shell{display:flex;align-items:flex-start;gap:0;margin-top:22px}
+.ed-canvas{flex:1;min-width:0;max-width:840px;margin:0 auto;padding:0 0 60px}
+.ed-rail{flex:0 0 328px;position:sticky;top:100px;max-height:calc(100vh - 100px);overflow:auto;
+  padding:0 4px 40px 26px;border-left:1px solid var(--line)}
+
+.c-title{font-family:Oswald,sans-serif;font-weight:600;font-size:36px;line-height:1.2;letter-spacing:-.01em;
+  color:var(--tx);border:0;background:none;outline:0;width:100%;margin:0 0 16px;padding:0}
+.c-title::placeholder{color:var(--tx3)}
+.c-lede-lbl{font-family:Oswald,sans-serif;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin:0 0 6px}
+.c-lede{border-left:3px solid var(--y);border-top:0;border-right:0;border-bottom:0;padding:8px 0 8px 16px;margin:0 0 26px;font-size:16px;line-height:1.6;
+  color:var(--tx);width:100%;background:none;resize:vertical;min-height:60px;font-family:inherit;outline:0}
+.c-lede::placeholder{color:var(--tx3);font-style:italic}
+.float-tools{position:sticky;top:100px;z-index:5;display:inline-flex;gap:2px;background:var(--card2);
+  border:1px solid var(--line2);box-shadow:0 8px 24px rgba(0,0,0,.4);padding:4px;margin:0 0 8px}
+.float-tools button{background:none;border:0;color:var(--tx2);min-width:28px;height:28px;cursor:pointer;font-family:Oswald,sans-serif;font-size:12.5px;padding:0 6px}
+.float-tools button:hover{color:var(--y);background:rgba(246,201,43,.08)}
+.c-body{width:100%;background:none;border:0;outline:0;font-size:16.5px;line-height:1.8;color:var(--tx);
+  min-height:340px;resize:vertical;font-family:Manrope,sans-serif;padding:0}
+.c-body::placeholder{color:var(--tx3)}
+.c-foot{display:flex;gap:18px;align-items:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--line);
+  font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.05em;color:var(--tx3)}
+
+.ed-sec{border:1px solid var(--line);margin-bottom:12px;background:var(--card3)}
+.ed-sec-h{display:flex;align-items:center;gap:9px;padding:12px 13px;cursor:pointer;user-select:none}
+.ed-sec-h svg{width:15px;height:15px;flex:none;color:var(--y)}
+.ed-sec-h .ed-lbl{flex:1;font-family:Oswald,sans-serif;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx)}
+.ed-sec-h .ed-chev{color:var(--tx3);font-size:11px;transition:transform .15s}
+.ed-sec.open .ed-chev{transform:rotate(180deg)}
+.ed-sec-b{display:none;padding:0 13px 14px}
+.ed-sec.open .ed-sec-b{display:block}
+.ed-f{margin-bottom:13px}
+.ed-f label{display:block;font-family:Oswald,sans-serif;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3);margin-bottom:5px}
+.ed-f input,.ed-f select,.ed-f textarea{width:100%;background:var(--bg);border:1px solid var(--line2);color:var(--tx);font:inherit;font-size:13.5px;padding:8px 9px}
+.ed-f input:focus,.ed-f select:focus,.ed-f textarea:focus{outline:0;border-color:var(--y)}
+.ed-f select{appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:28px;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="%236E695F" stroke-width="1.6" fill="none"/></svg>');background-repeat:no-repeat;background-position:right 10px center}
+.ed-row{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.ed-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+.claps-pick{display:flex;gap:4px;margin-top:2px}
+.claps-pick button{background:none;border:0;padding:2px;cursor:pointer;width:26px;height:26px}
+.claps-pick svg{width:22px;height:22px;display:block}
+.ed-img{position:relative}
+.ed-img img{width:100%;display:block;object-fit:contain;max-height:150px;background:var(--bg)}
+.ed-img .rmx{position:absolute;top:6px;right:6px;background:rgba(10,9,8,.72);border:1px solid var(--line2);color:var(--tx);
+  width:22px;height:22px;font-size:12px;cursor:pointer}
+.ed-drop{border:1.5px dashed var(--line2);padding:16px 10px;text-align:center;color:var(--tx3);font-size:12px}
+.ed-tags-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
+.ed-tagpill{display:flex;align-items:center;gap:6px;background:rgba(246,201,43,.09);border:1px solid rgba(246,201,43,.35);
+  color:var(--y);font-family:Oswald,sans-serif;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;padding:5px 5px 5px 9px}
+.ed-tagpill button{background:none;border:0;color:var(--y);opacity:.6;cursor:pointer;font-size:12px;padding:0}
+.ed-tagpill button:hover{opacity:1}
+.ed-tagcloud{display:flex;flex-wrap:wrap;gap:6px}
+.ed-tagcloud span{border:1px solid var(--line2);color:var(--tx3);font-family:Oswald,sans-serif;font-size:10.5px;letter-spacing:.04em;
+  text-transform:uppercase;padding:4px 8px;cursor:pointer}
+.ed-tagcloud span:hover{border-color:var(--y);color:var(--y)}
+.ed-sub{font-family:Oswald,sans-serif;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3);
+  margin:16px 0 7px;padding-top:14px;border-top:1px solid var(--line2)}
+.tmdb-row2{display:flex;gap:7px}
+.tmdb-row2 input{flex:1;background:var(--bg);border:1px solid var(--line2);color:var(--tx);font:inherit;font-size:13px;padding:8px 9px}
+.tmdb-row2 button{background:none;border:1px solid var(--line2);color:var(--tx2);font-family:Oswald,sans-serif;font-size:10.5px;
+  letter-spacing:.06em;text-transform:uppercase;padding:0 13px;cursor:pointer;white-space:nowrap}
+.tmdb-row2 button:hover{border-color:var(--y);color:var(--y)}
+.tmdb-sugbox2{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tmdb-sugbox2 span{display:inline-flex;align-items:center;gap:5px;background:rgba(246,201,43,.07);border:1px solid rgba(246,201,43,.28);
+  color:var(--tx2);font-family:Oswald,sans-serif;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;padding:5px 9px;cursor:pointer}
+.tmdb-sugbox2 span:hover{border-color:var(--y);color:var(--y)}
+.rail-note{font-size:11.5px;color:var(--tx3);line-height:1.5;margin:6px 0 0}
+.ed-preview{margin-top:24px}
+.ed-preview-label{font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--tx2);display:block;margin-bottom:8px}
+.sync-note2{text-align:center;padding:60px 30px;border:1px dashed var(--line2);margin-top:22px}
+.sync-note2 svg{width:28px;height:28px;color:var(--tx3);margin-bottom:16px}
+.sync-note2 h3{font-family:Oswald,sans-serif;font-weight:600;font-size:17px;margin:0 0 10px;color:var(--tx)}
+.sync-note2 p{color:var(--tx2);font-size:14px;line-height:1.7;max-width:460px;margin:0 auto}
+
+@media(max-width:980px){
+  .ed-rail{position:static;max-height:none;flex:none;border-left:0;border-top:1px solid var(--line);padding:20px 0 0}
+  .ed-shell{flex-direction:column}
+  .ed-canvas{max-width:none}
+}
+@media(max-width:860px){
+  .a-shell{flex-direction:column}
+  .a-nav{position:static;height:auto;display:flex;overflow-x:auto;padding:8px;border-right:0;border-bottom:1px solid var(--line)}
+  .a-nav-sec{display:flex;gap:4px;padding:0}
+  .a-nav a{white-space:nowrap}
+  .a-nav-div{width:1px;height:auto;margin:0 4px}
+  .a-content{padding:22px 18px 50px}
+}
+
 </style>
 </head>
 <body>
@@ -185,6 +351,43 @@ var TYPES = {
 var STATUS = {draft:"Чернова", review:"За одобрение", published:"Публикувано", hidden:"Скрито"};
 var SIZE = {h:[1200,675], p:[600,900], b:[1200,300]};
 
+/* ---------- V3: икони и клапи за новия дизайн ---------- */
+var NAV_ICON = {
+  dash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="8"/><rect x="13" y="3" width="8" height="8"/><rect x="3" y="13" width="8" height="8"/><rect x="13" y="13" width="8" height="8"/></svg>',
+  news:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10v4h4l7 4V6l-7 4H3Z"/><path d="M17.5 9a4 4 0 0 1 0 6"/></svg>',
+  reviews:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l2.7 5.9 6.3.7-4.7 4.4 1.3 6.3L12 17.1 6.4 20.3l1.3-6.3L3 9.6l6.3-.7L12 3Z"/></svg>',
+  craft:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="7" width="18" height="13"/><circle cx="12" cy="13.5" r="4"/><path d="M8 7l1.6-3h4.8L16 7"/></svg>',
+  episodes:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>',
+  merch:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M8 4 4 7l2.2 3 1.8-1v11h8V9l1.8 1 2.2-3-4-3-2 2h-2L8 4Z"/></svg>',
+  calendar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16"/><path d="M3 9.5h18"/><path d="M8 3v4M16 3v4"/></svg>',
+  backup:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v11"/><path d="M8 10l4 4 4-4"/><path d="M4 18h16v3H4Z"/></svg>',
+  heads:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="4"/><rect x="3" y="11" width="18" height="4"/><rect x="3" y="18" width="8" height="3"/></svg>',
+  settings:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h9M17 7h3"/><circle cx="14" cy="7" r="2"/><path d="M4 12h3M11 12h9"/><circle cx="8" cy="12" r="2"/><path d="M4 17h11M19 17h1"/><circle cx="17" cy="17" r="2"/></svg>',
+  users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-4 3.1-6.5 7-6.5s7 2.5 7 6.5"/></svg>'
+};
+var ICO = {
+  pub:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12l5 5L20 7"/></svg>',
+  details:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16"/><path d="M4 15l5-5 4 4 3-3 4 4"/></svg>',
+  img:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="14"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg>',
+  link:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7L13 18"/></svg>',
+  tag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.6 12.6L12 21.2a2 2 0 0 1-2.8 0L3 15V4h11l6.6 6.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="8.5" r="1"/></svg>',
+  lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="11" width="14" height="9"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+  sync:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12a9 9 0 1 1-2.6-6.3"/><path d="M21 4v5h-5"/></svg>'
+};
+var CLAP_FULL='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 8.6 20.4 3.6l1 3.7L4 12.3 2 8.6Z" fill="#F6C92B"/><path d="M6.6 4.1 8.9 7.9l3.1-.9-2.3-3.8-3.1.9Z" fill="#141210"/><path d="M13.4 2.3l2.3 3.8 3.1-.9-2.3-3.8-3.1.9Z" fill="#141210"/><rect x="3" y="12.6" width="18" height="8.8" fill="#F6C92B"/></svg>';
+var CLAP_EMPTY='<svg viewBox="0 0 24 24" fill="none" stroke="#6E695F" stroke-width="1.6" aria-hidden="true"><path d="M2.6 8.9 20 4.2l.8 3-17.4 4.7-.8-3Z"/><rect x="3.4" y="12.9" width="17.2" height="8.2"/></svg>';
+function paintClapsPick(){
+  var box=document.getElementById("clapsPick"); if(!box||!A.edit) return;
+  var n=+A.edit.s||0;
+  box.innerHTML="";
+  for(var i=1;i<=5;i++){
+    var b=document.createElement("button"); b.type="button";
+    b.innerHTML = i<=n ? CLAP_FULL : CLAP_EMPTY;
+    b.setAttribute("data-act","setclaps"); b.setAttribute("data-n",i);
+    box.appendChild(b);
+  }
+}
+
 function can(k){ return A.me && TYPES[k] && TYPES[k].roles.indexOf(A.me.role)>=0; }
 function isAdmin(){ return A.me && A.me.role==="admin"; }
 function canPublish(){ return A.me && (A.me.role==="admin"||A.me.role==="moderator"); }
@@ -249,13 +452,14 @@ function draw(){
   document.getElementById("aWho").textContent=A.me.name+" · "+({admin:"администратор",moderator:"модератор",author:"автор"}[A.me.role]||A.me.role);
   var tabs=[["dash","Табло"]];
   Object.keys(TYPES).forEach(function(k){ if(can(k)) tabs.push([k,TYPES[k].label]); });
-  tabs.push(["backup","Резервно копие"]);
-  if(isAdmin()){ tabs.push(["heads","Рубрики"]); tabs.push(["settings","Настройки"]); tabs.push(["users","Потребители"]); }
-  var side=tabs.map(function(t){
+  var tabs2=[["backup","Резервно копие"]];
+  if(isAdmin()){ tabs2.push(["heads","Рубрики"]); tabs2.push(["settings","Настройки"]); tabs2.push(["users","Потребители"]); }
+  function navRow(t){
     var n=t[0]!=="dash"&&TYPES[t[0]]?pending(t[0]).length:0;
-    return '<a data-tab="'+t[0]+'" class="'+(A.tab===t[0]?"on":"")+'">'+esc2(t[1])+(n?'<span class="dot"></span>':'')+'</a>';
-  }).join("");
-  document.getElementById("aBody").innerHTML='<div class="a-wrap"><div class="a-side">'+side+'</div><div class="a-main" id="aMain"></div></div>';
+    return '<a data-tab="'+t[0]+'" class="'+(A.tab===t[0]?"on":"")+'">'+(NAV_ICON[t[0]]||"")+'<span class="nsp">'+esc2(t[1])+'</span>'+(n?'<span class="ndot"></span>':'')+'</a>';
+  }
+  var side='<div class="a-nav-sec">'+tabs.map(navRow).join("")+'</div><div class="a-nav-div"></div><div class="a-nav-sec">'+tabs2.map(navRow).join("")+'</div>';
+  document.getElementById("aBody").innerHTML='<div class="a-shell"><div class="a-nav">'+side+'</div><div class="a-content" id="aMain"></div></div>';
   var m=document.getElementById("aMain");
   var body="";
   if(A.msg) body+='<div class="a-msg '+(A.msg.k||"")+'">'+esc2(A.msg.t)+'</div>';
@@ -278,18 +482,17 @@ function dash(){
   var h="";
   if(canPublish()){
     var p=[]; Object.keys(TYPES).forEach(function(k){ pending(k).forEach(function(i){ p.push({k:k,i:i}); }); });
-    if(p.length) h+='<div class="a-pending"><h3>'+p.length+' чакат одобрение</h3>'+p.map(function(x){
-      return '<div class="a-row"><span class="sub">'+esc2(TYPES[x.k].label)+'</span><span class="t">'+esc2(x.i.t)+'</span>'+
-        '<span class="sub">'+esc2(x.i.authorName||"")+' '+esc2(x.i.when||"")+'</span>'+
-        '<button class="a-btn" data-act="edit" data-k="'+x.k+'" data-id="'+x.i.id+'">Прегледай</button>'+
-        '<button class="a-btn pri" data-act="approve" data-k="'+x.k+'" data-id="'+x.i.id+'">Одобри</button></div>';
+    if(p.length) h+='<div class="pending-card2"><h3>'+p.length+' чакат одобрение</h3>'+p.map(function(x){
+      return '<div class="pending-row2"><span class="rpill review">'+esc2(TYPES[x.k].label)+'</span>'+
+        '<span class="pt">'+esc2(x.i.t)+'</span>'+
+        '<span class="ps">'+esc2(x.i.authorName||"")+' '+esc2(x.i.when||"")+'</span>'+
+        '<button class="pbtn sm" data-act="edit" data-k="'+x.k+'" data-id="'+x.i.id+'">Прегледай</button>'+
+        '<button class="pbtn sm pri" data-act="approve" data-k="'+x.k+'" data-id="'+x.i.id+'">Одобри</button></div>';
     }).join("")+'</div>';
   }
-  h+='<h2>Табло</h2><div class="a-grid">'+Object.keys(TYPES).filter(can).map(function(k){
-    return '<div class="a-stat"><b>'+all(k).length+'</b>'+esc2(TYPES[k].label)+'</div>';
-  }).join("")+'<div class="a-stat"><b>'+Object.keys(D.tagLabels||{}).length+'</b>Тагове</div></div>';
-  h+='<div class="a-bar" style="margin-top:18px">'+Object.keys(TYPES).filter(can).map(function(k){
-    return '<button class="a-btn" data-act="new" data-k="'+k+'">+ '+esc2(TYPES[k].label)+'</button>';}).join("")+'</div>';
+  h+='<h2>Табло</h2><p class="a-sub">Общ преглед на съдържанието в сайта.</p><div class="stat-grid">'+Object.keys(TYPES).filter(can).map(function(k){
+    return '<div class="stat-card"><b>'+all(k).length+'</b><span>'+esc2(TYPES[k].label)+'</span></div>';
+  }).join("")+'<div class="stat-card"><b>'+Object.keys(D.tagLabels||{}).length+'</b><span>Тагове</span></div></div>';
 
   if(A.stats===undefined) loadStats();
   var totalViews=0,totalLikes=0;
@@ -297,12 +500,14 @@ function dash(){
     Object.keys(A.stats.views||{}).forEach(function(k){totalViews+=A.stats.views[k]||0;});
     Object.keys(A.stats.likes||{}).forEach(function(k){totalLikes+=A.stats.likes[k]||0;});
   }
-  h+='<div class="a-grid" style="margin-top:22px"><div class="a-stat"><b>'+totalViews+'</b>Прегледи общо</div>'+
-    '<div class="a-stat"><b>'+totalLikes+'</b>Харесвания общо</div></div>';
-  h+='<div class="a-stats-cols" style="margin-top:18px">'+
+  h+='<div class="stat-grid"><div class="stat-card"><b>'+totalViews+'</b><span>Прегледи общо</span></div>'+
+    '<div class="stat-card"><b>'+totalLikes+'</b><span>Харесвания общо</span></div></div>';
+  h+='<div class="two-col">'+
     '<div><h3>Най-отваряно</h3>'+(A.stats?topStatsHTML("views"):'<p class="a-note">Зарежда…</p>')+'</div>'+
     '<div><h3>Най-харесвано</h3>'+(A.stats?topStatsHTML("likes"):'<p class="a-note">Зарежда…</p>')+'</div>'+
     '</div>';
+  h+='<div class="quick-new">'+Object.keys(TYPES).filter(can).map(function(k){
+    return '<button class="pbtn" data-act="new" data-k="'+k+'">+ '+esc2(TYPES[k].label)+'</button>';}).join("")+'</div>';
   return h;
 }
 function loadStats(){
@@ -328,12 +533,12 @@ function topStatsHTML(field){
   arr=arr.slice(0,8);
   if(!arr.length) return '<p class="a-note">Още няма данни.</p>';
   var max=arr[0].n;
-  return '<div class="a-stats-list">'+arr.map(function(x){
-    return '<div class="a-stats-row" style="cursor:pointer" data-act="edit" data-k="'+x.f.kind+'" data-id="'+esc2(x.f.it.id)+'">'+
-      '<span class="a-stats-bar" style="width:'+Math.max(6,Math.round(x.n/max*100))+'%"></span>'+
-      '<span class="a-stats-title">'+esc2(x.f.it.t)+'</span><span class="a-stats-kind">'+esc2(TYPES[x.f.kind].label)+'</span>'+
-      '<span class="a-stats-n">'+x.n+'</span></div>';
-  }).join("")+'</div>';
+  return arr.map(function(x){
+    return '<div class="rank-row" data-act="edit" data-k="'+x.f.kind+'" data-id="'+esc2(x.f.it.id)+'">'+
+      '<span class="rank-bar" style="width:'+Math.max(6,Math.round(x.n/max*100))+'%"></span>'+
+      '<span class="rank-t">'+esc2(x.f.it.t)+'</span><span class="rank-kind">'+esc2(TYPES[x.f.kind].label)+'</span>'+
+      '<span class="rank-n">'+x.n+'</span></div>';
+  }).join("");
 }
 
 /* ---------- списък ---------- */
@@ -363,10 +568,54 @@ function sortSelHTML(current){
     return '<option value="'+o[0]+'"'+(current===o[0]?" selected":"")+'>'+esc2(o[1])+'</option>';
   }).join("")+'</select>';
 }
+/* списъчната страница на календара остава по дизайн както е в момента на сайта — непроменена */
 function listTab(k){
+  if(k==="calendar") return listTabCalendar();
   var T=TYPES[k], list=all(k).slice().filter(mine);
-  if(k==="calendar") list=list.filter(calPlatformActive); /* изключена платформа не се вижда и в админ списъка, докато не се включи пак */
-  var sortMode = k==="calendar" ? (A.calSort||"upcoming") : "date-desc";
+  list.sort(function(a,b){return String(b.when||"").localeCompare(String(a.when||""));});
+  var h='<h2>'+esc2(T.label)+'</h2><p class="a-sub">'+list.length+' материала</p>';
+  h+='<div class="p-toolbar"><button class="pbtn pri" data-act="new" data-k="'+k+'">+ Нов</button>'+
+    '<input id="fltr" placeholder="търси по заглавие">';
+  var catField=CAT_FIELD[k];
+  if(catField){
+    var cats=[]; list.forEach(function(it){var v=it[catField]; if(v&&cats.indexOf(v)<0)cats.push(v);}); cats.sort();
+    h+=selBarNew("fCat","всички категории",cats);
+  }
+  var tagSet={}; list.forEach(function(it){(it.tags||[]).forEach(function(tg){tagSet[tg]=1;});});
+  var tagKeys=Object.keys(tagSet).sort(function(a,b){return tagLbl(a).localeCompare(tagLbl(b));});
+  if(tagKeys.length) h+=selBarNew("fTag","всички тагове",tagKeys.map(function(tg){return [tg,tagLbl(tg)];}));
+  h+='<span class="psp"></span><span class="pcnt">'+list.length+' материала</span></div>';
+  h+='<div id="aList">';
+  h+=list.map(function(it){ return listRowNew(k,it); }).join("")||'<p class="a-note">Още няма нищо тук.</p>';
+  return h+"</div>";
+}
+function selBarNew(id,ph,opts){
+  return '<select id="'+id+'">'+
+    '<option value="">'+esc2(ph)+'</option>'+
+    opts.map(function(o){var v=Array.isArray(o)?o[0]:o,t=Array.isArray(o)?o[1]:o;return '<option value="'+esc2(v)+'">'+esc2(t)+'</option>';}).join("")+
+    '</select>';
+}
+function listRowNew(k,it){
+  var T=TYPES[k], img = k==="episodes" ? ytThumb(it.yt) : (it[T.img]||"");
+  var catField=CAT_FIELD[k];
+  var st=it.status||"published";
+  var rcls = st==="published"?"published":st==="hidden"?"hidden":st==="review"?"review":"";
+  var can2 = canPublish()&&(st==="published"||st==="hidden");
+  return '<div class="p-row" style="cursor:default" data-title="'+esc2(String(it.t||"").toLowerCase())+'"'+
+    (catField?' data-cat="'+esc2(it[catField]||"")+'"':"")+
+    ' data-tags="'+esc2((it.tags||[]).join(","))+'">'+
+    (img?'<img class="'+(T.shape==="p"?"p":"")+'" src="'+esc2(img)+'" alt="">':'<img class="'+(T.shape==="p"?"p":"")+'" alt="">')+
+    '<div class="pinfo"><div class="pttl">'+esc2(it.t||"(без заглавие)")+'</div>'+
+    '<div class="pmeta">'+esc2([it.when,it.authorName].filter(Boolean).join(" · "))+'</div></div>'+
+    '<button class="rpill '+rcls+'" style="cursor:'+(can2?"pointer":"default")+'" '+(can2?'data-act="toggle" data-k="'+k+'" data-id="'+it.id+'"':"disabled")+'>'+esc2(STATUS[st]||st)+'</button>'+
+    '<button class="pbtn sm" data-act="edit" data-k="'+k+'" data-id="'+it.id+'">Редактирай</button>'+
+    (isAdmin()?'<button class="pbtn sm dan" data-act="del" data-k="'+k+'" data-id="'+it.id+'">Изтрий</button>':'')+
+    '</div>';
+}
+function listTabCalendar(){
+  var k="calendar", T=TYPES[k], list=all(k).slice().filter(mine);
+  list=list.filter(calPlatformActive); /* изключена платформа не се вижда и в админ списъка, докато не се включи пак */
+  var sortMode = A.calSort||"upcoming";
   if(sortMode==="upcoming"){
     var td=today();
     list.sort(function(a,b){
@@ -379,27 +628,20 @@ function listTab(k){
   else if(sortMode==="title-az") list.sort(function(a,b){return String(a.t||"").localeCompare(String(b.t||""),"bg");});
   else list.sort(function(a,b){return String(b.when||"").localeCompare(String(a.when||""));});
   var h='<h2>'+esc2(T.label)+'</h2><div class="a-bar"><button class="a-btn pri" data-act="new" data-k="'+k+'">+ Нов</button>'+
-    (k==="calendar"&&canPublish()?'<button class="a-btn" data-act="calsync">Опресни от TMDB</button>':"")+
+    (canPublish()?'<button class="a-btn" data-act="calsync">Опресни от TMDB</button>':"")+
     '<input id="fltr" placeholder="търси по заглавие" style="background:#0A0908;border:1px solid var(--line);color:var(--tx);padding:8px 14px;font:inherit">';
 
-  var catField=CAT_FIELD[k];
-  if(catField){
-    var cats=[]; list.forEach(function(it){var v=it[catField]; if(v&&cats.indexOf(v)<0)cats.push(v);}); cats.sort();
-    h+=selBar("fCat","всички категории",cats);
-  }
   var tagSet={}; list.forEach(function(it){(it.tags||[]).forEach(function(tg){tagSet[tg]=1;});});
   var tagKeys=Object.keys(tagSet).sort(function(a,b){return tagLbl(a).localeCompare(tagLbl(b));});
   if(tagKeys.length) h+=selBar("fTag","всички тагове",tagKeys.map(function(tg){return [tg,tagLbl(tg)];}));
 
-  if(k==="calendar"){
-    var plats=[]; list.forEach(function(it){var v=it.platform; if(v&&plats.indexOf(v)<0)plats.push(v);}); plats.sort();
-    h+=selBar("fPlat","всички платформи",plats)+
-      selBar("fType","всички типове",[["cinema","Филми (по кината)"],["stream-movie","Филми в стрийминг"],["series","Сериали"],["event","Събития"]])+
-      sortSelHTML(sortMode);
-  }
+  var plats=[]; list.forEach(function(it){var v=it.platform; if(v&&plats.indexOf(v)<0)plats.push(v);}); plats.sort();
+  h+=selBar("fPlat","всички платформи",plats)+
+    selBar("fType","всички типове",[["cinema","Филми (по кината)"],["stream-movie","Филми в стрийминг"],["series","Сериали"],["event","Събития"]])+
+    sortSelHTML(sortMode);
 
   h+='<span class="sub" style="color:var(--tx2)">'+list.length+' материала</span></div>';
-  if(k==="calendar"&&canPublish()) h+=calProvidersHTML();
+  if(canPublish()) h+=calProvidersHTML();
   h+='<div id="aList">';
   h+=list.map(function(it){ return listRowAdm(k,it); }).join("")||'<p class="a-note">Още няма нищо тук.</p>';
   return h+"</div>";
@@ -521,67 +763,169 @@ function tagKeysByUsage(){
     return d!==0?d:lab[a].localeCompare(lab[b]);
   });
 }
+/* ---------- редактор V3 — платка + рафт с раздели; календарът има превключвател ръчно/автоматично ---------- */
 function editor(){
   var k=A.editKind, it=A.edit, T=TYPES[k];
-  var h='<div class="a-bar"><button class="a-btn" data-act="back">← Назад</button>'+
-    '<button class="a-btn pri" data-act="save">Запази</button>'+
-    (canPublish()&&it.status!=="published"?'<button class="a-btn" data-act="publish">Публикувай</button>':"")+
-    '<span class="sub" style="color:var(--tx2)">'+esc2(T.label)+' · '+esc2(STATUS[it.status]||"")+'</span></div>';
-  h+='<div class="a-form">'+f("Заглавие","t",it.t);
-
+  if(k==="calendar") return editorCalendar();
+  return editorGeneric(k,it,T);
+}
+function edF(label,name,val,type,extra){
+  var field = type==="area"
+    ? '<textarea data-f="'+name+'">'+esc2(val||"")+'</textarea>'
+    : '<input data-f="'+name+'" type="'+(type||"text")+'" value="'+esc2(val==null?"":val)+'" '+(extra||"")+'>';
+  return '<div class="ed-f"><label>'+esc2(label)+'</label>'+field+'</div>';
+}
+function edSel(label,name,val,opts){
+  return '<div class="ed-f"><label>'+esc2(label)+'</label><select data-f="'+name+'">'+
+    opts.map(function(o){var v=Array.isArray(o)?o[0]:o,t=Array.isArray(o)?(o[1]||o[0]):o;return '<option value="'+esc2(v)+'"'+(String(val)===String(v)?" selected":"")+'>'+esc2(t)+'</option>';}).join("")+
+    '</select></div>';
+}
+function edImgField(label,name,val,shape){
+  var s=SIZE[shape]||SIZE.h;
+  return '<div class="ed-f"><label>'+esc2(label)+' — '+s[0]+' × '+s[1]+'</label>'+
+    (val
+      ? '<div class="ed-img"><img src="'+esc2(val)+'"><button type="button" class="rmx" data-act="rmimg" data-rmf="'+name+'">✕</button></div>'
+      : '<div class="ed-drop">Няма изображение</div>')+
+    '<input type="file" accept="image/*" data-img="'+name+'" data-shape="'+shape+'" style="margin-top:8px;width:100%;background:none;border:0;color:var(--tx2);font-size:12px">'+
+    '</div>';
+}
+function edTopline(k,it,T){
+  var rcls = it.status==="published"?"published":it.status==="hidden"?"hidden":it.status==="review"?"review":"";
+  return '<div class="ed-topline"><button class="pbtn" data-act="back">← Назад</button>'+
+    '<span class="ed-crumb">'+esc2(T.label)+' › Редакция</span>'+
+    '<span style="flex:1"></span>'+
+    '<span class="rpill '+rcls+'">'+esc2(STATUS[it.status]||"")+'</span>'+
+    '<button class="pbtn pri" data-act="save">Запази</button>'+
+    (canPublish()&&it.status!=="published"?'<button class="pbtn" data-act="publish">Публикувай</button>':"")+
+    '</div>';
+}
+function edStatusSeg(it){
+  return canPublish()
+    ? '<div class="ed-f"><label>Състояние</label><div class="seg2">'+
+      [["draft","Чернова"],["review","Одобрение"],["published","Публично"]].map(function(o){
+        return '<button type="button" data-act="setstatus" data-st="'+o[0]+'" class="'+(it.status===o[0]?"on":"")+'">'+o[1]+'</button>';}).join("")+
+      '</div></div>'
+    : '<div class="ed-f"><label>Състояние</label><input value="За одобрение" disabled></div>';
+}
+function edCanvasHTML(it,ledeLabel,ledePh,bodyPh){
+  return '<input class="c-title" data-f="t" type="text" placeholder="Заглавие…" value="'+esc2(it.t||"")+'">'+
+    '<div class="c-lede-lbl">'+esc2(ledeLabel)+'</div>'+
+    '<textarea class="c-lede" data-f="lead" placeholder="'+esc2(ledePh)+'">'+esc2(it.lead||"")+'</textarea>'+
+    '<div class="float-tools">'+
+      ['**удебелено**|**','*курсив*|*','## подзаглавие|## ','- списък|- ','> акцент|> ','[текст](линк)|['].map(function(x){
+        var p=x.split("|"); return '<button type="button" data-md="'+esc2(p[1])+'">'+esc2(p[0])+'</button>';}).join("")+
+    '</div>'+
+    '<textarea class="c-body" data-f="body" placeholder="'+esc2(bodyPh)+'">'+esc2(it.body||"")+'</textarea>'+
+    '<div class="ed-preview"><span class="ed-preview-label">Как ще изглежда</span><div class="a-prev" id="aPrev"></div></div>';
+}
+function edTagsSection(it){
+  return '<div class="ed-sec"><div class="ed-sec-h" data-sec>'+ICO.tag+'<span class="ed-lbl">Тагове</span><span class="ed-chev">▾</span></div>'+
+    '<div class="ed-sec-b">'+
+    '<div class="ed-f"><label>Тагове — латиница, през запетая</label>'+
+    '<input data-f="tagsTxt" value="'+esc2((it.tags||[]).join(", "))+'">'+
+    '<div class="ed-tagcloud" style="margin-top:8px">'+tagKeysByUsage().map(function(s){
+      return '<span data-act="addtag" data-tag="'+esc2(s)+'">'+esc2(D.tagLabels[s])+'</span>';}).join("")+'</div>'+
+    '<p class="rail-note">Тема със страница се появява при два материала с един и същ таг. Най-използваните тагове са отгоре.</p>'+
+    '<p class="a-warn" id="tagWarn"></p>'+
+    '</div>'+
+    '<div class="ed-sub">Предложи тагове от TMDB</div>'+
+    '<div class="tmdb-row2">'+
+      '<input id="tmdbQ" placeholder="Име на филм/сериал" value="'+esc2(it.t||"")+'">'+
+      '<button type="button" data-act="tmdbtags">Предложи</button>'+
+    '</div>'+
+    '<p class="rail-note">Тегли актьорския състав и режисьора от TMDB и ги предлага като готови тагове.</p>'+
+    '<div class="tmdb-sugbox2" id="tmdbTagSuggest"></div>'+
+    '</div></div>';
+}
+function edDetails(k,it){
   if(k==="news"){
-    h+='<div class="a-grid">'+f("Дата","when",it.when,"date")+
-      sel("Категория","cat",it.cat,[""].concat((D.settings.newsTags||[])))+'</div>'+
-      imgField("Снимка","img",it.img,"h")+
-      f("Кратък отговор — 2–3 изречения, това цитират търсачките","lead",it.lead,"area")+
-      body(it)+
-      '<div class="a-grid">'+
-        f("Линк — „Чуй повече\" (по избор)","video",it.video,"text",'placeholder="https://youtube.com/…"')+
-        f("Линк към трейлъра (по избор)","trailer",it.trailer,"text",'placeholder="https://youtube.com/…"')+
-      '</div>'+
-      '<p class="a-note">„Чуй повече\" води към нашия YouTube канал, ако сме говорили по темата. „Виж трейлъра\" се появява само ако има линк тук и води към официалния трейлър.</p>'+
-      '<div class="a-grid">'+f("Източник","source",it.source)+f("Линк към източника","sourceUrl",it.sourceUrl)+'</div>';
+    return '<div class="ed-row">'+edF("Дата","when",it.when,"date")+edSel("Категория","cat",it.cat,[""].concat((D.settings.newsTags||[])))+'</div>';
   }
   if(k==="reviews"){
-    h+='<div class="a-grid">'+f("Дата на публикуване","when",it.when,"date")+
-      f("Година на филма","y",it.y)+
-      sel("Оценка","s",it.s,[[1,"1 клапа"],[2,"2 клапи"],[3,"3 клапи"],[4,"4 клапи"],[5,"5 клапи"]])+
-      f("Времетраене в минути","mins",it.mins)+'</div>'+
-      genreField("g",it.g)+
-      imgField("Постер","poster",it.poster,"p")+
-      imgField("Кадър за споделяне","share",it.share,"h")+
-      f("Кратък отговор","lead",it.lead,"area")+body(it)+
-      '<div class="a-grid">'+
-        f("Линк — „Чуй повече\" (по избор)","video",it.video)+
-        f("Линк към трейлъра (по избор)","trailer",it.trailer)+
-      '</div>';
+    return '<div class="ed-row3">'+edF("Година","y",it.y)+edF("Минути","mins",it.mins)+edF("Дата","when",it.when,"date")+'</div>'+
+      '<div class="ed-f"><label>Оценка</label><div class="claps-pick" id="clapsPick"></div></div>'+
+      genreField("g",it.g);
   }
   if(k==="craft"){
-    h+='<div class="a-grid">'+f("Дата","when",it.when,"date")+
-      sel("Раздел","cat",it.cat,["","Камера","Монтаж","Звук","VFX","Каскади","Продукция","Кадър по кадър"])+
-      f("Гост","guest",it.guest)+f("Роля на госта","role",it.role)+'</div>'+
-      imgField("Кадър","img",it.img,"h")+
-      '<div class="a-grid">'+
-        f("Линк към видеото в YouTube или Vimeo","video",it.video)+
-        f("Линк към трейлъра (по избор)","trailer",it.trailer)+
-      '</div>'+
-      f("Кратък отговор","lead",it.lead,"area")+body(it);
+    return '<div class="ed-row">'+edF("Дата","when",it.when,"date")+
+      edSel("Раздел","cat",it.cat,["","Камера","Монтаж","Звук","VFX","Каскади","Продукция","Кадър по кадър"])+'</div>'+
+      '<div class="ed-row">'+edF("Гост","guest",it.guest)+edF("Роля на госта","role",it.role)+'</div>';
   }
   if(k==="episodes"){
-    h+='<div class="a-grid">'+f("Дата","when",it.when,"date")+f("Номер","n",it.n)+
-      f("Сезон / раздел","cat",it.cat)+f("Времетраене в минути","len",it.len)+'</div>'+
-      f("Линк към YouTube","yt",it.yt)+f("Линк към Spotify","sp",it.sp)+
-      '<p class="a-note">Тъмбнейлът се взима от линка. Заглавието и описанието се попълват на ръка.</p>'+
-      f("Кратко описание","lead",it.lead,"area")+body(it);
+    return '<div class="ed-row">'+edF("Дата","when",it.when,"date")+edF("Номер","n",it.n)+'</div>'+
+      '<div class="ed-row">'+edF("Сезон / раздел","cat",it.cat)+edF("Времетраене в минути","len",it.len)+'</div>';
   }
   if(k==="merch"){
-    h+='<div class="a-grid">'+f("Цена в лева","price",it.price,"number")+
-      sel("Наличност","on",it.on?"1":"",[["1","Налично"],["","Няма"]])+'</div>'+
-      imgField("Снимка","img",it.img,"h")+
-      f("Размери през запетая","sizesTxt",(it.sizes||[]).join(", "))+
-      f("Кратко описание","lead",it.lead,"area")+body(it);
+    return '<div class="ed-row">'+edF("Цена в лева","price",it.price,"number")+
+      edSel("Наличност","on",it.on?"1":"",[["1","Налично"],["","Няма"]])+'</div>'+
+      edF("Размери през запетая","sizesTxt",(it.sizes||[]).join(", "));
   }
-  if(k==="calendar"){
+  return "";
+}
+function edLinks(k,it){
+  if(k==="news"){
+    return edF('Линк — „Чуй повече“ (по избор)',"video",it.video,"text",'placeholder="https://youtube.com/…"')+
+      edF("Линк към трейлъра (по избор)","trailer",it.trailer,"text",'placeholder="https://youtube.com/…"')+
+      '<p class="rail-note">„Чуй повече“ води към нашия YouTube канал. „Виж трейлъра“ се появява само ако има линк тук.</p>'+
+      '<div class="ed-row" style="margin-top:10px">'+edF("Източник","source",it.source)+edF("Линк към източника","sourceUrl",it.sourceUrl)+'</div>';
+  }
+  if(k==="reviews"){
+    return edF('Линк — „Чуй повече“ (по избор)',"video",it.video)+edF("Линк към трейлъра (по избор)","trailer",it.trailer);
+  }
+  if(k==="craft"){
+    return edF("Линк към видеото в YouTube или Vimeo","video",it.video)+edF("Линк към трейлъра (по избор)","trailer",it.trailer);
+  }
+  if(k==="episodes"){
+    return edF("Линк към YouTube","yt",it.yt)+edF("Линк към Spotify","sp",it.sp)+
+      '<p class="rail-note">Тъмбнейлът се взима от линка. Заглавието и описанието се попълват на ръка.</p>';
+  }
+  return "";
+}
+function edRail(k,it,T){
+  var h='<div class="ed-sec open"><div class="ed-sec-h" data-sec>'+ICO.pub+'<span class="ed-lbl">Публикуване</span><span class="ed-chev">▾</span></div>'+
+    '<div class="ed-sec-b">'+edStatusSeg(it)+
+    '<div class="ed-row">'+edF("Дата","when",it.when,"date")+edF("Подпис на автора","authorName",it.authorName)+'</div>'+
+    '</div></div>';
+
+  var det=edDetails(k,it);
+  if(det) h+='<div class="ed-sec open"><div class="ed-sec-h" data-sec>'+ICO.details+'<span class="ed-lbl">Детайли</span><span class="ed-chev">▾</span></div><div class="ed-sec-b">'+det+'</div></div>';
+
+  if(k!=="episodes"){
+    var imgLbl = k==="news"?"Снимка":k==="reviews"?"Снимки":k==="craft"?"Кадър":"Снимка";
+    var imgHtml = edImgField(k==="reviews"?"Постер":imgLbl, T.img, it[T.img], T.shape);
+    if(k==="reviews") imgHtml += edImgField("Кадър за споделяне","share",it.share,"h");
+    h+='<div class="ed-sec"><div class="ed-sec-h" data-sec>'+ICO.img+'<span class="ed-lbl">'+esc2(imgLbl)+'</span><span class="ed-chev">▾</span></div><div class="ed-sec-b">'+imgHtml+'</div></div>';
+  }
+
+  var links=edLinks(k,it);
+  if(links) h+='<div class="ed-sec"><div class="ed-sec-h" data-sec>'+ICO.link+'<span class="ed-lbl">Връзки</span><span class="ed-chev">▾</span></div><div class="ed-sec-b">'+links+'</div></div>';
+
+  if(k!=="merch") h+=edTagsSection(it);
+  return h;
+}
+function editorGeneric(k,it,T){
+  var ledeLabel = "Кратък отговор — това цитират търсачките", ledePh="2–3 изречения, обобщаващи материала…";
+  if(k==="episodes") { ledeLabel="Кратко описание"; ledePh="2–3 изречения за епизода…"; }
+  if(k==="merch") { ledeLabel="Кратко описание"; ledePh="2–3 изречения за продукта…"; }
+  var h=edTopline(k,it,T);
+  h+='<div class="ed-shell"><div class="ed-canvas">'+
+    edCanvasHTML(it,ledeLabel,ledePh,"Продължи да пишеш тук…")+
+    '</div><div class="ed-rail">'+edRail(k,it,T)+'</div></div>';
+  setTimeout(function(){ preview(); paintClapsPick(); },0);
+  return h;
+}
+function editorCalendar(){
+  var k="calendar", it=A.edit, T=TYPES[k];
+  if(A.calMode===undefined) A.calMode = it.src==="tmdb" ? "sync" : "manual";
+  var h=edTopline(k,it,T);
+  h+='<div class="cal-mode-seg"><div class="seg2">'+
+    '<button type="button" data-act="calmode" data-mode="manual" class="'+(A.calMode==="manual"?"on":"")+'">Ръчно събитие</button>'+
+    '<button type="button" data-act="calmode" data-mode="sync" class="'+(A.calMode==="sync"?"on":"")+'">Синхронизирано от TMDB</button>'+
+    '</div></div>';
+
+  if(A.calMode==="sync"){
+    /* автоматичната част остава по дизайн както е в момента — непроменена */
+    h+='<div class="a-form" style="margin-top:20px">'+f("Заглавие","t",it.t);
     h+='<div class="a-grid">'+f("Дата","when",it.when,"date")+
       sel("Вид","kind",it.kind,[["cinema","По кината"],["stream","Стрийминг"],["event","Събитие"]])+
       f("Платформа","platform",it.platform)+'</div>'+
@@ -601,9 +945,6 @@ function editor(){
       f("Кратък цитат — показва се под заглавието","lead",it.lead,"area")+
       f("Текст","body",it.body,"area")+
       '<p class="a-note">Ако филмът има свое ревю с точно същото заглавие, на страницата му автоматично се появява бутон „Прочети ревюто“.</p>';
-  }
-
-  if(k!=="merch"){
     h+='<div class="a-f"><label>Тагове — латиница, през запетая</label>'+
       '<input data-f="tagsTxt" value="'+esc2((it.tags||[]).join(", "))+'">'+
       '<div class="tagbox">'+tagKeysByUsage().map(function(s){
@@ -616,15 +957,38 @@ function editor(){
       '</div>'+
       '<div class="tagbox" id="tmdbTagSuggest" style="margin-top:8px"></div>'+
       '</div>';
+    h+='<div class="a-grid">'+
+      (canPublish()?sel("Състояние","status",it.status,[["published","Публикувано"],["hidden","Скрито"],["draft","Чернова"],["review","За одобрение"]])
+                   :'<div class="a-f"><label>Състояние</label><input value="За одобрение" disabled></div>')+
+      f("Подпис на автора","authorName",it.authorName)+'</div>';
+    h+='<div><label style="font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--tx2)">Как ще изглежда</label>'+
+       '<div class="a-prev" id="aPrev"></div></div>';
+    h+='<div class="a-bar"><button class="a-btn pri" data-act="save">Запази</button>'+
+       '<button class="a-btn" data-act="back">Откажи</button></div></div>';
+    setTimeout(preview,0);
+    return h;
   }
-  h+='<div class="a-grid">'+
-    (canPublish()?sel("Състояние","status",it.status,[["published","Публикувано"],["hidden","Скрито"],["draft","Чернова"],["review","За одобрение"]])
-                 :'<div class="a-f"><label>Състояние</label><input value="За одобрение" disabled></div>')+
-    f("Подпис на автора","authorName",it.authorName)+'</div>';
-  h+='<div><label style="font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--tx2)">Как ще изглежда</label>'+
-     '<div class="a-prev" id="aPrev"></div></div>';
-  h+='<div class="a-bar"><button class="a-btn pri" data-act="save">Запази</button>'+
-     '<button class="a-btn" data-act="back">Откажи</button></div></div>';
+
+  /* ръчно събитие — новият, изчистен изглед */
+  h+='<div class="ed-shell"><div class="ed-canvas">'+
+    edCanvasHTML(it,"Кратък цитат — показва се под заглавието","Кратко описание на събитието…","Продължи да пишеш тук…")+
+    '</div><div class="ed-rail">'+
+    '<div class="ed-sec open"><div class="ed-sec-h" data-sec>'+ICO.pub+'<span class="ed-lbl">Публикуване</span><span class="ed-chev">▾</span></div><div class="ed-sec-b">'+
+      edStatusSeg(it)+'<div class="ed-row">'+edF("Подпис на автора","authorName",it.authorName)+'</div>'+
+    '</div></div>'+
+    '<div class="ed-sec open"><div class="ed-sec-h" data-sec>'+ICO.details+'<span class="ed-lbl">Детайли</span><span class="ed-chev">▾</span></div><div class="ed-sec-b">'+
+      '<div class="ed-row">'+edF("Дата","when",it.when,"date")+edF("Час","time",it.time)+'</div>'+
+      '<div class="ed-row">'+edF("Място","place",it.place)+edF("Организатор","organizer",it.organizer)+'</div>'+
+      edF("Цена в евро","price",it.price,"number")+
+    '</div></div>'+
+    '<div class="ed-sec"><div class="ed-sec-h" data-sec>'+ICO.img+'<span class="ed-lbl">Снимка на събитието</span><span class="ed-chev">▾</span></div><div class="ed-sec-b">'+
+      edImgField("Снимка","poster",typeof it.poster==="string"&&it.poster.indexOf("data:")===0?it.poster:"","p")+
+    '</div></div>'+
+    '<div class="ed-sec"><div class="ed-sec-h" data-sec>'+ICO.link+'<span class="ed-lbl">Връзки</span><span class="ed-chev">▾</span></div><div class="ed-sec-b">'+
+      edF("Трейлър (по избор)","video",it.video)+edF("Линк към билети","ticketUrl",it.ticketUrl)+
+    '</div></div>'+
+    edTagsSection(it)+
+    '</div></div>';
   setTimeout(preview,0);
   return h;
 }
@@ -643,17 +1007,17 @@ function preview(){
 
 /* ---------- резервно копие ---------- */
 function backupTab(){
-  var h='<h2>Резервно копие</h2>'+
-   '<div class="a-bar"><button class="a-btn pri" data-act="dl">Изтегли пълно копие</button>'+
-   '<label class="a-btn" style="cursor:pointer">Отвори копие<input type="file" accept="application/json,.json" data-restore style="display:none"></label>'+
-   (A.backup?'<button class="a-btn dan" data-act="closebk">Затвори копието</button>':"")+'</div>'+
+  var h='<h2>Резервно копие</h2><p class="a-sub">Копие на цялото съдържание, заедно със снимките.</p>'+
+   '<div class="a-bar"><button class="pbtn pri" data-act="dl">Изтегли пълно копие</button>'+
+   '<label class="pbtn" style="cursor:pointer">Отвори копие<input type="file" accept="application/json,.json" data-restore style="display:none"></label>'+
+   (A.backup?'<button class="pbtn dan" data-act="closebk">Затвори копието</button>':"")+'</div>'+
    '<p class="a-note">Копието съдържа всички статии заедно със снимките. Отвориш ли го, виждаш всяка статия поотделно и връщаш само тази, която ти трябва — останалото не се пипа.</p>';
 
   if(!A.backup) return h;
   var b=A.backup, kinds=Object.keys(TYPES).filter(function(k){return (b[k]||[]).length;});
   h+='<div class="a-bar" style="margin-top:18px"><b style="color:var(--y)">Отворено копие</b>'+
      '<span class="sub" style="color:var(--tx2)">'+kinds.map(function(k){return TYPES[k].label+": "+b[k].length;}).join(" · ")+'</span>'+
-     (isAdmin()?'<button class="a-btn dan" data-act="restoreall">Върни всичко</button>':"")+'</div>';
+     (isAdmin()?'<button class="pbtn dan" data-act="restoreall">Върни всичко</button>':"")+'</div>';
   kinds.forEach(function(k){
     h+='<h2 style="font-size:16px;margin-top:20px">'+esc2(TYPES[k].label)+'</h2>';
     h+=b[k].map(function(it){
@@ -663,8 +1027,8 @@ function backupTab(){
       return '<div class="a-row">'+(img?'<img class="'+(TYPES[k].shape==="p"?"p":"")+'" src="'+esc2(img)+'">':'<img>')+
         '<span class="t">'+esc2(it.t||"")+'</span><span class="sub">'+esc2(it.when||"")+'</span>'+
         '<span class="sub" style="color:'+(diff==="същото"?"var(--tx2)":"var(--y)")+'">'+diff+'</span>'+
-        '<button class="a-btn" data-act="bkview" data-k="'+k+'" data-id="'+esc2(it.id)+'">Виж</button>'+
-        '<button class="a-btn pri" data-act="bkrestore" data-k="'+k+'" data-id="'+esc2(it.id)+'">Върни тази</button></div>';
+        '<button class="pbtn sm" data-act="bkview" data-k="'+k+'" data-id="'+esc2(it.id)+'">Виж</button>'+
+        '<button class="pbtn sm pri" data-act="bkrestore" data-k="'+k+'" data-id="'+esc2(it.id)+'">Върни тази</button></div>';
     }).join("");
   });
   return h;
@@ -687,73 +1051,104 @@ function bkView(k,id){
 function headsTab(){
   var lists={novini:"Новини",revyuta:"Ревюта",podkast:"Подкаст","zad-kadar":"Зад кадър",march:"Мърч",kalendar:"Movie calendar"};
   D.heads=D.heads||{};
-  return '<h2>Рубрики</h2><p class="a-note">Заглавието и банерът на всяка списъчна страница.</p>'+
-    Object.keys(lists).map(function(s){
-      var hd=D.heads[s]||(D.heads[s]={title:lists[s],banner:""});
-      return '<div style="border:1px solid var(--line);padding:12px;margin-bottom:10px">'+
-        '<div class="a-f"><label>'+esc2(lists[s])+' — заглавие</label><input data-head="'+s+'" data-hf="title" value="'+esc2(hd.title||"")+'"></div>'+
-        '<div class="a-img" style="margin-top:8px">'+(hd.banner?'<img src="'+esc2(hd.banner)+'" style="max-height:90px">':'<p>няма банер</p>')+
-        '<input type="file" accept="image/*" data-img="banner:'+s+'" data-shape="b" style="width:auto;background:none;border:0"></div></div>';
-    }).join("")+'<button class="a-btn pri" data-act="save">Запази</button>';
+  var keys=Object.keys(lists);
+  var h='<h2>Рубрики</h2><p class="a-sub">Заглавието и банерът на всяка списъчна страница.</p>';
+  h+=keys.map(function(s,i){
+    var hd=D.heads[s]||(D.heads[s]={title:lists[s],banner:""});
+    return '<div class="ed-sec'+(i===0?" open":"")+'" style="max-width:680px">'+
+      '<div class="ed-sec-h" data-sec>'+ICO.details+'<span class="ed-lbl">'+esc2(lists[s])+'</span><span class="ed-chev">▾</span></div>'+
+      '<div class="ed-sec-b">'+
+      '<div class="ed-f"><label>Заглавие на страницата</label><input data-head="'+s+'" data-hf="title" value="'+esc2(hd.title||"")+'"></div>'+
+      '<div class="ed-f"><label>Банер</label>'+
+      (hd.banner?'<div class="ed-img"><img src="'+esc2(hd.banner)+'"></div>':'<div class="ed-drop">Няма банер</div>')+
+      '<input type="file" accept="image/*" data-img="banner:'+s+'" data-shape="b" style="margin-top:8px;width:100%;background:none;border:0;color:var(--tx2);font-size:12px">'+
+      '</div>'+
+      '</div></div>';
+  }).join("");
+  h+='<button class="pbtn pri" style="margin-top:10px" data-act="save">Запази</button>';
+  return h;
 }
 function settingsTab(){
   var s=D.settings||(D.settings={});
-  var fields=[["tagline","Подзаглавие"],["aboutTitle","За нас — заглавие"],["about","За нас — текст","area"],
-    ["contactEmail","Имейл за контакт"],["orderEmail","Имейл за поръчки"],["shipping","Цена на доставка"],
-    ["copyright","Долен ред"],["joinText","Покана"],["joinBtn","Бутон на поканата"],
-    ["calendarLede","Movie calendar — подзаглавие (под заглавието, на началната и на /kalendar)"],
-    ["cinemaProgramUrl","Линк към програмата по кината — бутон на страницата на филм „По кината“"]];
-  return '<h2>Настройки</h2><div class="a-form">'+
-    fields.map(function(x){return f(x[1],"s:"+x[0],s[x[0]],x[2]);}).join("")+
-    f("Бягаща лента — по едно на ред","s:tickerTxt",(s.ticker||[]).join("\n"),"area")+
-    f("Жанрове през запетая","s:genresTxt",(s.genres||[]).join(", "))+
-    f("Категории на новините през запетая","s:newsTagsTxt",(s.newsTags||[]).join(", "))+
-    '<button class="a-btn pri" data-act="save">Запази</button></div>'+
-    tagManageHTML();
+  function sec(open,icon,label,inner){
+    return '<div class="ed-sec'+(open?" open":"")+'" style="max-width:680px"><div class="ed-sec-h" data-sec>'+icon+'<span class="ed-lbl">'+esc2(label)+'</span><span class="ed-chev">▾</span></div><div class="ed-sec-b">'+inner+'</div></div>';
+  }
+  var h='<h2>Настройки</h2><p class="a-sub">Общи текстове и връзки, показвани на сайта.</p>';
+  h+=sec(true, ICO.details, "Основни текстове",
+    edF("Подзаглавие","s:tagline",s.tagline)+
+    edF("За нас — заглавие","s:aboutTitle",s.aboutTitle)+
+    edF("За нас — текст","s:about",s.about,"area")+
+    edF("Долен ред","s:copyright",s.copyright)+
+    edF("Покана","s:joinText",s.joinText)+
+    edF("Бутон на поканата","s:joinBtn",s.joinBtn)
+  );
+  h+=sec(false, ICO.link, "Контакти",
+    edF("Имейл за контакт","s:contactEmail",s.contactEmail)+
+    edF("Имейл за поръчки","s:orderEmail",s.orderEmail)+
+    edF("Цена на доставка","s:shipping",s.shipping)
+  );
+  h+=sec(false, ICO.details, "Movie calendar",
+    edF("Подзаглавие (под заглавието, на началната и на /kalendar)","s:calendarLede",s.calendarLede)+
+    edF('Линк към програмата по кината — бутон на страницата на филм „По кината“',"s:cinemaProgramUrl",s.cinemaProgramUrl)
+  );
+  h+=sec(false, ICO.details, "Бягаща лента",
+    edF("По едно съобщение на ред","s:tickerTxt",(s.ticker||[]).join("\n"),"area")
+  );
+  h+=sec(false, ICO.tag, "Жанрове и категории",
+    edF("Жанрове през запетая","s:genresTxt",(s.genres||[]).join(", "))+
+    edF("Категории на новините през запетая","s:newsTagsTxt",(s.newsTags||[]).join(", "))
+  );
+  h+='<button class="pbtn pri" style="margin-top:6px" data-act="save">Запази</button>';
+  h+=tagManageHTML();
+  return h;
 }
 function tagManageHTML(){
   var counts=tagUsageCounts(), keys=tagKeysByUsage();
   var unused=keys.filter(function(s){return !counts[s];}).length;
-  return '<div class="a-form"><div class="a-f"><label>Тагове — '+keys.length+' общо. Кликни × за трайно изтриване (маха тага и от всички статии, които го ползват).</label>'+
-    (unused?'<button type="button" class="a-btn dan" data-act="delunusedtags" style="margin-bottom:8px">Изтрий неизползваните ('+unused+')</button>':'')+
-    '<div class="tagbox" style="max-height:260px">'+keys.map(function(s){
+  return '<div class="ed-sec open" style="max-width:680px;margin-top:20px"><div class="ed-sec-h" data-sec>'+ICO.tag+'<span class="ed-lbl">Управление на тагове — '+keys.length+'</span><span class="ed-chev">▾</span></div>'+
+    '<div class="ed-sec-b">'+
+    (unused?'<button type="button" class="pbtn dan sm" data-act="delunusedtags" style="margin-bottom:10px">Изтрий неизползваните ('+unused+')</button>':'')+
+    '<div class="ed-tagcloud" style="max-height:260px;overflow-y:auto">'+keys.map(function(s){
       var n=counts[s]||0;
       return '<span>'+esc2(D.tagLabels[s])+(n?' ('+n+')':'')+
-        '<button type="button" class="tagdel" data-act="deltag" data-tag="'+esc2(s)+'" aria-label="Изтрий">×</button></span>';
-    }).join("")+'</div></div></div>';
+        '<button type="button" data-act="deltag" data-tag="'+esc2(s)+'" aria-label="Изтрий" style="border:0;background:none;color:inherit;cursor:pointer;font:inherit;font-weight:900;padding:0 0 0 6px;opacity:.7">×</button></span>';
+    }).join("")+'</div>'+
+    '<p class="rail-note">Кликни × за трайно изтриване (маха тага и от всички статии, които го ползват).</p>'+
+    '</div></div>';
 }
 function usersTab(){
-  if(A.users===null||A.users===undefined){ loadUsers(); return '<h2>Потребители</h2><p class="a-note">Зарежда…</p>'; }
-  var h='<h2>Потребители</h2>';
+  if(A.users===null||A.users===undefined){ loadUsers(); return '<h2>Потребители</h2><p class="a-sub">Зарежда…</p>'; }
+  var h='<h2>Потребители</h2><p class="a-sub">'+A.users.length+' души с достъп до панела.</p>';
   if(A.usersErr) h+='<div class="a-msg err">'+esc2(A.usersErr)+'</div>';
   h+=A.users.map(function(x){
-    return '<div class="a-row"><span class="t">'+esc2(x.name||"")+'</span>'+
-      '<span class="sub">'+esc2(x.email||"")+'</span>'+
-      '<span class="sub">'+esc2({admin:"администратор",moderator:"модератор",author:"автор"}[x.role]||x.role)+'</span>'+
-      (x.id==="owner"?'<span class="sub" style="color:var(--y)">собственик</span>':"")+
-      '<button class="a-btn" data-act="uedit" data-i="'+esc2(x.id)+'">Промени</button>'+
-      (x.id==="owner"?"":'<button class="a-btn dan" data-act="udel" data-i="'+esc2(x.id)+'">Изтрий</button>')+
+    var roleLbl={admin:"администратор",moderator:"модератор",author:"автор"}[x.role]||x.role;
+    return '<div class="p-row" style="cursor:default">'+
+      '<div class="pinfo"><div class="pttl">'+esc2(x.name||"")+(x.id==="owner"?' <span style="color:var(--y);font-family:Oswald,sans-serif;font-size:10px;letter-spacing:.05em;text-transform:uppercase">· собственик</span>':'')+'</div>'+
+      '<div class="pmeta">'+esc2(x.email||"")+'</div></div>'+
+      '<span class="rpill '+(x.role==="admin"?"published":"")+'">'+esc2(roleLbl)+'</span>'+
+      '<button class="pbtn sm" data-act="uedit" data-i="'+esc2(x.id)+'">Промени</button>'+
+      (x.id==="owner"?"":'<button class="pbtn sm dan" data-act="udel" data-i="'+esc2(x.id)+'">Изтрий</button>')+
       '</div>';
   }).join("")||'<p class="a-note">Още няма никого освен теб.</p>';
 
   var e=A.userEdit||{id:"",name:"",email:"",role:"author"};
-  h+='<div style="border:1px solid var(--line);padding:14px;margin-top:16px">'+
-    '<h2 style="font-size:16px">'+(e.id?"Промяна на "+esc2(e.name):"Нов потребител")+'</h2>'+
-    '<div class="a-grid">'+
-      '<div class="a-f"><label>Име</label><input data-u="name" value="'+esc2(e.name)+'"></div>'+
-      '<div class="a-f"><label>Имейл</label><input data-u="email" type="email" value="'+esc2(e.email)+'"'+(e.id==="owner"?"":"")+'></div>'+
-      '<div class="a-f"><label>Роля</label><select data-u="role"'+(e.id==="owner"?" disabled":"")+'>'+
-        [["author","Автор"],["moderator","Модератор"],["admin","Администратор"]].map(function(o){
-          return '<option value="'+o[0]+'"'+(e.role===o[0]?" selected":"")+'>'+o[1]+'</option>';}).join("")+
-      '</select></div>'+
-      '<div class="a-f"><label>Парола'+(e.id?" — празно значи без промяна":" — поне 8 знака")+'</label>'+
-        '<input data-u="pass" type="password" autocomplete="new-password"></div>'+
+  h+='<div class="ed-sec open" style="max-width:640px;margin-top:20px"><div class="ed-sec-h" data-sec>'+ICO.details+'<span class="ed-lbl">'+(e.id?"Промяна на "+esc2(e.name):"Нов потребител")+'</span><span class="ed-chev">▾</span></div>'+
+    '<div class="ed-sec-b">'+
+    '<div class="ed-row">'+
+      '<div class="ed-f"><label>Име</label><input data-u="name" value="'+esc2(e.name)+'"></div>'+
+      '<div class="ed-f"><label>Имейл</label><input data-u="email" type="email" value="'+esc2(e.email)+'"></div>'+
     '</div>'+
-    '<div class="a-bar" style="margin-top:10px"><button class="a-btn pri" data-act="usave">'+(e.id?"Запази":"+ Добави")+'</button>'+
-    (e.id?'<button class="a-btn" data-act="ucancel">Откажи</button>':"")+'</div>'+
-    '<p class="a-note">Паролите се пазят само като отпечатък и не се четат обратно. Забравена парола се заменя с нова оттук.</p>'+
-    '<p class="a-note">Ако си влязъл през резервния ключ <b>ADMIN_KEY</b>, оттук си задаваш нова парола на своя имейл.</p>'+
-    '</div>';
+    '<div class="ed-f"><label>Роля</label><select data-u="role"'+(e.id==="owner"?" disabled":"")+'>'+
+      [["author","Автор"],["moderator","Модератор"],["admin","Администратор"]].map(function(o){
+        return '<option value="'+o[0]+'"'+(e.role===o[0]?" selected":"")+'>'+o[1]+'</option>';}).join("")+
+    '</select></div>'+
+    '<div class="ed-f"><label>Парола'+(e.id?" — празно значи без промяна":" — поне 8 знака")+'</label>'+
+      '<input data-u="pass" type="password" autocomplete="new-password"></div>'+
+    '<button class="pbtn pri" data-act="usave">'+(e.id?"Запази":"+ Добави")+'</button>'+
+    (e.id?' <button class="pbtn" data-act="ucancel" style="margin-left:8px">Откажи</button>':"")+
+    '<p class="rail-note" style="margin-top:10px">Паролите се пазят само като отпечатък и не се четат обратно. Забравена парола се заменя с нова оттук.</p>'+
+    '<p class="rail-note">Ако си влязъл през резервния ключ <b>ADMIN_KEY</b>, оттук си задаваш нова парола на своя имейл.</p>'+
+    '</div></div>';
   return h;
 }
 function uHeaders(){
@@ -797,17 +1192,21 @@ function delUser(id){
 
 /* ---------- събития ---------- */
 function onClick(e){
-  var t=e.target.closest?e.target.closest("[data-act],[data-tab],[data-md]"):null;
+  var t=e.target.closest?e.target.closest("[data-act],[data-tab],[data-md],[data-sec]"):null;
   if(e.target.id==="lgGo"){ doLogin(); return; }
   if(!t) return;
+  if(t.hasAttribute("data-sec")){ t.parentElement.classList.toggle("open"); return; }
   var act=t.getAttribute("data-act"), k=t.getAttribute("data-k"), id=t.getAttribute("data-id");
   if(t.hasAttribute("data-tab")){ A.edit=null; A.tab=t.getAttribute("data-tab"); if(A.tab==="users"){A.users=null;A.userEdit=null;A.usersErr=null;} draw(); return; }
   if(t.hasAttribute("data-md")){ insert(t.getAttribute("data-md")); return; }
-  if(act==="new"){ A.editKind=k; A.edit=blank(k); draw(); return; }
-  if(act==="edit"){ A.editKind=k; A.edit=JSON.parse(JSON.stringify(all(k).filter(function(x){return x.id===id;})[0]||{})); A.tab=k; draw();
+  if(act==="new"){ A.editKind=k; A.edit=blank(k); A.calMode=undefined; draw(); return; }
+  if(act==="edit"){ A.editKind=k; A.edit=JSON.parse(JSON.stringify(all(k).filter(function(x){return x.id===id;})[0]||{})); A.tab=k; A.calMode=undefined; draw();
     if(k==="calendar"||k==="reviews") autoTmdbTags(); return; }
-  if(act==="back"){ A.edit=null; draw(); return; }
+  if(act==="back"){ A.edit=null; A.calMode=undefined; draw(); return; }
   if(act==="save"){ save(); return; }
+  if(act==="setstatus"){ collect(); A.edit.status=t.getAttribute("data-st"); draw(); return; }
+  if(act==="setclaps"){ collect(); A.edit.s=+t.getAttribute("data-n")||0; draw(); return; }
+  if(act==="calmode"){ collect(); A.calMode=t.getAttribute("data-mode"); draw(); return; }
   if(act==="publish"){ A.edit.status="published"; save(); return; }
   if(act==="approve"){ var o=all(k).filter(function(x){return x.id===id;})[0]; if(o){o.status="published"; persist("Одобрено и публикувано.");} return; }
   if(act==="toggle"){ var o2=all(k).filter(function(x){return x.id===id;})[0];
@@ -956,7 +1355,7 @@ function applyListFilters(){
   var tag=(document.getElementById("fTag")||{}).value||"";
   var plat=(document.getElementById("fPlat")||{}).value||"";
   var typ=(document.getElementById("fType")||{}).value||"";
-  [].forEach.call(document.querySelectorAll("#aList .a-row"),function(r){
+  [].forEach.call(document.querySelectorAll("#aList .a-row, #aList .p-row"),function(r){
     var ok=true;
     if(q&&(r.getAttribute("data-title")||"").indexOf(q)<0) ok=false;
     if(ok&&cat&&r.getAttribute("data-cat")!==cat) ok=false;
@@ -1074,7 +1473,7 @@ function blank(k){
   if(k==="craft"){b.img="";b.cat="";b.video="";b.trailer="";b.guest="";b.role="";}
   if(k==="episodes"){b.yt="";b.sp="";b.n="";b.len="";b.cat="";}
   if(k==="merch"){b.img="";b.price=0;b.sizes=[];b.on=true;}
-  if(k==="calendar"){b.kind="cinema";b.platform="";b.poster="";b.src="manual";b.genre=[];b.price=0;}
+  if(k==="calendar"){b.kind="event";b.platform="";b.poster="";b.src="manual";b.genre=[];b.price=0;}
   return b;
 }
 /* полетата в Настройки (data-f="s:...") не минават през collect() — той изисква отворен редактор (A.edit),
