@@ -172,12 +172,6 @@ const KEY_OF = { reviews: "r", news: "n", craft: "c", merch: "m" };
 /* допълнителни снимки извън основното поле: кадър за споделяне и банери на рубриките */
 const EXTRA_IMG = [{ key: "rs", kind: "reviews", field: "share" }];
 const isDataUri = (v) => typeof v === "string" && v.slice(0, 11) === "data:image/";
-/* кратък отпечатък, за да се смени адресът при нова снимка */
-function stamp(str) {
-  let h = 5381;
-  for (let i = 0; i < str.length; i += 97) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0;
-  return (h.toString(36) + str.length.toString(36)).slice(0, 10);
-}
 /* при запис: нова снимка (base64) се пази в собствен, отделен KV запис — в основното съдържание остава
    само кратък адрес. Иначе целият сайт трябва да пренася всички снимки при всяко зареждане (причината
    зад грешка 1102 — Cloudflare спира заявката по средата, щом записът стане твърде тежък). */
@@ -790,13 +784,6 @@ function calCat(c) {
   if (c.kind === "stream") return c.platform || "Стрийминг";
   return "По кината";
 }
-function calSubLabel(c) {
-  if (String(c.note || "").trim()) return c.note;
-  if (c.sub === "series") return "Нов сериал";
-  if (c.sub === "season") return c.season ? "Сезон " + c.season : "Нов сезон";
-  if (c.sub === "episode") return c.season && c.episode ? "S" + c.season + " · E" + c.episode : "Нов епизод";
-  return "";
-}
 function calReviewFor(data, it) {
   const t = String(it.t || "").trim().toLowerCase();
   if (!t) return null;
@@ -920,16 +907,12 @@ nav.main a:hover{border-bottom-color:#141210}
 .band .kick{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;opacity:.7}
 .band h1{margin:.15em 0 .3em;font-size:30px;line-height:1.08;font-family:Montserrat,system-ui,sans-serif;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:-.02em}
 .band .facts{font-size:12px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;opacity:.85}
-.claps{display:flex;gap:5px;margin:10px 0 0}
-.claps svg{width:20px;height:20px}
 .clapsrow{display:inline-flex;gap:2px;align-items:center;line-height:0}
 .clap{width:var(--cs,13px);height:var(--cs,13px);display:block;color:#6A6355;opacity:.55}
 .clap.on{color:#F6C92B;opacity:1}
 .claps-big .clapsrow{gap:6px}
 .claps-big{display:flex;gap:6px;justify-content:center;margin:32px 0 0}
 .claps-big svg{width:26px;height:26px}
-.tmdb-info{margin:24px 0;padding:16px 18px;background:#161412;border-left:2px solid #F6C92B}
-.tmdb-meta{margin:0 0 6px;color:#8C877C;font-family:Oswald,system-ui,sans-serif;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
 .movie-hero{position:relative;overflow:hidden;padding-top:26px;border-bottom:1px solid rgba(246,242,230,.09)}
 .movie-hero-art{position:absolute;inset:0;z-index:0;overflow:hidden}
 .movie-hero-art img{width:100%;height:100%;object-fit:cover;filter:blur(7px) saturate(1.05);transform:scale(1.08)}
@@ -1040,11 +1023,12 @@ a.tag:hover{border-color:#F6C92B;color:#F6C92B}
 .rel .card b{font-size:15px;line-height:1.32;font-weight:700}
 
 /* ---- списъчни страници ---- */
-.lbanner{background:#F6C92B;color:#141210}
-.lbanner .wrap{display:flex;align-items:center;gap:20px;min-height:96px;padding-top:14px;padding-bottom:14px}
-.lbanner h1{margin:0;flex:1;font-family:Montserrat,system-ui,sans-serif;font-weight:900;font-style:italic;text-transform:uppercase;font-size:40px;line-height:1;letter-spacing:-.03em}
-.lbanner .cnt{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;opacity:.7}
-.lbanner img.bn{flex:0 0 40%;max-width:470px;aspect-ratio:4/1;object-fit:cover}
+.banner{background:transparent;color:#F2F0EB;border-bottom:1px solid #2A2723}
+.banner .wrap{padding-top:40px;padding-bottom:28px}
+.banner h1{margin:0;font-family:Montserrat,system-ui,sans-serif;font-weight:900;font-style:italic;text-transform:uppercase;font-size:34px;line-height:1;letter-spacing:-.02em;color:#F2F0EB}
+.banner.cal-banner{border-bottom:none}
+.banner.cal-banner h1{margin:0 0 6px}
+.banner.cal-banner .lede{margin:0;font-size:15px;opacity:.75;max-width:60ch}
 .list{max-width:1180px;margin:26px auto 0;padding:0 22px;display:flex;flex-direction:column;gap:12px}
 .li{display:flex;gap:20px;background:#161412;border:1px solid rgba(246,242,230,.09);padding:14px;color:#F2F0EB;height:210px;overflow:hidden}
 .li:hover{border-color:#F6C92B}
@@ -1128,7 +1112,7 @@ footer.bot .fin{margin-top:24px;padding-top:16px;border-top:1px solid rgba(20,18
   .band .in{flex-direction:column}
   .band .shot,.band .shot.wide{flex:none;max-width:none;width:100%}
   .band h1{font-size:29px}
-  .lbanner h1{font-size:28px}.lbanner img.bn{display:none}
+  .banner h1{font-size:28px}
   .rel .grid{grid-template-columns:repeat(2,1fr)}
   footer.bot .cols{grid-template-columns:1fr 1fr}
 }
@@ -1623,11 +1607,7 @@ function seoListPage(slug, page, data, origin) {
     ogType: "website",
     head: '<script type="application/ld+json">' + JSON.stringify(ld) + "<\/script>",
     body:
-      '<div class="lbanner"><div class="wrap"><h1>' + escHtml(hd.title || cfg.title) + "</h1>" +
-      '<span class="cnt">' + list.length + " материала</span>" +
-      (banner ? '<img class="bn" src="' + escHtml(banner) + '" alt="">' : "") +
-      "</div></div>" +
-      '<div class="col" style="padding-top:24px;padding-bottom:0"><p class="lede" style="font-size:18px">' + escHtml(cfg.desc) + "</p></div>" +
+      '<div class="banner"><div class="wrap"><h1>' + escHtml(hd.title || cfg.title) + "</h1></div></div>" +
       '<div class="' + (kind === "reviews" || kind === "merch" ? "grid-cards" : "list") + '">' + (rows || '<p class="kicker">Още няма нищо тук.</p>') + "</div>" + pager,
   });
 }
@@ -1891,9 +1871,8 @@ function calListPage(data, origin, view) {
   const first = items.find((it) => it.poster && /^https?:/.test(it.poster));
   const image = first ? first.poster : origin + "/og.jpg";
   const body =
-    '<div class="wrap" style="padding-top:26px"><p class="kicker">' + escHtml(w.kicker) + "</p><h1>" + escHtml(w.h1) + "</h1>" +
-    '<p class="meta">' + items.length + " заглавия · обновено " + escHtml(seoDateBg(today)) + "</p>" +
-    '<p class="lede">' + escHtml(w.lede) + "</p></div>" +
+    '<div class="banner cal-banner"><div class="wrap"><h1>' + escHtml(w.h1) + "</h1>" +
+    (w.lede ? '<p class="lede">' + escHtml(w.lede) + "</p>" : "") + "</div></div>" +
     '<div class="rel" style="border:0;margin:0;padding:0">' +
     (items.length ? (view && view.type === "month" ? '<div class="grid-cards">' + items.map((it) => calRow(it)).join("") + "</div>" : calByMonth(items))
                   : '<p class="wrap">Точно сега няма обявени дати. Върни се след ден-два — календарът се обновява сам.</p>') +
