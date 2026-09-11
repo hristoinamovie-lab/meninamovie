@@ -922,8 +922,9 @@ nav.main a:hover{border-bottom-color:#141210}
 .tmdb-info{margin:24px 0;padding:16px 18px;background:#161412;border-left:2px solid #F6C92B}
 .tmdb-meta{margin:0 0 6px;color:#8C877C;font-family:Oswald,system-ui,sans-serif;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
 .movie-hero{position:relative;overflow:hidden;padding-top:26px;border-bottom:1px solid rgba(246,242,230,.09)}
-.movie-hero-art{position:absolute;inset:0;z-index:0}
-.movie-hero-art img{width:100%;height:100%;object-fit:cover}
+.movie-hero-art{position:absolute;inset:0;z-index:0;overflow:hidden}
+.movie-hero-art img{width:100%;height:100%;object-fit:cover;filter:blur(14px) saturate(1.05);transform:scale(1.08)}
+.movie-hero-art::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(246,201,43,.24) 0%,rgba(246,201,43,.08) 55%,rgba(10,9,8,.1) 100%)}
 .movie-hero-scrim{position:absolute;inset:0;z-index:1;background:linear-gradient(to top,#0A0908 0%,rgba(10,9,8,.9) 28%,rgba(10,9,8,.55) 60%,rgba(10,9,8,.25) 100%)}
 .movie-hero-in{position:relative;z-index:2;padding-bottom:34px}
 .movie-hero-row{display:grid;grid-template-columns:200px 1fr;gap:34px;margin-top:14px}
@@ -1405,10 +1406,10 @@ async function seoReviewItemPage(it, data, origin) {
     "</div></div></div></div>";
 
   const body =
-    '<div class="wrap"><div class="section overview">' + seoBody(it.body) + "</div>" +
-    (it.authorName ? '<div class="section"><p class="sig">— ' + escHtml(it.authorName) + "</p></div>" : "") +
-    (tags.length ? '<div class="section">' + tagChipsHTML(it, bigTags) + "</div>" : "") +
-    "</div>" + seoRelated(data, "reviews", it, 4);
+    '<div class="wrap"><div class="section overview">' + seoBody(it.body) +
+    (it.authorName ? '<p class="sig">— ' + escHtml(it.authorName) + "</p>" : "") +
+    (tags.length ? tagChipsHTML(it, bigTags) : "") +
+    "</div></div>" + seoRelated(data, "reviews", it, 4);
 
   return seoShell({
     title, desc: seoDesc(it, 180), canon, image, ogType: "article",
