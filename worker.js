@@ -1262,12 +1262,7 @@ async function seoItemPage(kind, it, data, origin, env) {
   const image = seoImage(kind, it, origin);
   const date = seoDate(kind, it);
   let title, metaBits = [], lede = "", extra = "";
-  if (kind === "reviews") {
-    title = it.t + (it.y ? " (" + it.y + ")" : "") + " — ревю | Men In A Movie";
-    metaBits = [SEO_LABEL[kind], it.y, genreArr(it.g).join(", "), it.mins ? it.mins + " мин" : ""];
-    lede = it.lead || it.verdict || "";
-    if (it.imdb) extra += '<a class="btn" rel="nofollow" href="' + escHtml(/^https?:/.test(it.imdb) ? it.imdb : "https://www.imdb.com/title/" + it.imdb + "/") + '">IMDb</a>';
-  } else if (kind === "news") {
+  if (kind === "news") {
     title = it.t + " | Men In A Movie";
     metaBits = [SEO_LABEL[kind], seoDateBg(date), it.cat || it.tag];
     lede = it.lead || it.p || it.desc || "";
@@ -1311,10 +1306,9 @@ async function seoItemPage(kind, it, data, origin, env) {
     : "";
 
   const bodyTxt = kind === "episodes" ? (it.body || it.lead || it.desc) : it.body;
-  const poster = kind === "reviews";
   const shotImg = image && !/\/og\.jpg$/.test(image)
-    ? '<div class="shot' + (poster ? "" : " wide") + '"><img src="' + escHtml(image) + '" alt="' + escHtml(it.t) + '" onerror="this.parentNode.remove()"></div>'
-    : '<div class="shot' + (poster ? "" : " wide") + '"></div>';
+    ? '<div class="shot wide"><img src="' + escHtml(image) + '" alt="' + escHtml(it.t) + '" onerror="this.parentNode.remove()"></div>'
+    : '<div class="shot wide"></div>';
 
   /* „Чуй повече“ — епизодът, в който сме говорили за материала */
   let listen = "";
@@ -1327,21 +1321,15 @@ async function seoItemPage(kind, it, data, origin, env) {
   if (kind === "episodes" && it.yt) bandBtns += '<a class="btn" rel="nofollow" href="' + escHtml(it.yt) + '">Гледай в YouTube</a> ';
   if (kind === "episodes" && it.sp) bandBtns += '<a class="btn" rel="nofollow" href="' + escHtml(it.sp) + '">Слушай в Spotify</a> ';
 
-  /* ревю: без жълта лента, вертикален постер вдясно; тагове+бутони слизат долу под подписа */
-  const noBand = kind === "reviews";
   const btnsRow = '<div class="btns">' + likeHTML() + SHARE_BTN + listen + extra + bandBtns + "</div>";
-  let sideInner = '<p class="facts">' + escHtml(metaBits.filter(Boolean).join(" · ")) + "</p>" +
-    (noBand ? '<h1 class="hl-stack">' + titleBlocksHTML(it.t, 20) + "</h1>" : "<h1>" + escHtml(it.t) + "</h1>");
-  if (kind === "reviews") {
-    sideInner += (lede ? '<p class="lede">' + escHtml(plain(lede, 400)) + "</p>" : "");
-  } else {
-    sideInner += tagChipsHTML(it, bigTags) +
-      (lede ? '<p class="lede">' + escHtml(plain(lede, 400)) + "</p>" : "") +
-      btnsRow;
-  }
+  const sideInner = '<p class="facts">' + escHtml(metaBits.filter(Boolean).join(" · ")) + "</p>" +
+    "<h1>" + escHtml(it.t) + "</h1>" +
+    tagChipsHTML(it, bigTags) +
+    (lede ? '<p class="lede">' + escHtml(plain(lede, 400)) + "</p>" : "") +
+    btnsRow;
 
   const band =
-    '<div class="band' + (noBand ? " no-band" : "") + '"><div class="wrap"><p class="crumbs">Начало › ' + escHtml(SEO_LABEL[kind]) + "</p>" +
+    '<div class="band"><div class="wrap"><p class="crumbs">Начало › ' + escHtml(SEO_LABEL[kind]) + "</p>" +
     '<div class="in"><div class="side">' + sideInner +
     "</div>" + shotImg + "</div></div></div>";
 
@@ -1349,9 +1337,7 @@ async function seoItemPage(kind, it, data, origin, env) {
     '<div class="col">' +
     seoBody(bodyTxt) +
     (it.guest ? '<p class="meta" style="margin-top:22px">Гост: ' + escHtml(it.guest) + (it.role ? " · " + escHtml(it.role) : "") + "</p>" : "") +
-    (kind === "reviews" ? '<div class="claps-big">' + clapsHTML(it.s) + "</div>" : "") +
     (it.authorName ? '<p class="sig">— ' + escHtml(it.authorName) + "</p>" : "") +
-    (kind === "reviews" ? btnsRow + tagChipsHTML(it, bigTags) : "") +
     "</div>" +
     seoRelated(data, kind, it, 4);
 
@@ -1360,6 +1346,75 @@ async function seoItemPage(kind, it, data, origin, env) {
     keywords: itemTags(it).map((t) => t.name).join(", "),
     head: seoJsonLd(kind, it, origin, canon, image),
     body: html + countJs + SHARE_JS,
+  });
+}
+
+/* страницата на ревю — оформление по мотив на TMDB (голям фон-кадър горе), както на
+   страницата на филм от календара; отделна от seoItemPage() заради различната подредба */
+async function seoReviewItemPage(it, data, origin) {
+  const canon = origin + seoUrl("reviews", it);
+  const image = seoImage("reviews", it, origin);
+  const heroImg = image && !/\/og\.jpg$/.test(image) ? image : "";
+  const bigTags = {};
+  for (const t of seoTagList(data)) bigTags[t.slug] = 1;
+  const title = it.t + (it.y ? " (" + it.y + ")" : "") + " — ревю | Men In A Movie";
+  const metaRow = [it.y, it.mins ? it.mins + " мин." : "", genreArr(it.g).join(", ")].filter(Boolean).join(" · ");
+  const lede = it.lead || it.verdict || "";
+  const tags = itemTags(it);
+
+  let actions = "";
+  if (it.imdb) actions += '<a class="btn" rel="nofollow" href="' + escHtml(/^https?:/.test(it.imdb) ? it.imdb : "https://www.imdb.com/title/" + it.imdb + "/") + '">IMDb</a>';
+  if (it.video) actions += '<a class="btn gold" rel="nofollow" href="' + escHtml(it.video) + '">Чуй повече</a>';
+
+  const likeBtn = '<button class="btn like" id="lk" type="button" aria-label="Харесай">' +
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+    '<path d="M20.8 5.6a5.5 5.5 0 0 0-7.8 0L12 6.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 22l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>' +
+    '<span id="lkn"></span></button>';
+  const countJs = "<script>(function(){var KIND='r',ID=" + JSON.stringify(String(it.id)) +
+    ",K=KIND+':'+ID,B=document.getElementById('lk'),N=document.getElementById('lkn');" +
+    "function rd(s,k){try{return JSON.parse(s.getItem(k)||'{}')}catch(e){return{}}}" +
+    "function mine(){return !!rd(localStorage,'mim-likes')[K]}" +
+    "function paint(n){if(n!=null&&N)N.textContent=n||'';if(!B)return;B.classList.toggle('on',mine());" +
+    "var v=B.querySelector('svg');if(v)v.setAttribute('fill',mine()?'currentColor':'none')}" +
+    "function hit(o){return fetch('/api/hit',{method:'POST',headers:{'content-type':'application/json'}," +
+    "body:JSON.stringify(o)}).then(function(r){return r.ok?r.json():null}).catch(function(){return null})}" +
+    "paint(null);" +
+    "fetch('/api/stats',{cache:'no-store'}).then(function(r){return r.ok?r.json():null})" +
+    ".then(function(j){if(j)paint((j.likes||{})[K]||0)}).catch(function(){});" +
+    "if(B)B.addEventListener('click',function(){var on=!mine();var m=rd(localStorage,'mim-likes');" +
+    "if(on)m[K]=1;else delete m[K];try{localStorage.setItem('mim-likes',JSON.stringify(m))}catch(e){}" +
+    "paint(null);hit({kind:KIND,id:ID,like:on}).then(function(j){if(j)paint(j.likes)})});" +
+    "try{var seen=rd(sessionStorage,'mim-seen');if(!seen[K]){seen[K]=1;" +
+    "sessionStorage.setItem('mim-seen',JSON.stringify(seen));hit({kind:KIND,id:ID})}}catch(e){}" +
+    "})();<\/script>";
+
+  const hero =
+    '<div class="movie-hero">' +
+    (heroImg ? '<div class="movie-hero-art"><img src="' + escHtml(heroImg) + '" alt=""></div>' : "") +
+    '<div class="movie-hero-scrim"></div>' +
+    '<div class="wrap movie-hero-in"><p class="crumbs">Начало › Ревюта</p>' +
+    '<div class="movie-hero-row">' +
+    (heroImg ? '<div class="movie-poster"><img src="' + escHtml(heroImg) + '" alt="' + escHtml(it.t) + '"></div>' : "") +
+    '<div class="movie-hero-body">' +
+    '<span class="platform-tab">Ревю</span>' +
+    '<h1 class="hl-stack">' + titleBlocksHTML(it.t, 20) + "</h1>" +
+    (it.s ? '<div class="claps-big cal-claps">' + clapsHTML(it.s) + "</div>" : "") +
+    (metaRow ? '<p class="movie-meta">' + escHtml(metaRow) + "</p>" : "") +
+    (lede ? '<p class="lede">' + escHtml(plain(lede, 300)) + "</p>" : "") +
+    '<div class="btns movie-actions">' + likeBtn + SHARE_BTN + actions + '<a class="btn" href="/revyuta">Всички ревюта</a></div>' +
+    "</div></div></div></div>";
+
+  const body =
+    '<div class="wrap"><div class="section overview">' + seoBody(it.body) + "</div>" +
+    (it.authorName ? '<div class="section"><p class="sig">— ' + escHtml(it.authorName) + "</p></div>" : "") +
+    (tags.length ? '<div class="section">' + tagChipsHTML(it, bigTags) + "</div>" : "") +
+    "</div>" + seoRelated(data, "reviews", it, 4);
+
+  return seoShell({
+    title, desc: seoDesc(it, 180), canon, image, ogType: "article",
+    keywords: itemTags(it).map((t) => t.name).join(", "),
+    head: seoJsonLd("reviews", it, origin, canon, image),
+    body: hero + body + countJs + SHARE_JS,
   });
 }
 
@@ -2510,7 +2565,9 @@ async function handleRequest(request, env, ctx) {
         if (!it) return Response.redirect(url.origin + (kind === "calendar" ? "/kalendar" : "/#" + SEO_ANCHOR[kind]), 302);
         const good = seoUrl(kind, it);
         if (path !== good) return Response.redirect(url.origin + good, 301);
-        const pageHtml = kind === "calendar" ? await seoCalendarItemPage(it, data, url.origin, env) : await seoItemPage(kind, it, data, url.origin, env);
+        const pageHtml = kind === "calendar" ? await seoCalendarItemPage(it, data, url.origin, env)
+          : kind === "reviews" ? await seoReviewItemPage(it, data, url.origin)
+          : await seoItemPage(kind, it, data, url.origin, env);
         return new Response(pageHtml, {
           headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" },
         });
