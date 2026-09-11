@@ -471,7 +471,7 @@ async function syncCalendar(env, months) {
   // сериали по стрийминга — само с истинска дата на излъчване
   const lo = ymd(from), hi = ymd(to);
   /* Cloudflare пуска 50 запитвания в едно изпълнение. Две вече отидоха за филмите
-     и за топ 5 по кината, всяка платформа взима по три за списъците (нови сериали,
+     и за топ 3 по кината, всяка платформа взима по три за списъците (нови сериали,
      вървящи сериали, филми) — останалото се дели поравно между тях, за да не изяде
      първата платформа целия остатък и последните да останат празни. */
   const MAX_PROVIDERS = 12;
@@ -922,6 +922,10 @@ nav.main a:hover{border-bottom-color:#141210}
 .band .facts{font-size:12px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;opacity:.85}
 .claps{display:flex;gap:5px;margin:10px 0 0}
 .claps svg{width:20px;height:20px}
+.clapsrow{display:inline-flex;gap:2px;align-items:center;line-height:0}
+.clap{width:var(--cs,13px);height:var(--cs,13px);display:block;color:#6A6355;opacity:.55}
+.clap.on{color:#F6C92B;opacity:1}
+.claps-big .clapsrow{gap:6px}
 .claps-big{display:flex;gap:6px;justify-content:center;margin:32px 0 0}
 .claps-big svg{width:26px;height:26px}
 .tmdb-info{margin:24px 0;padding:16px 18px;background:#161412;border-left:2px solid #F6C92B}
@@ -1058,8 +1062,7 @@ a.tag:hover{border-color:#F6C92B;color:#F6C92B}
 .rcard:hover,.calcard:hover{border-color:#F6C92B}
 .rcard-art{position:relative;aspect-ratio:2/3;background:#0f0e0c}
 .rcard-art img{width:100%;height:100%;object-fit:cover}
-.rcard-art .claps{position:absolute;top:8px;right:8px;gap:2px;margin:0;background:rgba(10,9,8,.75);padding:4px 6px}
-.rcard-art .claps svg{width:12px;height:12px}
+.rcard-art .clapsrow{position:absolute;top:8px;right:8px;z-index:2;background:rgba(10,9,8,.75);padding:4px 6px}
 .rcard .cbody,.calcard .cbody{padding:12px 13px 15px}
 .rcard h3{margin:0 0 6px;font-size:15px;line-height:1.3;font-family:Montserrat,system-ui,sans-serif;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:-.01em}
 .rcard .kicker,.calcard .kicker{margin:0;color:#8C877C;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
@@ -1072,10 +1075,7 @@ a.tag:hover{border-color:#F6C92B;color:#F6C92B}
 .calcard-when{position:absolute;left:9px;bottom:9px;z-index:2;font-family:Oswald,system-ui,sans-serif;font-weight:600;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:#F6C92B}
 .calcard h3{margin:0 0 4px;font-size:14px;line-height:1.3;font-weight:700}
 .cal-body-claps{margin:0 0 5px}
-.cal-body-claps svg{width:13px;height:13px}
 .cal-claps{display:flex;justify-content:flex-start;text-align:left;margin:10px 0 0}
-.cal-claps svg{width:20px;height:20px}
-.cal-claps svg{stroke:rgba(242,240,235,.45)}
 .cal-divider{grid-column:1/-1;display:flex;align-items:center;gap:12px;margin:8px 0 4px;color:#8C877C;font-family:Oswald,system-ui,sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase}
 .cal-divider::before,.cal-divider::after{content:"";flex:1;height:1px;background:rgba(246,242,230,.15)}
 .cal-past-zone{grid-column:1/-1;background:rgba(246,201,43,.06);padding:16px 16px 2px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
@@ -1220,14 +1220,17 @@ const SEO_FOOTER =
   "</div></footer>";
 
 /* клапите — същата оценка като на сайта */
-function clapsHTML(n) {
-  const full =
-    '<svg viewBox="0 0 24 24" fill="#141210" aria-hidden="true"><path d="M2 8.6 20.4 3.6l1 3.7L4 12.3 2 8.6Z"/><path d="M6.6 4.1 8.9 7.9l3.1-.9-2.3-3.8-3.1.9Z" fill="#F6C92B"/><path d="M13.4 2.3l2.3 3.8 3.1-.9-2.3-3.8-3.1.9Z" fill="#F6C92B"/><rect x="3" y="12.6" width="18" height="8.8"/></svg>';
-  const empty =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="#141210" stroke-width="1.6" opacity=".32" aria-hidden="true"><path d="M2.6 8.9 20 4.2l.8 3-17.4 4.7-.8-3Z"/><rect x="3.4" y="12.9" width="17.2" height="8.2"/></svg>';
-  let out = '<div class="claps" role="img" aria-label="Оценка ' + (n || 0) + ' от 5">';
-  for (let i = 1; i <= 5; i++) out += i <= (n || 0) ? full : empty;
-  return out + "</div>";
+/* точно същата иконка като на клиента (claps() в index-v2.html) — за да не се сменя видът при рефреш */
+const CLAP =
+  '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+  '<path d="M2 8.7h20V20a1.5 1.5 0 0 1-1.5 1.5h-17A1.5 1.5 0 0 1 2 20V8.7Z"/>' +
+  '<path d="M2.2 4.8 20.3 1.9l.9 4.3L3.1 9.1 2.2 4.8Z"/>' +
+  '<path d="M7 3.6 8.5 7.8M11.9 2.8l1.5 4.2M16.8 2l1.5 4.2" stroke="#0A0908" stroke-width="1.2" fill="none"/></svg>';
+function clapsHTML(n, size) {
+  const nn = Math.max(0, Math.min(5, Math.round(+n || 0)));
+  let out = '<span class="clapsrow" style="--cs:' + (size || 13) + 'px" role="img" aria-label="Оценка ' + nn + ' от 5">';
+  for (let i = 1; i <= 5; i++) out += '<i class="clap' + (i <= nn ? " on" : "") + '">' + CLAP + "</i>";
+  return out + "</span>";
 }
 
 /* заглавие с жълти "плочки", както на началната страница — вместо обикновен текст */
@@ -1417,7 +1420,7 @@ async function seoReviewItemPage(it, data, origin) {
     '<div class="movie-hero-body">' +
     '<span class="platform-tab">Ревю</span>' +
     '<h1 class="hl-stack">' + titleBlocksHTML(it.t, 20) + "</h1>" +
-    (it.s ? '<div class="claps-big cal-claps">' + clapsHTML(it.s) + "</div>" : "") +
+    (it.s ? '<div class="claps-big cal-claps">' + clapsHTML(it.s, 20) + "</div>" : "") +
     (metaRow ? '<p class="movie-meta">' + escHtml(metaRow) + "</p>" : "") +
     (lede ? '<p class="lede">' + escHtml(plain(lede, 300)) + "</p>" : "") +
     '<div class="btns movie-actions">' + likeBtn + SHARE_BTN + actions + '<a class="btn" href="/revyuta">Всички ревюта</a></div>' +
@@ -1501,7 +1504,7 @@ async function seoCalendarItemPage(it, data, origin, env) {
     '<div class="movie-hero-body">' +
     '<span class="platform-tab">' + escHtml(platformLabel) + '</span>' +
     '<h1 class="hl-stack">' + titleBlocksHTML(it.t, 20) + "</h1>" +
-    (tmdbX.rating ? '<div class="claps-big cal-claps">' + clapsHTML(Math.round(tmdbX.rating / 2)) + "</div>" : "") +
+    (tmdbX.rating ? '<div class="claps-big cal-claps">' + clapsHTML(Math.round(tmdbX.rating / 2), 20) + "</div>" : "") +
     (metaRow ? '<p class="movie-meta">' + escHtml(metaRow) + "</p>" : "") +
     (it.lead ? '<p class="lede">' + escHtml(plain(it.lead, 300)) + "</p>" : "") +
     '<div class="btns movie-actions">' + likeBtn + SHARE_BTN + actions + '<a class="btn" href="/kalendar">Целият календар</a></div>' +
@@ -1569,7 +1572,7 @@ function seoListPage(slug, page, data, origin) {
       const im = seoImage(kind, it, origin);
       return '<a class="rcard" href="' + seoUrl(kind, it) + '"><div class="rcard-art">' +
         (im && !/\/og\.jpg$/.test(im) ? '<img src="' + escHtml(im) + '" alt="' + escHtml(it.t) + '" loading="lazy">' : "") +
-        clapsHTML(it.s) +
+        clapsHTML(it.s, 11) +
         '</div><div class="cbody"><h3>' + escHtml(it.t) + '</h3>' +
         '<p class="kicker">' + escHtml([it.y, genreArr(it.g).join(", ")].filter(Boolean).join(" · ")) + "</p></div></a>";
     }
@@ -1801,7 +1804,7 @@ function calRow(it, origin) {
     '<span class="calcard-tab">' + escHtml(tab1) + "</span>" +
     (tab2 ? '<span class="calcard-tab2">' + escHtml(tab2) + "</span>" : "") +
     '<span class="calcard-when">' + escHtml(past ? "вече е налично" : seoDateBg(it.when)) + "</span>" +
-    '</div><div class="cbody">' + (it.rating ? '<div class="cal-body-claps">' + clapsHTML(Math.round(it.rating / 2)) + "</div>" : "") + '<h3>' + escHtml(it.t) + '</h3>' +
+    '</div><div class="cbody">' + (it.rating ? '<div class="cal-body-claps">' + clapsHTML(Math.round(it.rating / 2), 13) + "</div>" : "") + '<h3>' + escHtml(it.t) + '</h3>' +
     '<p class="kicker">' + escHtml((it.kind === "event" ? [it.price ? "от " + it.price + " €" : "", it.place] : [it.platform]).concat([formatTxt]).filter(Boolean).join(" · ")) + "</p></div></a>";
 }
 /* прозорецът на главната /kalendar страница: от 1-во число на текущия месец до +30 дни от днес */
