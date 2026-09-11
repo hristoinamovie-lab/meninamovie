@@ -257,12 +257,24 @@ a{color:inherit;text-decoration:none}
   color:var(--tx2);font-family:Oswald,sans-serif;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;padding:5px 9px;cursor:pointer}
 .tmdb-sugbox2 span:hover{border-color:var(--y);color:var(--y)}
 .rail-note{font-size:11.5px;color:var(--tx3);line-height:1.5;margin:6px 0 0}
-.ed-preview{margin-top:24px}
-.ed-preview-label{font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--tx2);display:block;margin-bottom:8px}
-.sync-note2{text-align:center;padding:60px 30px;border:1px dashed var(--line2);margin-top:22px}
-.sync-note2 svg{width:28px;height:28px;color:var(--tx3);margin-bottom:16px}
-.sync-note2 h3{font-family:Oswald,sans-serif;font-weight:600;font-size:17px;margin:0 0 10px;color:var(--tx)}
-.sync-note2 p{color:var(--tx2);font-size:14px;line-height:1.7;max-width:460px;margin:0 auto}
+.ed-tabbar{display:flex;gap:2px;margin:18px 0 4px}
+.ed-tabbar button{background:none;border:1px solid var(--line2);color:var(--tx2);font-family:Oswald,sans-serif;font-size:11.5px;
+  letter-spacing:.06em;text-transform:uppercase;padding:9px 20px;cursor:pointer}
+.ed-tabbar button.on{background:var(--y);border-color:var(--y);color:var(--black)}
+.pv-wrap{max-width:840px;margin:22px auto 60px;padding:0 40px}
+.pv-page{max-width:760px}
+.pv-shot{aspect-ratio:16/9;background:var(--card2);margin-bottom:22px;overflow:hidden}
+.pv-shot img{width:100%;height:100%;object-fit:cover;display:block}
+.pv-shot.p{aspect-ratio:2/3;max-width:280px}
+.pv-facts{font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx2);margin:0 0 8px}
+.pv-title{font-family:Oswald,sans-serif;font-weight:600;font-size:32px;line-height:1.22;margin:0 0 16px;color:var(--tx)}
+.pv-claps{display:flex;gap:3px;margin:0 0 18px}
+.pv-claps svg{width:20px;height:20px}
+.pv-sig{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:var(--tx2);font-size:14px}
+.pv-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:20px}
+.pv-tags span{border:1px solid var(--line2);color:var(--tx2);font-family:Oswald,sans-serif;font-size:10.5px;letter-spacing:.05em;
+  text-transform:uppercase;padding:4px 9px}
+@media(max-width:980px){.pv-wrap{padding:0 20px}}
 
 @media(max-width:980px){
   .ed-rail{position:static;max-height:none;flex:none;border-left:0;border-top:1px solid var(--line);padding:20px 0 0}
@@ -815,8 +827,48 @@ function edCanvasHTML(it,ledeLabel,ledePh,bodyPh){
       ['**удебелено**|**','*курсив*|*','## подзаглавие|## ','- списък|- ','> акцент|> ','[текст](линк)|['].map(function(x){
         var p=x.split("|"); return '<button type="button" data-md="'+esc2(p[1])+'">'+esc2(p[0])+'</button>';}).join("")+
     '</div>'+
-    '<textarea class="c-body" data-f="body" placeholder="'+esc2(bodyPh)+'">'+esc2(it.body||"")+'</textarea>'+
-    '<div class="ed-preview"><span class="ed-preview-label">Как ще изглежда</span><div class="a-prev" id="aPrev"></div></div>';
+    '<textarea class="c-body" data-f="body" placeholder="'+esc2(bodyPh)+'">'+esc2(it.body||"")+'</textarea>';
+}
+function edModeTabs(){
+  var m=A.edMode||"write";
+  return '<div class="ed-tabbar">'+
+    '<button type="button" data-act="edmode" data-mode="write" class="'+(m==="write"?"on":"")+'">Редакция</button>'+
+    '<button type="button" data-act="edmode" data-mode="preview" class="'+(m==="preview"?"on":"")+'">Преглед</button>'+
+    '</div>';
+}
+/* пълен преглед — как ще изглежда публикуваната страница, със снимка и тагове */
+function edPreviewHTML(k,it){
+  var T=TYPES[k];
+  var img = k==="episodes" ? ytThumb(it.yt) : (it[T.img]||"");
+  var facts=[];
+  if(k==="news") facts=[TYPES.news.label, dt(it.when), it.cat];
+  else if(k==="reviews") facts=[TYPES.reviews.label, it.y, genreArr(it.g).join(", "), it.mins?it.mins+" мин":""];
+  else if(k==="craft") facts=[TYPES.craft.label, dt(it.when), it.cat, [it.guest,it.role].filter(Boolean).join(", ")];
+  else if(k==="episodes") facts=[TYPES.episodes.label, dt(it.when), it.n?"Епизод "+it.n:""];
+  else if(k==="merch") facts=[TYPES.merch.label, it.price?it.price+" лв.":"", it.on?"Налично":"Няма наличност"];
+  else if(k==="calendar") facts=[dt(it.when), it.time, it.place];
+  facts=facts.filter(Boolean);
+
+  var h='<div class="pv-page">';
+  h+= img ? '<div class="pv-shot'+(T.shape==="p"?" p":"")+'"><img src="'+esc2(img)+'"></div>' : '<div class="pv-shot'+(T.shape==="p"?" p":"")+'"></div>';
+  h+='<p class="pv-facts">'+esc2(facts.join(" · "))+'</p>';
+  h+='<h1 class="pv-title">'+esc2(it.t||"(без заглавие)")+'</h1>';
+  if(k==="reviews"){
+    h+='<div class="pv-claps">';
+    for(var i=1;i<=5;i++) h+= i<=(+it.s||0) ? CLAP_FULL : CLAP_EMPTY;
+    h+='</div>';
+  }
+  if(it.lead) h+='<div class="answer">'+esc2(it.lead)+'</div>';
+  h+='<div class="prose">'+md(it.body||"")+'</div>';
+  if(k==="merch"){
+    h+='<div class="prose"><p class="price">'+esc2(it.price||0)+' лв.</p>'+
+      (it.sizes&&it.sizes.length?'<p>Размери: '+esc2(it.sizes.join(", "))+'</p>':'')+
+      '<p>'+(it.on?"Налично":"В момента не е налично")+'</p></div>';
+  }
+  if(it.authorName) h+='<p class="pv-sig">— '+esc2(it.authorName)+'</p>';
+  if(k!=="merch"&&it.tags&&it.tags.length) h+='<div class="pv-tags">'+it.tags.map(function(s){return '<span>'+esc2(D.tagLabels[s]||s)+'</span>';}).join("")+'</div>';
+  h+='</div>';
+  return h;
 }
 function edTagsSection(it){
   return '<div class="ed-sec"><div class="ed-sec-h" data-sec>'+ICO.tag+'<span class="ed-lbl">Тагове</span><span class="ed-chev">▾</span></div>'+
@@ -907,11 +959,14 @@ function editorGeneric(k,it,T){
   var ledeLabel = "Кратък отговор — това цитират търсачките", ledePh="2–3 изречения, обобщаващи материала…";
   if(k==="episodes") { ledeLabel="Кратко описание"; ledePh="2–3 изречения за епизода…"; }
   if(k==="merch") { ledeLabel="Кратко описание"; ledePh="2–3 изречения за продукта…"; }
-  var h=edTopline(k,it,T);
+  var h=edTopline(k,it,T)+edModeTabs();
+  if(A.edMode==="preview"){
+    return h+'<div class="pv-wrap">'+edPreviewHTML(k,it)+'</div>';
+  }
   h+='<div class="ed-shell"><div class="ed-canvas">'+
     edCanvasHTML(it,ledeLabel,ledePh,"Продължи да пишеш тук…")+
     '</div><div class="ed-rail">'+edRail(k,it,T)+'</div></div>';
-  setTimeout(function(){ preview(); paintClapsPick(); },0);
+  setTimeout(function(){ paintClapsPick(); },0);
   return h;
 }
 function editorCalendar(){
@@ -970,6 +1025,10 @@ function editorCalendar(){
   }
 
   /* ръчно събитие — новият, изчистен изглед */
+  h+=edModeTabs();
+  if(A.edMode==="preview"){
+    return h+'<div class="pv-wrap">'+edPreviewHTML(k,it)+'</div>';
+  }
   h+='<div class="ed-shell"><div class="ed-canvas">'+
     edCanvasHTML(it,"Кратък цитат — показва се под заглавието","Кратко описание на събитието…","Продължи да пишеш тук…")+
     '</div><div class="ed-rail">'+
@@ -989,7 +1048,6 @@ function editorCalendar(){
     '</div></div>'+
     edTagsSection(it)+
     '</div></div>';
-  setTimeout(preview,0);
   return h;
 }
 function body(it){
@@ -1199,14 +1257,15 @@ function onClick(e){
   var act=t.getAttribute("data-act"), k=t.getAttribute("data-k"), id=t.getAttribute("data-id");
   if(t.hasAttribute("data-tab")){ A.edit=null; A.tab=t.getAttribute("data-tab"); if(A.tab==="users"){A.users=null;A.userEdit=null;A.usersErr=null;} draw(); return; }
   if(t.hasAttribute("data-md")){ insert(t.getAttribute("data-md")); return; }
-  if(act==="new"){ A.editKind=k; A.edit=blank(k); A.calMode=undefined; draw(); return; }
-  if(act==="edit"){ A.editKind=k; A.edit=JSON.parse(JSON.stringify(all(k).filter(function(x){return x.id===id;})[0]||{})); A.tab=k; A.calMode=undefined; draw();
+  if(act==="new"){ A.editKind=k; A.edit=blank(k); A.calMode=undefined; A.edMode="write"; draw(); return; }
+  if(act==="edit"){ A.editKind=k; A.edit=JSON.parse(JSON.stringify(all(k).filter(function(x){return x.id===id;})[0]||{})); A.tab=k; A.calMode=undefined; A.edMode="write"; draw();
     if(k==="calendar"||k==="reviews") autoTmdbTags(); return; }
-  if(act==="back"){ A.edit=null; A.calMode=undefined; draw(); return; }
+  if(act==="back"){ A.edit=null; A.calMode=undefined; A.edMode="write"; draw(); return; }
   if(act==="save"){ save(); return; }
   if(act==="setstatus"){ collect(); A.edit.status=t.getAttribute("data-st"); draw(); return; }
   if(act==="setclaps"){ collect(); A.edit.s=+t.getAttribute("data-n")||0; draw(); return; }
   if(act==="calmode"){ collect(); A.calMode=t.getAttribute("data-mode"); draw(); return; }
+  if(act==="edmode"){ collect(); A.edMode=t.getAttribute("data-mode"); draw(); return; }
   if(act==="publish"){ A.edit.status="published"; save(); return; }
   if(act==="approve"){ var o=all(k).filter(function(x){return x.id===id;})[0]; if(o){o.status="published"; persist("Одобрено и публикувано.");} return; }
   if(act==="toggle"){ var o2=all(k).filter(function(x){return x.id===id;})[0];
