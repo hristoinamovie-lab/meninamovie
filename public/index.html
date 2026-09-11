@@ -954,7 +954,7 @@ function calStreamPlatforms(useWindow){
   all.forEach(function(c){var p=c.platform||"Друго"; if(!seen[p]){seen[p]=0;out.push(p);} seen[p]++;});
   return out.map(function(p){return [p,seen[p]];});
 }
-/* "Най-гледани" — топ 5 по кината (реално вървящи в момента) + топ 5 на всяка активна стрийминг платформа,
+/* "Най-гледани" — топ 3 по кината (реално вървящи в момента) + топ 3 на всяка активна стрийминг платформа,
    изчислено на сървъра при всяко опресняване от TMDB (D.trending), не е част от обичайния календар с дати */
 function trendingActivePlatforms(){
   var s=(D.trending&&D.trending.streaming)||{}, active=(D.settings&&D.settings.calProviders)||[];
@@ -986,7 +986,7 @@ function paintTrending(gridEl,subFilterEl,sub,attr){
     var tabs=[]; if(cinemaN) tabs.push(["cinema","по кината"]);
     plats.forEach(function(n){tabs.push([n,n]);});
     subFilterEl.innerHTML=tabs.length?'<div class="cal-plat">'+tabs.map(function(tb){
-      return '<button data-'+attr+'="'+esc(tb[0])+'" class="'+(sub===tb[0]?"on":"")+'">Топ 5 '+esc(tb[1])+'</button>';
+      return '<button data-'+attr+'="'+esc(tb[0])+'" class="'+(sub===tb[0]?"on":"")+'">Топ 3 '+esc(tb[1])+'</button>';
     }).join("")+'</div>':'';
   }
   var arr = sub==="cinema" ? ((D.trending&&D.trending.cinema)||[]) : (((D.trending&&D.trending.streaming)||{})[sub]||[]);
