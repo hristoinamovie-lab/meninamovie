@@ -99,10 +99,6 @@ section{margin-top:46px}
 
 /* ревю карта */
 .rev .ph{position:relative}
-.rev-wrap{position:relative}
-.claps{position:absolute;top:0;right:0;background:var(--black);color:var(--y);font-family:Oswald,sans-serif;font-size:13px;letter-spacing:.06em;padding:4px 9px}
-.rev-cap{position:absolute;left:0;bottom:0;background:var(--y);color:var(--black);font-family:Montserrat,sans-serif;font-style:italic;font-weight:900;font-size:13px;text-transform:uppercase;padding:5px 10px;max-width:88%;line-height:1.2}
-
 /* подкаст: широки редове */
 .rows{display:flex;flex-direction:column;gap:10px}
 .row{display:flex;gap:16px;background:var(--card2);padding:10px}
@@ -128,14 +124,11 @@ section{margin-top:46px}
 .cal-divider::before,.cal-divider::after{content:"";flex:1;height:1px;background:var(--line)}
 .cal-past-zone{grid-column:1/-1;background:rgba(246,201,43,.06);padding:16px 16px 2px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 .cal-past-zone .cal-divider{margin-top:0}
-.pill{display:inline-block;background:var(--y);color:var(--black);font-family:Oswald,sans-serif;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;margin-top:6px}
 
 /* ---------- жълта лента на рубрика ---------- */
 .banner{background:var(--y);color:var(--black)}
 .banner .wrap{display:flex;align-items:center;gap:20px;padding-top:10px;padding-bottom:10px;min-height:74px}
 .banner h1{margin:0;flex:1;font-family:Montserrat,sans-serif;font-style:italic;font-weight:900;font-size:34px;text-transform:uppercase;letter-spacing:-.02em;line-height:1}
-.banner .bimg{flex:0 0 42%;max-width:520px;aspect-ratio:4/1;object-fit:cover}
-.banner .count{font-family:Oswald,sans-serif;font-size:12px;letter-spacing:.09em;text-transform:uppercase;opacity:.75}
 
 /* ---------- статия ---------- */
 .art-hd{background:var(--y);color:var(--black);padding:14px 0 18px}
@@ -275,7 +268,6 @@ footer a:hover{color:var(--y)}
 @media(max-width:900px){
   .grid4,.news-grid{grid-template-columns:repeat(2,1fr)}
   .news-lead{grid-column:span 2;grid-row:span 1}
-  .banner .bimg{display:none}
   .art-split{flex-direction:column}
   .art-split .poster{flex:none;width:180px}
   .fgrid{grid-template-columns:1fr}
