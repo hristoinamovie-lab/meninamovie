@@ -1027,17 +1027,16 @@ a.tag:hover{border-color:#F6C92B;color:#F6C92B}
 .calcard-tab{position:absolute;top:0;left:0;z-index:2;background:#F6C92B;color:#141210;font-family:Oswald,system-ui,sans-serif;font-weight:600;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;padding:5px 11px 5px 8px}
 .calcard-tab2{position:absolute;top:23px;left:0;z-index:2;background:#141210;color:#F6C92B;font-family:Oswald,system-ui,sans-serif;font-weight:600;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;padding:4px 10px 4px 8px}
 .calcard-when{position:absolute;left:9px;bottom:9px;z-index:2;font-family:Oswald,system-ui,sans-serif;font-weight:600;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:#F6C92B}
-.cal-score{position:absolute;top:8px;right:8px;z-index:2;background:rgba(10,9,8,.75);padding:4px 6px;display:flex}
-.cal-score .claps{gap:2px;margin:0}
-.cal-score svg{width:12px;height:12px}
 .calcard h3{margin:0 0 4px;font-size:14px;line-height:1.3;font-weight:700}
-.calcard.past{opacity:.55}
-.calcard.past:hover{opacity:.85}
-.calcard.past .calcard-art::after{background:linear-gradient(rgba(246,201,43,.16),rgba(246,201,43,.16)),linear-gradient(to top,rgba(0,0,0,.75),transparent 42%)}
+.cal-body-claps{margin:0 0 5px}
+.cal-body-claps svg{width:13px;height:13px}
 .cal-claps{justify-content:flex-start;margin:10px 0 0}
 .cal-claps svg{width:20px;height:20px}
 .cal-divider{grid-column:1/-1;display:flex;align-items:center;gap:12px;margin:8px 0 4px;color:#8C877C;font-family:Oswald,system-ui,sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase}
 .cal-divider::before,.cal-divider::after{content:"";flex:1;height:1px;background:rgba(246,242,230,.15)}
+.cal-past-zone{grid-column:1/-1;background:rgba(246,201,43,.06);padding:16px 16px 2px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.cal-past-zone .cal-divider{margin-top:0}
+@media(max-width:900px){.cal-past-zone{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:900px){.grid-cards{grid-template-columns:repeat(2,1fr)}}
 .pcard{display:block;background:#161412;border:1px solid rgba(246,242,230,.09);color:#F2F0EB}
 .pcard:hover{border-color:#F6C92B}
@@ -1640,8 +1639,7 @@ function calRow(it, origin) {
     '<span class="calcard-tab">' + escHtml(tab1) + "</span>" +
     (tab2 ? '<span class="calcard-tab2">' + escHtml(tab2) + "</span>" : "") +
     '<span class="calcard-when">' + escHtml(past ? "вече е налично" : seoDateBg(it.when)) + "</span>" +
-    (it.rating ? '<div class="cal-score">' + clapsHTML(Math.round(it.rating / 2)) + "</div>" : "") +
-    '</div><div class="cbody"><h3>' + escHtml(it.t) + '</h3>' +
+    '</div><div class="cbody">' + (it.rating ? '<div class="cal-body-claps">' + clapsHTML(Math.round(it.rating / 2)) + "</div>" : "") + '<h3>' + escHtml(it.t) + '</h3>' +
     '<p class="kicker">' + escHtml((it.kind === "event" ? [it.price ? "от " + it.price + " €" : "", it.place] : [it.platform]).concat([formatTxt]).filter(Boolean).join(" · ")) + "</p></div></a>";
 }
 /* прозорецът на главната /kalendar страница: от 1-во число на текущия месец до +30 дни от днес */
@@ -1655,12 +1653,12 @@ function calByMonth(items) {
     const arr = group[ym];
     let inner;
     if (ym === today.slice(0, 7)) {
-      const hasPast = arr.some((it) => it.when < today);
-      let divided = false, out = hasPast ? '<div class="cal-divider"><span>Вече налично</span></div>' : "";
-      for (const it of arr) {
-        if (hasPast && !divided && it.when >= today) { out += '<div class="cal-divider"><span>Днес</span></div>'; divided = true; }
-        out += calRow(it);
-      }
+      const past = arr.filter((it) => it.when < today);
+      const upcoming = arr.filter((it) => it.when >= today);
+      let out = "";
+      if (past.length) out += '<div class="cal-past-zone"><div class="cal-divider"><span>Вече налично</span></div>' + past.map((it) => calRow(it)).join("") + "</div>";
+      if (past.length && upcoming.length) out += '<div class="cal-divider"><span>Очаквайте скоро</span></div>';
+      out += upcoming.map((it) => calRow(it)).join("");
       inner = out;
     } else inner = arr.map((it) => calRow(it)).join("");
     return "<h2>" + escHtml(calMonthName(ym)) + '</h2><div class="grid-cards">' + inner + "</div>";
