@@ -454,14 +454,14 @@ async function syncCalendar(env, months) {
     if (!nMovies) notes.push("TMDB няма премиери за България в този период.");
   } catch (e) { notes.push("Филми: " + e.message); }
 
-  // топ 5 филми, които реално вървят по кината в България в момента (за таб "Най-гледани")
+  // топ 3 филми, които реално вървят по кината в България в момента (за таб "Най-гледани")
   const trending = { cinema: [], streaming: {}, updatedAt: Date.now() };
   try {
     const np = await tmdbGet(env, "/movie/now_playing", { region: "BG", language: "bg-BG", page: "1" });
     trending.cinema = (np.results || [])
       .slice()
       .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
-      .slice(0, 5)
+      .slice(0, 3)
       .map((m) => ({
         tmdbId: m.id, t: m.title || m.original_title || "",
         poster: m.poster_path ? POSTER + m.poster_path : "",
@@ -545,12 +545,12 @@ async function syncCalendar(env, months) {
 
     perPlatform[pv.name] = nSeries - before;
 
-    // топ 5 най-популярни (филми + сериали) на тази платформа от вече изтегленото по-горе — без нови заявки
+    // топ 3 най-популярни (филми + сериали) на тази платформа от вече изтегленото по-горе — без нови заявки
     trending.streaming[pv.name] = fresh
       .filter((f) => f.kind === "stream" && f.platform === pv.name)
       .slice()
       .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
-      .slice(0, 5)
+      .slice(0, 3)
       .map((f) => ({
         tmdbId: f.tmdbId, t: f.t, poster: f.poster,
         popularity: f.popularity || 0, media: f.sub ? "series" : "movie",
@@ -568,10 +568,15 @@ async function syncCalendar(env, months) {
   const out = [];
   // ръчните и събитията остават непокътнати
   for (const it of old) if (it.src !== "tmdb") out.push(it);
-  // от миналия месец нататък се пази само това, което е пипано
+  // заглавие в топ 3 "Най-гледани" (по кината или по платформа) не се трие, докато си стои там —
+  // иначе картата в "Най-гледани" губи собствената си страница и пада на линк към TMDB
+  const trendingIds = new Set();
+  for (const t of trending.cinema) if (t.tmdbId) trendingIds.add(t.tmdbId);
+  for (const plat of Object.keys(trending.streaming)) for (const t of trending.streaming[plat]) if (t.tmdbId) trendingIds.add(t.tmdbId);
+  // от миналия месец нататък се пази само това, което е пипано или в момента е сред "Най-гледани"
   const cut = ymd(from);
   for (const it of old)
-    if (it.src === "tmdb" && it.when < cut && (it.edited || it.hidden)) out.push(it);
+    if (it.src === "tmdb" && it.when < cut && (it.edited || it.hidden || trendingIds.has(it.tmdbId))) out.push(it);
 
   const seen = {};
   for (const f of fresh) {
@@ -946,6 +951,18 @@ nav.main a:hover{border-bottom-color:#141210}
 @media(max-width:640px){.movie-hero-row{grid-template-columns:120px 1fr;gap:18px}}
 .section{padding:34px 0}
 .section+.section{border-top:1px solid #2A2723}
+.section.overview{font-size:17px;line-height:1.8}
+.section.overview h2,.section.overview h3,.section.overview h4{font-family:Oswald,sans-serif;font-weight:600;letter-spacing:.01em;margin:1.6em 0 .5em;color:#F2F0EB}
+.section.overview h2{font-size:24px}
+.section.overview h3{font-size:22px}
+.section.overview h4{font-size:19px}
+.section.overview p{margin:0 0 1.15em}
+.section.overview blockquote{border-left:4px solid #F6C92B;margin:1.4em 0;padding-left:16px;color:#B9B3A6}
+.section.overview a{color:#F6C92B;border-bottom:1px solid rgba(246,201,43,.4)}
+.section.overview figure{margin:1.8em 0}
+.section.overview figure img{width:100%}
+.section.overview figcaption{font-size:13px;color:#8C877C;margin-top:6px}
+.section.overview ul{padding-left:20px}
 .section h2{font-family:Montserrat,system-ui,sans-serif;font-style:italic;font-weight:900;font-size:20px;text-transform:uppercase;letter-spacing:-.01em;color:#F6C92B;margin:0 0 18px}
 .band .tags{margin-top:14px}
 .band .tags .lbl{color:rgba(20,18,16,.55)}
@@ -1358,7 +1375,7 @@ async function seoReviewItemPage(it, data, origin) {
   const heroImg = image && !/\/og\.jpg$/.test(image) ? image : "";
   const bigTags = {};
   for (const t of seoTagList(data)) bigTags[t.slug] = 1;
-  const title = it.t + (it.y ? " (" + it.y + ")" : "") + " — ревю | Men In A Movie";
+  const title = it.t + (it.y ? " (" + it.y + ")" : "") + " — ревю — Men In A Movie";
   const metaRow = [it.y, it.mins ? it.mins + " мин." : "", genreArr(it.g).join(", ")].filter(Boolean).join(" · ");
   const lede = it.lead || it.verdict || "";
   const tags = itemTags(it);
