@@ -2221,6 +2221,45 @@ function isTestEnv(env) {
   return String((env && env.MIM_ENV) || "").toLowerCase() === "test";
 }
 
+/* ================= ДИНАМИЧНО РЕНДИРАНЕ =================
+   Истински човек винаги вижда оригиналната (JavaScript) версия на сайта — дори при
+   рефреш или директен адрес. Готовият HTML (SEO версията) се пуска само към бот —
+   търсачка, AI асистент или преглед на връзка в чат/социална мрежа — защото те не
+   изпълняват JavaScript и имат нужда от готово съдържание. Съдържанието е едно и
+   също и за двете — просто различен начин на подаване, не е измама на търсачките. */
+const BOT_UA_PARTS = [
+  // търсачки и AI асистенти, вече в robots.txt
+  "googlebot", "bingbot", "yandexbot", "duckduckbot", "applebot", "amazonbot", "baiduspider",
+  "oai-searchbot", "chatgpt-user", "perplexitybot", "perplexity-user", "claude-searchbot", "claude-user",
+  "gptbot", "ccbot", "bytespider", "meta-externalagent", "facebookbot", "google-extended", "applebot-extended",
+  "claudebot", "anthropic-ai", "cohere-ai", "diffbot", "omgilibot", "timpibot", "ai2bot",
+  // преглед на връзка в социални мрежи/чатове — не са в robots.txt, но също не пускат JS
+  "facebookexternalhit", "facebot", "twitterbot", "slackbot", "telegrambot", "whatsapp", "discordbot",
+  "linkedinbot", "skypeuripreview", "pinterest", "redditbot", "vkshare", "viber", "line/", "threads",
+  "embedly", "quora link preview", "w3c_validator",
+  // инструменти за тест/анализ на страницата
+  "lighthouse", "pagespeed", "gtmetrix", "headlesschrome",
+  "semrushbot", "ahrefsbot", "mj12bot", "dotbot", "petalbot", "sogou", "exabot",
+];
+function isBotRequest(request) {
+  const ua = (request.headers.get("user-agent") || "").toLowerCase();
+  if (!ua) return true; // истински браузър винаги праща User-Agent — без него по-сигурно е инструмент, не човек
+  if (ua.includes("bot") || ua.includes("spider") || ua.includes("crawl") || ua.includes("slurp")) return true;
+  return BOT_UA_PARTS.some((p) => ua.includes(p));
+}
+/* оригиналната страница за истински хора — същият файл, който винаги се пуска за адреси
+   без собствен SEO вариант (карта на сайта, месец/платформа в календара, начална страница) */
+async function serveSpa(request, env) {
+  const assets = env.ASSETS || env.assets;
+  const shellUrl = new URL(request.url);
+  shellUrl.pathname = "/";
+  shellUrl.search = "";
+  const res = await assets.fetch(new Request(shellUrl.toString(), request));
+  const out = new Response(res.body, res);
+  out.headers.set("cache-control", "no-cache, must-revalidate");
+  return out;
+}
+
 function seoRobots(origin, test) {
   if (test) return "User-agent: *\nDisallow: /\n";
   const cite = ["Googlebot","Bingbot","OAI-SearchBot","ChatGPT-User","PerplexityBot","Perplexity-User",
@@ -2250,6 +2289,9 @@ export default {
   async fetch(request, env, ctx) {
     const res = await handleRequest(request, env, ctx);
     const out = new Response(res.body, res);
+    // бот вижда готов HTML, човек — оригиналната страница; ако някога се включи кеширане
+    // на тези адреси от таблото на Cloudflare, пази двете версии да не се разменят
+    if ((out.headers.get("content-type") || "").includes("text/html")) out.headers.set("vary", "User-Agent");
     // основни защитни хедъри — важат за целия сайт, за всеки отговор
     out.headers.set("x-content-type-options", "nosniff");
     out.headers.set("referrer-policy", "strict-origin-when-cross-origin");
@@ -2727,6 +2769,7 @@ async function handleRequest(request, env, ctx) {
     {
       const seg = path.replace(/^\/+|\/+$/g, "").split("/");
       if (SEO_LIST[seg[0]] && (seg.length === 1 || /^\d+$/.test(seg[1] || ""))) {
+        if (!isBotRequest(request)) return serveSpa(request, env);
         const data = await stored(env);
         if (data) {
           return new Response(seoListPage(seg[0], +(seg[1] || 1), data, url.origin), {
@@ -2749,13 +2792,17 @@ async function handleRequest(request, env, ctx) {
       const slug = decodeURIComponent(path.split("/").filter(Boolean)[1] || "");
       const tag = seoTagAny(data).find((t) => t.slug === slug);
       if (!tag) return Response.redirect(url.origin + "/karta", 302);
+      if (!isBotRequest(request)) return serveSpa(request, env);
       return new Response(seoTagPage(tag, data, url.origin), {
         headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" },
       });
     }
 
-    /* календарът като истинска страница: /kalendar и подстраниците ѝ */
+    /* календарът като истинска страница: /kalendar и подстраниците ѝ.
+       /kalendar има версия и в оригиналната страница — /kalendar/<месец или платформа>
+       нямат: не се пипа ботовата проверка там, СЕО версията е единствената, която съществува. */
     if (path === "/kalendar" || path === "/kalendar/") {
+      if (!isBotRequest(request)) return serveSpa(request, env);
       const data = (await stored(env)) || {};
       return new Response(calListPage(data, url.origin, null), {
         headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" },
@@ -2783,9 +2830,12 @@ async function handleRequest(request, env, ctx) {
         const list = Array.isArray(data.merch) ? data.merch : [];
         const it = list.find((x) => x && (x.status || "published") === "published" &&
           (idTail(x.id) === tail || String(x.id).toLowerCase() === tail));
-        if (it) return new Response(seoMerchPage(it, url.origin), {
-          headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" },
-        });
+        if (it) {
+          if (!isBotRequest(request)) return serveSpa(request, env);
+          return new Response(seoMerchPage(it, url.origin), {
+            headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" },
+          });
+        }
       }
       return Response.redirect(url.origin + "/march", 302);
     }
@@ -2800,6 +2850,7 @@ async function handleRequest(request, env, ctx) {
         if (!it) return Response.redirect(url.origin + (kind === "calendar" ? "/kalendar" : "/#" + SEO_ANCHOR[kind]), 302);
         const good = seoUrl(kind, it);
         if (path !== good) return Response.redirect(url.origin + good, 301);
+        if (!isBotRequest(request)) return serveSpa(request, env);
         const pageHtml = kind === "calendar" ? await seoCalendarItemPage(it, data, url.origin, env)
           : kind === "reviews" ? await seoReviewItemPage(it, data, url.origin)
           : await seoItemPage(kind, it, data, url.origin, env);
