@@ -1023,7 +1023,7 @@ function seoJsonLd(kind, it, origin, canon, image, data, faqLd) {
     delete node.headline;
   } else if (kind === "calendar") {
     node = Object.assign({}, base, {
-      "@type": it.kind === "stream" ? "TVSeries" : "Movie",
+      "@type": it.kind === "stream" && it.sub ? "TVSeries" : "Movie",
       datePublished: it.when || undefined,
     });
     delete node.headline; delete node.dateModified;
@@ -2065,7 +2065,7 @@ function calJsonLd(items, w, canon, origin) {
       itemListElement: items.slice(0, 60).map((it, i) => ({
         "@type": "ListItem", position: i + 1,
         item: {
-          "@type": it.kind === "stream" ? "TVSeries" : "Movie",
+          "@type": it.kind === "stream" && it.sub ? "TVSeries" : "Movie",
           name: it.t,
           ...(it.sub !== "episode" ? { url: origin + seoUrl("calendar", it) } : {}),
           ...(it.poster && /^https?:/.test(it.poster) ? { image: it.poster } : {}),
