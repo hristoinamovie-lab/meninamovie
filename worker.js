@@ -673,7 +673,8 @@ function seoLive(kind, it, data) {
 function seoDate(kind, it) {
   return String(it.when || it.d || "").slice(0, 10) || "";
 }
-function seoDesc(it, max) {
+function seoDesc(kind, it, max) {
+  if (kind === "reviews") return plain(it.body || it.lead || it.verdict || it.desc || "", max || 200);
   return plain(it.lead || it.verdict || it.p || it.desc || it.body || it.note || "", max || 200);
 }
 function seoImage(kind, it, origin) {
@@ -701,23 +702,24 @@ function seoFind(data, kind, slug) {
 
 /* ---------- теми (таговете от админа) ---------- */
 const SEO_TAG_MIN = 2;               // тема с един материал не получава своя страница
-function itemTags(it) {
+function itemTags(it, data) {
   const raw = Array.isArray(it && it.tags) ? it.tags : [];
+  const labels = (data && data.tagLabels) || {};
   const seen = {}, out = [];
   for (const t of raw) {
-    const name = String(t || "").trim();
-    if (!name) continue;
-    const sl = slugify(name);
+    const key = String(t || "").trim();
+    if (!key) continue;
+    const sl = slugify(key);
     if (!sl || seen[sl]) continue;
     seen[sl] = 1;
-    out.push({ name, slug: sl });
+    out.push({ name: labels[key] || labels[sl] || key, slug: sl });
   }
   return out.slice(0, 12);
 }
 function seoTagMap(data) {
   const map = {};
   for (const x of seoAll(data)) {
-    for (const t of itemTags(x.it)) {
+    for (const t of itemTags(x.it, data)) {
       if (!map[t.slug]) map[t.slug] = { name: t.name, slug: t.slug, items: [] };
       map[t.slug].items.push(x);
     }
@@ -730,13 +732,16 @@ function seoTagList(data) {
     .filter((t) => t.items.length >= SEO_TAG_MIN)
     .sort((a, b) => b.items.length - a.items.length || a.name.localeCompare(b.name));
 }
-function tagChipsHTML(it, big) {
-  const tags = itemTags(it);
+function seoTagAny(data) {
+  const m = seoTagMap(data);
+  return Object.keys(m).map((k) => m[k])
+    .sort((a, b) => b.items.length - a.items.length || a.name.localeCompare(b.name));
+}
+function tagChipsHTML(it, data) {
+  const tags = itemTags(it, data);
   if (!tags.length) return "";
-  return '<div class="tags">' + (big ? "" : "<span>Теми:</span>") +
-    tags.map((t) => (big && big[t.slug]
-      ? '<a class="tag" href="/tema/' + t.slug + '">' + escHtml(t.name) + "</a>"
-      : '<span class="tag">' + escHtml(t.name) + "</span>")).join("") + "</div>";
+  return '<div class="tags">' +
+    tags.map((t) => '<a class="tag" href="/tema/' + t.slug + '">' + escHtml(t.name) + "</a>").join("") + "</div>";
 }
 
 /* ---------- скромен markdown → html ---------- */
@@ -791,21 +796,21 @@ function calReviewFor(data, it) {
 }
 
 /* ---------- структурирани данни ---------- */
-function seoJsonLd(kind, it, origin, canon, image) {
+function seoJsonLd(kind, it, origin, canon, image, data) {
   const org = { "@type": "Organization", name: "Men In A Movie", url: origin + "/", logo: origin + "/og.jpg" };
   const author = it.authorName ? { "@type": "Person", name: it.authorName } : org;
   const date = seoDate(kind, it);
   const base = {
     "@context": "https://schema.org",
     headline: it.t, name: it.t,
-    description: seoDesc(it, 300),
+    description: seoDesc(kind, it, 300),
     image: [image],
     inLanguage: "bg-BG",
     mainEntityOfPage: canon,
     url: canon,
     author, publisher: org,
   };
-  const kw = itemTags(it).map((t) => t.name);
+  const kw = itemTags(it, data).map((t) => t.name);
   if (kw.length) base.keywords = kw.join(", ");
   if (date) { base.datePublished = date; base.dateModified = date; }
 
@@ -1242,9 +1247,9 @@ const SHARE_JS =
   "setTimeout(function(){b.textContent=t},1600)})})})();<\/script>";
 
 function seoRelated(data, kind, it, limit) {
-  const mine = new Set(itemTags(it).map((t) => t.slug));
+  const mine = new Set(itemTags(it, data).map((t) => t.slug));
   const all = seoAll(data).filter((x) => !(x.kind === kind && x.it.id === it.id));
-  const score = (x) => itemTags(x.it).filter((t) => mine.has(t.slug)).length;
+  const score = (x) => itemTags(x.it, data).filter((t) => mine.has(t.slug)).length;
   const shared = all.filter((x) => score(x) > 0).sort((a, b) => score(b) - score(a));
   const rest = all.filter((x) => score(x) === 0 && x.kind === kind);
   const pick = shared.concat(rest).slice(0, limit || 4);
@@ -1263,8 +1268,6 @@ function seoRelated(data, kind, it, limit) {
 
 async function seoItemPage(kind, it, data, origin, env) {
   const canon = origin + seoUrl(kind, it);
-  const bigTags = {};
-  for (const t of seoTagList(data)) bigTags[t.slug] = 1;   // кои теми имат своя страница
   const image = seoImage(kind, it, origin);
   const date = seoDate(kind, it);
   let title, metaBits = [], lede = "", extra = "";
@@ -1330,7 +1333,7 @@ async function seoItemPage(kind, it, data, origin, env) {
   const btnsRow = '<div class="btns">' + likeHTML() + SHARE_BTN + listen + extra + bandBtns + "</div>";
   const sideInner = '<p class="facts">' + escHtml(metaBits.filter(Boolean).join(" · ")) + "</p>" +
     "<h1>" + escHtml(it.t) + "</h1>" +
-    tagChipsHTML(it, bigTags) +
+    tagChipsHTML(it, data) +
     (lede ? '<p class="lede">' + escHtml(plain(lede, 400)) + "</p>" : "") +
     btnsRow;
 
@@ -1348,9 +1351,9 @@ async function seoItemPage(kind, it, data, origin, env) {
     seoRelated(data, kind, it, 4);
 
   return seoShell({
-    title, desc: seoDesc(it, 180), canon, image, ogType: "article",
-    keywords: itemTags(it).map((t) => t.name).join(", "),
-    head: seoJsonLd(kind, it, origin, canon, image),
+    title, desc: seoDesc(kind, it, 180), canon, image, ogType: "article",
+    keywords: itemTags(it, data).map((t) => t.name).join(", "),
+    head: seoJsonLd(kind, it, origin, canon, image, data),
     body: html + countJs + SHARE_JS,
   });
 }
@@ -1361,12 +1364,10 @@ async function seoReviewItemPage(it, data, origin) {
   const canon = origin + seoUrl("reviews", it);
   const image = seoImage("reviews", it, origin);
   const heroImg = image && !/\/og\.jpg$/.test(image) ? image : "";
-  const bigTags = {};
-  for (const t of seoTagList(data)) bigTags[t.slug] = 1;
   const title = it.t + (it.y ? " (" + it.y + ")" : "") + " — ревю — Men In A Movie";
   const metaRow = [it.y, it.mins ? it.mins + " мин." : "", genreArr(it.g).join(", ")].filter(Boolean).join(" · ");
   const lede = it.lead || it.verdict || "";
-  const tags = itemTags(it);
+  const tags = itemTags(it, data);
 
   let actions = "";
   if (it.imdb) actions += '<a class="btn" rel="nofollow" href="' + escHtml(/^https?:/.test(it.imdb) ? it.imdb : "https://www.imdb.com/title/" + it.imdb + "/") + '">IMDb</a>';
@@ -1413,13 +1414,13 @@ async function seoReviewItemPage(it, data, origin) {
   const body =
     '<div class="wrap"><div class="section overview">' + seoBody(it.body) +
     (it.authorName ? '<p class="sig">— ' + escHtml(it.authorName) + "</p>" : "") +
-    (tags.length ? tagChipsHTML(it, bigTags) : "") +
+    (tags.length ? tagChipsHTML(it, data) : "") +
     "</div></div>" + seoRelated(data, "reviews", it, 4);
 
   return seoShell({
-    title, desc: seoDesc(it, 180), canon, image, ogType: "article",
-    keywords: itemTags(it).map((t) => t.name).join(", "),
-    head: seoJsonLd("reviews", it, origin, canon, image),
+    title, desc: seoDesc("reviews", it, 180), canon, image, ogType: "article",
+    keywords: itemTags(it, data).map((t) => t.name).join(", "),
+    head: seoJsonLd("reviews", it, origin, canon, image, data),
     body: hero + body + countJs + SHARE_JS,
   });
 }
@@ -1430,8 +1431,6 @@ async function seoCalendarItemPage(it, data, origin, env) {
   const canon = origin + seoUrl("calendar", it);
   const image = seoImage("calendar", it, origin);
   const backdrop = it.backdrop && /^https?:/.test(it.backdrop) ? it.backdrop : (it.poster && /^https?:/.test(it.poster) ? it.poster : "");
-  const bigTags = {};
-  for (const t of seoTagList(data)) bigTags[t.slug] = 1;
   const calPast = String(it.when || "") < ymd(new Date());
   let tmdbX = { trailer: "", overview: "", rating: null, cast: [], director: "", runtime: null };
   if (it.src === "tmdb" && it.tmdbId && env) {
@@ -1519,9 +1518,9 @@ async function seoCalendarItemPage(it, data, origin, env) {
     seoRelated(data, "calendar", it, 4);
 
   return seoShell({
-    title, desc: seoDesc(it, 180), canon, image, ogType: "article",
-    keywords: itemTags(it).map((t) => t.name).join(", "),
-    head: seoJsonLd("calendar", it, origin, canon, image),
+    title, desc: seoDesc("calendar", it, 180), canon, image, ogType: "article",
+    keywords: itemTags(it, data).map((t) => t.name).join(", "),
+    head: seoJsonLd("calendar", it, origin, canon, image, data),
     body: hero + body + countJs + SHARE_JS,
   });
 }
@@ -1939,6 +1938,8 @@ function seoSitemap(data, origin) {
   const rows = ['<url><loc>' + origin + '/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>',
                 '<url><loc>' + origin + '/kalendar</loc><changefreq>daily</changefreq><priority>0.9</priority></url>',
                 '<url><loc>' + origin + '/karta</loc><changefreq>daily</changefreq><priority>0.5</priority></url>'];
+  for (const slug of Object.keys(SEO_LIST))
+    rows.push("<url><loc>" + origin + "/" + slug + "</loc><changefreq>daily</changefreq><priority>0.9</priority></url>");
   for (const v of calViews(data))
     rows.push("<url><loc>" + origin + "/kalendar/" + v.slug + "</loc><changefreq>daily</changefreq><priority>0.7</priority></url>");
   for (const x of seoAll(data)) {
@@ -1967,7 +1968,7 @@ function seoFeed(data, origin) {
       "<link>" + escHtml(loc) + "</link>" +
       '<guid isPermaLink="true">' + escHtml(loc) + "</guid>" +
       (pub ? "<pubDate>" + pub + "</pubDate>" : "") +
-      "<description>" + escHtml(seoDesc(x.it, 300)) + "</description>" +
+      "<description>" + escHtml(seoDesc(x.kind, x.it, 300)) + "</description>" +
       "<category>" + escHtml(SEO_LABEL[x.kind] || x.kind) + "</category>" +
       "</item>";
   });
@@ -2513,7 +2514,7 @@ async function handleRequest(request, env, ctx) {
     if (path.startsWith("/tema/") || path === "/tema") {
       const data = (await stored(env)) || {};
       const slug = decodeURIComponent(path.split("/").filter(Boolean)[1] || "");
-      const tag = seoTagList(data).find((t) => t.slug === slug);
+      const tag = seoTagAny(data).find((t) => t.slug === slug);
       if (!tag) return Response.redirect(url.origin + "/karta", 302);
       return new Response(seoTagPage(tag, data, url.origin), {
         headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" },
