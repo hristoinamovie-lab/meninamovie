@@ -333,6 +333,19 @@ const DEF_PROVIDERS = [
   { id: 119, name: "Prime Video" },
 ];
 const ymd = (d) => d.toISOString().slice(0, 10);
+/* "09:00" в България, на дадена дата, като истински момент в UTC — за насроченото публикуване.
+   Смята отместването през Intl (Europe/Sofia), за да излиза вярно и през лятото, и през зимата. */
+function sofiaToUtcMs(dateStr, timeStr) {
+  const guess = new Date(dateStr + "T" + timeStr + ":00Z");
+  if (isNaN(guess.getTime())) return NaN;
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Sofia", hour12: false,
+    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
+  });
+  const p = fmt.formatToParts(guess).reduce((o, x) => (o[x.type] = x.value, o), {});
+  const asIfSofia = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour === 24 ? 0 : +p.hour, +p.minute, +p.second);
+  return guess.getTime() - (asIfSofia - guess.getTime());
+}
 
 async function tmdbGet(env, path, params) {
   const u = new URL(TMDB + path);
@@ -366,8 +379,19 @@ function tvItem(t, pv, sub, when, season, episode) {
 }
 
 /** Каст, режисьор/създател и франчайз — за предложени тагове в админ панела, тегли се само при натискане на бутон. */
+/* TMDB жанровете имат стабилни номера — превод към българските имена, каквито ги пише сайтът.
+   Ползва се само за да отметнем автоматично съвпадащ жанр в собствения списък на админа
+   (D.settings.genres) — жанр, който админът не е добавил там, просто се пропуска. */
+const TMDB_GENRE_BG = {
+  28: "Екшън", 12: "Приключенски", 16: "Анимация", 35: "Комедия", 80: "Криминален",
+  99: "Документален", 18: "Драма", 10751: "Семеен", 14: "Фентъзи", 36: "Исторически",
+  27: "Хорър", 10402: "Музикален", 9648: "Мистерия", 10749: "Романтичен",
+  878: "Научна фантастика", 10770: "ТВ филм", 53: "Трилър", 10752: "Военен", 37: "Уестърн",
+  10759: "Екшън", 10762: "Детски", 10763: "Новини", 10764: "Риалити",
+  10765: "Научна фантастика", 10766: "Сапунена опера", 10767: "Ток шоу", 10768: "Военен",
+};
 async function tmdbCredits(env, media, tmdbId) {
-  const out = { cast: [], director: "", collection: "", titleLatin: "", genres: [], companies: [], keywords: [] };
+  const out = { cast: [], director: "", collection: "", titleLatin: "", genres: [], genresBg: [], companies: [], keywords: [], year: "", runtime: null, poster: "" };
   if (!env.TMDB_KEY || !tmdbId) return out;
   try {
     // language: en-US нарочно — тук искаме имена на латиница, за да могат да се ползват като тагове
@@ -376,13 +400,19 @@ async function tmdbCredits(env, media, tmdbId) {
     out.cast = (credits.cast || []).slice(0, 5).map((c) => c.name).filter(Boolean);
     out.titleLatin = d.title || d.name || "";
     out.genres = (d.genres || []).map((g) => g.name).filter(Boolean);
+    out.genresBg = (d.genres || []).map((g) => TMDB_GENRE_BG[g.id]).filter(Boolean);
+    out.poster = d.poster_path ? POSTER + d.poster_path : "";
+    const dateStr = d.release_date || d.first_air_date || "";
+    out.year = /^\d{4}/.test(dateStr) ? dateStr.slice(0, 4) : "";
     if (media === "movie") {
+      out.runtime = d.runtime || null;
       const dir = (credits.crew || []).find((c) => c.job === "Director");
       out.director = dir ? dir.name : "";
       out.collection = (d.belongs_to_collection && d.belongs_to_collection.name) || "";
       out.companies = (d.production_companies || []).slice(0, 2).map((c) => c.name).filter(Boolean);
       out.keywords = ((d.keywords && d.keywords.keywords) || []).slice(0, 5).map((k) => k.name).filter(Boolean);
     } else {
+      out.runtime = (d.episode_run_time && d.episode_run_time[0]) || null;
       out.director = ((d.created_by || [])[0] || {}).name || "";
       // мрежите (HBO, Netflix...) нарочно не се предлагат — вече имаме отделно поле "Платформа"
       out.keywords = ((d.keywords && d.keywords.results) || []).slice(0, 5).map((k) => k.name).filter(Boolean);
@@ -733,10 +763,14 @@ function seoLive(kind, it, data) {
   if (kind === "merch") return false;
   const st = it.status || "published";
   if (st !== "published") return false;
-  /* насрочено за бъдеща дата — чака я, преди да излезе някъде */
+  /* насрочено за бъдеща дата/час — чака ги, преди да излезе някъде; часът е по българско време */
   if (it.schedule !== false) {
     const d = seoDate(kind, it);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d > ymd(new Date())) return false;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      const t = /^\d{2}:\d{2}$/.test(it.time || "") ? it.time : "00:00";
+      const at = sofiaToUtcMs(d, t);
+      if (!isNaN(at) && at > Date.now()) return false;
+    }
   }
   return true;
 }
@@ -2624,7 +2658,7 @@ async function handleRequest(request, env, ctx) {
     /* каст/режисьор/франчайз по въведено име — за предложени тагове в админ панела, за всички секции */
     if (path === "/api/tmdb-search-tags" && request.method === "GET") {
       const q = (url.searchParams.get("q") || "").trim();
-      const out = { cast: [], director: "", collection: "", titleLatin: "", titleBg: "", genres: [], companies: [], keywords: [] };
+      const out = { cast: [], director: "", collection: "", titleLatin: "", titleBg: "", genres: [], genresBg: [], companies: [], keywords: [], year: "", runtime: null, poster: "" };
       if (!q || !env.TMDB_KEY) return json(out);
       try {
         // тук language си остава bg-BG нарочно — иначе търсенето по кирилско заглавие (напр. взето от статията) може да не намери резултат;
