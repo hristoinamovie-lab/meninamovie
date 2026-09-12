@@ -625,6 +625,27 @@ async function syncCalendar(env, months) {
       if (enTitle) it.t = enTitle;
     } catch (e) { /* остава с текущото заглавие, ако TMDB не отговори */ }
   }
+  // "Най-гледани по кината" идва от /now_playing — отделна заявка от discover-а по-горе.
+  // Филм може реално да е на екран точно сега, но да не е хванат от discover (напр. извън
+  // прозореца с дати за премиери) — тогава няма собствена страница и картата пада на линк
+  // към TMDB. Правим му собствен запис в календара с данни от TMDB, ако липсва.
+  for (const t of trending.cinema) {
+    if (!t.tmdbId) continue;
+    const key = "tmdb-m-" + t.tmdbId;
+    if (out.some((it) => it.id === key)) continue;
+    try {
+      const d = await tmdbGet(env, "/movie/" + t.tmdbId, { language: "bg-BG" });
+      out.push({
+        id: key, kind: "cinema", src: "tmdb", tmdbId: t.tmdbId,
+        t: d.title || d.original_title || t.t || "", when: d.release_date || ymd(new Date()),
+        poster: d.poster_path ? POSTER + d.poster_path : t.poster || "",
+        backdrop: d.backdrop_path ? BACKDROP + d.backdrop_path : "",
+        p: (d.overview || "").slice(0, 320), video: "", note: "",
+        popularity: d.popularity || t.popularity || 0, rating: d.vote_average || t.rating || 0,
+        genre: (d.genres || []).map((g) => g.name),
+      });
+    } catch (e) { notes.push("Топ по кината (" + (t.t || t.tmdbId) + "): " + e.message); }
+  }
   out.sort((a, b) => String(a.when).localeCompare(String(b.when)));
   data.calendar = out;
   data.trending = trending;
