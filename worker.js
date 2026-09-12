@@ -160,6 +160,34 @@ function keepSecrets(incoming, prev) {
   return incoming;
 }
 
+/* при всеки запис бележим кога е публикуван и кога последно пипнат всеки материал —
+   нужно за "Публикувано на / Обновено на" на страницата и за lastmod в sitemap.xml.
+   Работи само от съдържанието — не иска нищо ново от админ панела. */
+const TIMESTAMP_KINDS = ["reviews", "news", "craft", "episodes"];
+function stampTimestamps(merged, prev) {
+  const today = ymd(new Date());
+  const prevById = {};
+  for (const kind of TIMESTAMP_KINDS)
+    for (const it of (prev && prev[kind]) || []) prevById[kind + ":" + it.id] = it;
+  for (const kind of TIMESTAMP_KINDS) {
+    for (const it of merged[kind] || []) {
+      const old = prevById[kind + ":" + it.id];
+      if (!old) {
+        if (!it.createdAt) it.createdAt = today;
+        it.updatedAt = today;
+        continue;
+      }
+      // createdAt/updatedAt не са реално съдържание — не бива самото им добавяне (при първия
+      // запис след пускането на тази проверка) да се брои за "промяна" на материала
+      const a = Object.assign({}, old); delete a.updatedAt; delete a.createdAt;
+      const b = Object.assign({}, it); delete b.updatedAt; delete b.createdAt;
+      const changed = JSON.stringify(a) !== JSON.stringify(b);
+      it.createdAt = it.createdAt || old.createdAt || old.when || today;
+      it.updatedAt = changed ? today : (old.updatedAt || today);
+    }
+  }
+  return merged;
+}
 /** Хората за админ панела — без сол и без отпечатък от паролата */
 const safeUsers = (rec) =>
   (rec && rec.users ? rec.users : []).map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role }));
@@ -580,6 +608,18 @@ async function syncCalendar(env, months) {
     if (o && (o.edited || o.hidden)) { if (!out.some((x) => x.id === o.id)) out.push(o); continue; }
     out.push(o ? Object.assign({}, o, f) : f);
   }
+  // заглавие, останало на японски/корейски/т.н. (нито кирилица, нито латиница) — адресът пада на "без заглавие";
+  // взимаме английското от TMDB само за адреса на страницата, не разчитаме на превод, който TMDB няма
+  for (const it of out) {
+    if (it.src !== "tmdb" || !it.tmdbId) continue;
+    if (slugify(it.t) !== "bez-zaglavie") continue;
+    try {
+      const media = it.sub ? "tv" : "movie";
+      const en = await tmdbGet(env, "/" + media + "/" + it.tmdbId, { language: "en-US" });
+      const enTitle = (en && (en.title || en.name)) || "";
+      if (enTitle) it.t = enTitle;
+    } catch (e) { /* остава с текущото заглавие, ако TMDB не отговори */ }
+  }
   out.sort((a, b) => String(a.when).localeCompare(String(b.when)));
   data.calendar = out;
   data.trending = trending;
@@ -633,8 +673,10 @@ const BG2LAT = {
   щ:"sht",ъ:"a",ь:"y",ю:"yu",я:"ya",
 };
 function slugify(s) {
+  // латински букви с диакритика (é, ó, í, ñ, á…) стават обикновени букви, вместо да пропадат в тире
+  const norm = String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   let out = "";
-  for (const ch of String(s || "").toLowerCase()) {
+  for (const ch of norm.toLowerCase()) {
     if (BG2LAT[ch]) out += BG2LAT[ch];
     else if (/[a-z0-9]/.test(ch)) out += ch;
     else out += "-";
@@ -643,8 +685,10 @@ function slugify(s) {
 }
 /* кратка опашка от id-то, за да няма два еднакви адреса */
 function idTail(id) {
-  const m = /([a-z0-9]{4,})$/i.exec(String(id || ""));
-  return (m ? m[1] : String(id || "x")).toLowerCase().slice(-6);
+  const raw = String(id || "x");
+  const m = /([a-z0-9]{4,})$/i.exec(raw);
+  const tail = m ? m[1] : raw.replace(/[^a-z0-9]/gi, "");
+  return (tail || "x").toLowerCase().slice(-6);
 }
 function seoSlug(it) { return slugify(it && it.t) + "-" + idTail(it && it.id); }
 function seoUrl(kind, it) { return "/" + SEO_PATH[kind] + "/" + seoSlug(it); }
@@ -673,6 +717,19 @@ function seoLive(kind, it, data) {
 function seoDate(kind, it) {
   return String(it.when || it.d || "").slice(0, 10) || "";
 }
+/* lastmod в sitemap.xml трябва да значи "кога е пипната тази страница", не "кога излиза филмът" —
+   стара TMDB дата (напр. премиерата на филм от 2006) обърква търсачките, че страницата не е обновявана скоро.
+   За материали без дата на публикуване (стари ревюта, въведени преди полето "when") пада на updatedAt/createdAt,
+   за да не липсва lastmod изобщо. */
+function seoLastmod(kind, it) {
+  return String(it.when || it.updatedAt || it.createdAt || it.d || "").slice(0, 10) || "";
+}
+function seoValidLastmod(d) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d || "")) return "";
+  const y = +d.slice(0, 4);
+  const nowY = new Date().getFullYear();
+  return y >= nowY - 2 && y <= nowY + 1 ? d : "";
+}
 function seoDesc(kind, it, max) {
   if (kind === "reviews") return plain(it.body || it.lead || it.verdict || it.desc || "", max || 200);
   return plain(it.lead || it.verdict || it.p || it.desc || it.body || it.note || "", max || 200);
@@ -686,7 +743,12 @@ function seoImage(kind, it, origin) {
 function seoAll(data) {
   const out = [];
   for (const kind of Object.keys(SEO_PATH)) {
-    for (const it of data[kind] || []) if (seoLive(kind, it, data)) out.push({ kind, it, url: seoUrl(kind, it) });
+    for (const it of data[kind] || []) {
+      if (!seoLive(kind, it, data)) continue;
+      // нов епизод на вървящ сериал не получава собствена страница/запис в sitemap — твърде тънко съдържание
+      if (kind === "calendar" && it.sub === "episode") continue;
+      out.push({ kind, it, url: seoUrl(kind, it) });
+    }
   }
   return out;
 }
@@ -782,6 +844,14 @@ function seoDateBg(iso) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ""));
   return m ? +m[3] + " " + BG_MONTHS[+m[2] - 1] + " " + m[1] : "";
 }
+/* видим ред "Публикувано на … · Обновено на …" под статия — второто само ако реално се различава */
+function seoDatesRow(kind, it) {
+  const pub = seoDate(kind, it);
+  if (!pub) return "";
+  const upd = String(it.updatedAt || "").slice(0, 10);
+  return '<p class="pubdate">Публикувано на ' + escHtml(seoDateBg(pub)) +
+    (upd && upd !== pub ? " · Обновено на " + escHtml(seoDateBg(upd)) : "") + "</p>";
+}
 
 /* movie calendar: същият текст като на сайта, за да не се разминават */
 function calCat(c) {
@@ -812,13 +882,15 @@ function seoJsonLd(kind, it, origin, canon, image, data) {
   };
   const kw = itemTags(it, data).map((t) => t.name);
   if (kw.length) base.keywords = kw.join(", ");
-  if (date) { base.datePublished = date; base.dateModified = date; }
+  if (date) base.datePublished = date;
+  const modified = String(it.updatedAt || it.createdAt || "").slice(0, 10) || date;
+  if (modified) base.dateModified = modified;
 
   let node;
   if (kind === "reviews") {
     node = Object.assign({}, base, {
       "@type": "Review",
-      itemReviewed: { "@type": "Movie", name: it.t, ...(it.y ? { dateCreated: String(it.y) } : {}), ...(genreArr(it.g).length ? { genre: genreArr(it.g) } : {}) },
+      itemReviewed: { "@type": "Movie", name: it.t, image: [image], ...(it.y ? { dateCreated: String(it.y) } : {}), ...(genreArr(it.g).length ? { genre: genreArr(it.g) } : {}) },
       reviewRating: { "@type": "Rating", ratingValue: String(it.s || ""), bestRating: "5", worstRating: "1" },
       reviewBody: plain(it.body, 1500),
     });
@@ -916,8 +988,9 @@ nav.main a:hover{border-bottom-color:#141210}
 .clap{width:var(--cs,13px);height:var(--cs,13px);display:block;color:#6A6355;opacity:.55}
 .clap.on{color:#F6C92B;opacity:1}
 .claps-big .clapsrow{gap:6px}
-.claps-big{display:flex;gap:6px;justify-content:center;margin:32px 0 0}
+.claps-big{display:flex;gap:6px;justify-content:center;margin:32px 0 0;align-items:center}
 .claps-big svg{width:26px;height:26px}
+.claps-txt{margin-left:6px;font-size:14px;color:#B9B3A6}
 .movie-hero{position:relative;overflow:hidden;padding-top:26px;border-bottom:1px solid rgba(246,242,230,.09)}
 .movie-hero-art{position:absolute;inset:0;z-index:0;overflow:hidden}
 .movie-hero-art img{width:100%;height:100%;object-fit:cover;filter:blur(7px) saturate(1.05);transform:scale(1.08)}
@@ -1000,6 +1073,8 @@ main{padding-bottom:30px}
 .col figcaption{font-size:13px;color:#8C877C;margin-top:7px}
 .col a{border-bottom:1px solid rgba(246,201,43,.45)}
 .sig{margin-top:26px;padding-top:14px;border-top:1px solid #2A2723;color:#A6A196;font-size:15px}
+.pubdate{margin:10px 0 0;color:#8C877C;font-size:13px}
+.sig+.pubdate{margin-top:6px}
 .kicker{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#F6C92B;margin:0 0 8px}
 .meta{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8C877C;margin:0 0 20px}
 
@@ -1034,6 +1109,7 @@ a.tag:hover{border-color:#F6C92B;color:#F6C92B}
 .banner.cal-banner{border-bottom:none}
 .banner.cal-banner h1{margin:0 0 6px}
 .banner.cal-banner .lede{margin:0;font-size:15px;opacity:.75;max-width:60ch}
+.cal-updated{margin:8px 0 0;font-size:13px;opacity:.55}
 .list{max-width:1180px;margin:26px auto 0;padding:0 22px;display:flex;flex-direction:column;gap:12px}
 .li{display:flex;gap:20px;background:#161412;border:1px solid rgba(246,242,230,.09);padding:14px;color:#F2F0EB;height:210px;overflow:hidden}
 .li:hover{border-color:#F6C92B}
@@ -1049,6 +1125,7 @@ a.tag:hover{border-color:#F6C92B;color:#F6C92B}
 .grid-cards{max-width:1180px;margin:26px auto 0;padding:0 22px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
 .rcard,.calcard{display:block;background:#161412;border:1px solid rgba(246,242,230,.09);color:#F2F0EB}
 .rcard:hover,.calcard:hover{border-color:#F6C92B}
+.calcard.no-link:hover{border-color:rgba(246,242,230,.09)}
 .rcard-art{position:relative;aspect-ratio:2/3;background:#0f0e0c}
 .rcard-art img{width:100%;height:100%;object-fit:cover}
 .rcard-art .clapsrow{position:absolute;top:8px;right:8px;z-index:2;background:rgba(10,9,8,.75);padding:4px 6px}
@@ -1134,7 +1211,7 @@ function seoShell(opts) {
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
     "<title>" + escHtml(title) + "</title>" +
     '<meta name="description" content="' + escHtml(desc) + '">' +
-    '<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">' +
+    '<meta name="robots" content="' + escHtml(opts.robots || "index, follow, max-image-preview:large, max-snippet:-1") + '">' +
     (opts.keywords ? '<meta name="keywords" content="' + escHtml(opts.keywords) + '">' : "") +
     '<link rel="canonical" href="' + escHtml(canon) + '">' +
     '<link rel="icon" href="/favicon.svg" type="image/svg+xml">' +
@@ -1347,6 +1424,7 @@ async function seoItemPage(kind, it, data, origin, env) {
     seoBody(bodyTxt) +
     (it.guest ? '<p class="meta" style="margin-top:22px">Гост: ' + escHtml(it.guest) + (it.role ? " · " + escHtml(it.role) : "") + "</p>" : "") +
     (it.authorName ? '<p class="sig">— ' + escHtml(it.authorName) + "</p>" : "") +
+    seoDatesRow(kind, it) +
     "</div>" +
     seoRelated(data, kind, it, 4);
 
@@ -1405,7 +1483,8 @@ async function seoReviewItemPage(it, data, origin) {
     '<div class="movie-hero-body">' +
     '<span class="platform-tab">Ревю</span>' +
     '<h1 class="hl-stack">' + titleBlocksHTML(it.t, 20) + "</h1>" +
-    (it.s ? '<div class="claps-big cal-claps">' + clapsHTML(it.s, 20) + "</div>" : "") +
+    (it.s ? '<div class="claps-big cal-claps">' + clapsHTML(it.s, 20) +
+      '<span class="claps-txt">Оценка: ' + Math.max(0, Math.min(5, Math.round(+it.s || 0))) + " от 5 клапи</span></div>" : "") +
     (metaRow ? '<p class="movie-meta">' + escHtml(metaRow) + "</p>" : "") +
     (lede ? '<p class="lede">' + escHtml(plain(lede, 300)) + "</p>" : "") +
     '<div class="btns movie-actions">' + likeBtn + SHARE_BTN + actions + '<a class="btn" href="/revyuta">Всички ревюта</a></div>' +
@@ -1414,6 +1493,7 @@ async function seoReviewItemPage(it, data, origin) {
   const body =
     '<div class="wrap"><div class="section overview">' + seoBody(it.body) +
     (it.authorName ? '<p class="sig">— ' + escHtml(it.authorName) + "</p>" : "") +
+    seoDatesRow("reviews", it) +
     (tags.length ? tagChipsHTML(it, data) : "") +
     "</div></div>" + seoRelated(data, "reviews", it, 4);
 
@@ -1487,7 +1567,8 @@ async function seoCalendarItemPage(it, data, origin, env) {
     '<div class="movie-hero-body">' +
     '<span class="platform-tab">' + escHtml(platformLabel) + '</span>' +
     '<h1 class="hl-stack">' + titleBlocksHTML(it.t, 20) + "</h1>" +
-    (tmdbX.rating ? '<div class="claps-big cal-claps">' + clapsHTML(Math.round(tmdbX.rating / 2), 20) + "</div>" : "") +
+    (tmdbX.rating ? '<div class="claps-big cal-claps">' + clapsHTML(Math.round(tmdbX.rating / 2), 20) +
+      '<span class="claps-txt">Оценка: ' + Math.max(0, Math.min(5, Math.round(tmdbX.rating / 2))) + " от 5 клапи (TMDB)</span></div>" : "") +
     (metaRow ? '<p class="movie-meta">' + escHtml(metaRow) + "</p>" : "") +
     (it.lead ? '<p class="lede">' + escHtml(plain(it.lead, 300)) + "</p>" : "") +
     '<div class="btns movie-actions">' + likeBtn + SHARE_BTN + actions + '<a class="btn" href="/kalendar">Целият календар</a></div>' +
@@ -1522,6 +1603,8 @@ async function seoCalendarItemPage(it, data, origin, env) {
     keywords: itemTags(it, data).map((t) => t.name).join(", "),
     head: seoJsonLd("calendar", it, origin, canon, image, data),
     body: hero + body + countJs + SHARE_JS,
+    // нов епизод на вървящ сериал — страницата остава достъпна (стари връзки не пропадат), но не се индексира
+    robots: it.sub === "episode" ? "noindex, follow" : undefined,
   });
 }
 
@@ -1664,9 +1747,15 @@ function seoTagPage(tag, data, origin) {
       })),
     },
   };
+  const latest = tag.items
+    .map((x) => seoValidLastmod(seoLastmod(x.kind, x.it)))
+    .filter(Boolean)
+    .sort()
+    .pop();
   const body =
     '<p class="kicker">Тема</p><h1>' + escHtml(tag.name) + "</h1>" +
-    '<p class="meta">' + tag.items.length + " материала в Men In A Movie</p>" +
+    '<p class="meta">' + tag.items.length + " материала в Men In A Movie" +
+    (latest ? " · обновено на " + escHtml(seoDateBg(latest)) : "") + "</p>" +
     '<div class="rel" style="border:0;margin:0;padding:0">' + sections + "</div>" +
     (others.length
       ? '<div class="tags" style="margin-top:38px"><span>Още теми:</span>' +
@@ -1778,13 +1867,17 @@ function calRow(it, origin) {
   const tab2 = CAL_SUB_LABEL[it.sub] || (it.sub === "episode" && it.season && it.episode ? "S" + it.season + " · E" + it.episode : "");
   const past = it.when < ymd(new Date());
   const formatTxt = it.kind === "event" ? "Събитие" : it.kind === "stream" ? (it.sub ? "Сериал" : "Филм") : "По кината";
-  return '<a class="calcard' + (past ? " past" : "") + '" href="' + seoUrl("calendar", it) + '"><div class="calcard-art">' +
+  // нов епизод на вървящ сериал няма собствена страница — картата се показва, но не е връзка
+  const hasOwnPage = it.sub !== "episode";
+  const tag = hasOwnPage ? "a" : "div";
+  return "<" + tag + ' class="calcard' + (past ? " past" : "") + (hasOwnPage ? "" : " no-link") + '"' +
+    (hasOwnPage ? ' href="' + seoUrl("calendar", it) + '"' : "") + '><div class="calcard-art">' +
     (im && /^https?:/.test(im) ? '<img src="' + escHtml(im) + '" alt="' + escHtml(it.t) + '" loading="lazy">' : "") +
     '<span class="calcard-tab">' + escHtml(tab1) + "</span>" +
     (tab2 ? '<span class="calcard-tab2">' + escHtml(tab2) + "</span>" : "") +
     '<span class="calcard-when">' + escHtml(past ? "вече е налично" : seoDateBg(it.when)) + "</span>" +
     '</div><div class="cbody">' + (it.rating ? '<div class="cal-body-claps">' + clapsHTML(Math.round(it.rating / 2), 13) + "</div>" : "") + '<h3>' + escHtml(it.t) + '</h3>' +
-    '<p class="kicker">' + escHtml((it.kind === "event" ? [it.price ? "от " + it.price + " €" : "", it.place] : [it.platform]).concat([formatTxt]).filter(Boolean).join(" · ")) + "</p></div></a>";
+    '<p class="kicker">' + escHtml((it.kind === "event" ? [it.price ? "от " + it.price + " €" : "", it.place] : [it.platform]).concat([formatTxt]).filter(Boolean).join(" · ")) + "</p></div></" + tag + ">";
 }
 /* прозорецът на главната /kalendar страница: от 1-во число на текущия месец до +30 дни от днес */
 function calWindowStart() { return ymd(new Date()).slice(0, 7) + "-01"; }
@@ -1843,7 +1936,8 @@ function calJsonLd(items, w, canon, origin) {
         "@type": "ListItem", position: i + 1,
         item: {
           "@type": it.kind === "stream" ? "TVSeries" : "Movie",
-          name: it.t, url: origin + seoUrl("calendar", it),
+          name: it.t,
+          ...(it.sub !== "episode" ? { url: origin + seoUrl("calendar", it) } : {}),
           ...(it.poster && /^https?:/.test(it.poster) ? { image: it.poster } : {}),
           ...(it.when ? { datePublished: it.when } : {}),
         },
@@ -1869,9 +1963,11 @@ function calListPage(data, origin, view) {
   const canon = origin + "/kalendar" + (view ? "/" + view.slug : "");
   const first = items.find((it) => it.poster && /^https?:/.test(it.poster));
   const image = first ? first.poster : origin + "/og.jpg";
+  const syncedAt = data.settings && data.settings.calSyncedAt ? ymd(new Date(data.settings.calSyncedAt)) : "";
   const body =
     '<div class="banner cal-banner"><div class="wrap"><h1>' + escHtml(w.h1) + "</h1>" +
-    (w.lede ? '<p class="lede">' + escHtml(w.lede) + "</p>" : "") + "</div></div>" +
+    (w.lede ? '<p class="lede">' + escHtml(w.lede) + "</p>" : "") +
+    (syncedAt ? '<p class="cal-updated">Обновено на ' + escHtml(seoDateBg(syncedAt)) + "</p>" : "") + "</div></div>" +
     '<div class="rel" style="border:0;margin:0;padding:0">' +
     (items.length ? (view && view.type === "month" ? '<div class="grid-cards">' + items.map((it) => calRow(it)).join("") + "</div>" : calByMonth(items))
                   : '<p class="wrap">Точно сега няма обявени дати. Върни се след ден-два — календарът се обновява сам.</p>') +
@@ -1943,7 +2039,7 @@ function seoSitemap(data, origin) {
   for (const v of calViews(data))
     rows.push("<url><loc>" + origin + "/kalendar/" + v.slug + "</loc><changefreq>daily</changefreq><priority>0.7</priority></url>");
   for (const x of seoAll(data)) {
-    const d = seoDate(x.kind, x.it);
+    const d = seoValidLastmod(seoLastmod(x.kind, x.it));
     rows.push("<url><loc>" + origin + x.url + "</loc>" + (d ? "<lastmod>" + d + "</lastmod>" : "") +
       "<changefreq>weekly</changefreq><priority>0.8</priority></url>");
   }
@@ -2274,7 +2370,7 @@ async function handleRequest(request, env, ctx) {
 
         // авторът стига само до собствените си материали
         const shaped = who && who.role === "author" ? authorMerge(body, prev, who) : body;
-        const merged = await keepImages(env, keepSecrets(shaped, prev));
+        const merged = stampTimestamps(await keepImages(env, keepSecrets(shaped, prev)), prev);
         const text = JSON.stringify(merged);
         if (text.length > 20 * 1024 * 1024)
           return json({ error: "too_large", message: "Съдържанието е над 20 MB." }, 413);
@@ -2570,9 +2666,9 @@ async function handleRequest(request, env, ctx) {
         const pageHtml = kind === "calendar" ? await seoCalendarItemPage(it, data, url.origin, env)
           : kind === "reviews" ? await seoReviewItemPage(it, data, url.origin)
           : await seoItemPage(kind, it, data, url.origin, env);
-        return new Response(pageHtml, {
-          headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" },
-        });
+        const headers = { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" };
+        if (kind === "calendar" && it.sub === "episode") headers["x-robots-tag"] = "noindex, follow";
+        return new Response(pageHtml, { headers });
       }
       if (kind && seg.length === 1) return Response.redirect(url.origin + "/#" + SEO_ANCHOR[kind], 302);
     }
