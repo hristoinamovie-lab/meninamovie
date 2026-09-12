@@ -1026,6 +1026,11 @@ function calList(view){
   }
   return all;
 }
+/* малката витрина на началната страница има място само за няколко карти —
+   нов епизод на вървящ сериал е некликаема карта там, затова просто не му отделяме място */
+function calListHome(view){
+  return calList(view).filter(function(c){ return c.sub !== "episode"; });
+}
 function calStreamPlatforms(useWindow){
   var all=items("calendar").filter(function(c){return (useWindow?calInWindow(c):(c.when||"")>=todayISO())&&c.kind==="stream";});
   var seen={}, out=[];
@@ -1079,7 +1084,7 @@ function renderCal(view,p){
   var f=document.getElementById("calFilters");
   if(f) f.innerHTML=kinds.map(function(kv){
     if(kv[0]==="most") return '<button data-cal="most" class="'+(view==="most"?"on":"")+'">Най-гледани</button>';
-    var n=calList(kv[0]).length; if(!n&&kv[0]!=="all")return "";
+    var n=calListHome(kv[0]).length; if(!n&&kv[0]!=="all")return "";
     return '<button data-cal="'+kv[0]+'" class="'+(view===kv[0]?"on":"")+'">'+kv[1]+' ('+n+')</button>';}).join("")+
     '<a class="all" href="/kalendar" data-nav style="margin-left:auto">виж всички</a>';
   var sf=document.getElementById("calSubFilters");
@@ -1101,7 +1106,7 @@ function renderCal(view,p){
         '</div>';
     } else sf.innerHTML="";
   }
-  var list=calList(view), show=list.slice(0,8*p);
+  var list=calListHome(view), show=list.slice(0,8*p);
   document.getElementById("calGrid").innerHTML=calGridHTML(list,8*p);
   var btn=document.querySelector('[data-more="calendar"]');
   if(btn) btn.style.display = list.length>show.length ? "" : "none";
