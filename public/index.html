@@ -82,6 +82,7 @@ section{margin-top:46px}
 /* карти */
 .card{background:var(--card2);display:block;overflow:hidden}
 .card:hover{outline:2px solid var(--y)}
+.card.no-link:hover{outline:none}
 .ph{background:var(--card);width:100%;object-fit:cover;display:block}
 .r169{aspect-ratio:16/9}
 .r23{aspect-ratio:2/3}
@@ -234,6 +235,8 @@ section{margin-top:46px}
 .tag-off{color:var(--tx2)}
 .tags a:hover{background:var(--y);color:var(--black);border-color:var(--y)}
 .sign{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:var(--tx2);font-size:15px}
+.pubdate{margin:10px 0 0;color:var(--tx2);font-size:13px}
+.sign+.pubdate{margin-top:6px}
 .embed{position:relative;aspect-ratio:16/9;background:#000;margin:6px 0 0}
 .embed iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 
@@ -526,6 +529,7 @@ footer a:hover{color:#000;text-decoration:underline}
 .banner.cal-banner .wrap{display:block}
 .banner.cal-banner h1{margin:0 0 6px}
 .banner.cal-banner .lede{margin:0;font-size:15px;opacity:.75;max-width:60ch}
+.cal-updated{margin:8px 0 0;font-size:13px;opacity:.55}
 </style>
 </head>
 <body>
@@ -625,15 +629,25 @@ function normalize(raw){
 var MON=["януари","февруари","март","април","май","юни","юли","август","септември","октомври","ноември","декември"];
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
 function dt(s){if(!s)return"";var p=String(s).slice(0,10).split("-");if(p.length<3)return s;return (+p[2])+" "+MON[+p[1]-1]+" "+p[0];}
+/* видим ред "Публикувано на … · Обновено на …" — второто само ако реално се различава */
+function pubdateHTML(it){
+  var pub=String(it.when||"").slice(0,10); if(!pub) return "";
+  var upd=String(it.updatedAt||"").slice(0,10);
+  return '<p class="pubdate">Публикувано на '+esc(dt(pub))+(upd&&upd!==pub?" · Обновено на "+esc(dt(upd)):"")+'</p>';
+}
 function slugify(s){
-  var m={"а":"a","б":"b","в":"v","г":"g","д":"d","е":"e","ж":"zh","з":"z","и":"i","й":"y","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ф":"f","х":"h","ц":"ts","ч":"ch","ш":"sh","щ":"sht","ъ":"a","ь":"","ю":"yu","я":"ya"};
-  return String(s||"").toLowerCase().split("").map(function(c){return m[c]!==undefined?m[c]:c;}).join("")
+  var m={"а":"a","б":"b","в":"v","г":"g","д":"d","е":"e","ж":"zh","з":"z","и":"i","й":"y","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ф":"f","х":"h","ц":"ts","ч":"ch","ш":"sh","щ":"sht","ъ":"a","ь":"y","ю":"yu","я":"ya"};
+  // латински букви с диакритика (é, ó, í, ñ, á…) стават обикновени букви, вместо да пропадат в тире
+  var norm=String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  return norm.toLowerCase().split("").map(function(c){return m[c]!==undefined?m[c]:c;}).join("")
     .replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,70)||"bez-zaglavie";
 }
 /* същата опашка като в Worker-а, за да не се сменят адресите */
 function idTail(id){
-  var m=/([a-z0-9]{4,})$/i.exec(String(id||""));
-  return (m?m[1]:String(id||"x")).toLowerCase().slice(-6);
+  var raw=String(id||"x");
+  var m=/([a-z0-9]{4,})$/i.exec(raw);
+  var tail=m?m[1]:raw.replace(/[^a-z0-9]/gi,"");
+  return (tail||"x").toLowerCase().slice(-6);
 }
 function ytId(u){var m=/(?:youtu\.be\/|v=|\/embed\/|\/shorts\/|\/live\/)([\w-]{6,})/.exec(u||"");return m?m[1]:"";}
 function ytThumb(u){var i=ytId(u);return i?"https://i.ytimg.com/vi/"+i+"/maxresdefault.jpg":"";}
@@ -791,7 +805,10 @@ function cardP(k,it){
   /* movie calendar карта — платформа/тип горе вляво, епизод под нея, дата долу вляво */
   var tab1=calCat(it), tab2=it.kind==="stream"?subLabel(it):"", past=String(it.when||"")<todayISO();
   var formatTxt=it.kind==="event"?"Събитие":(it.kind==="stream"?(it.sub?"Сериал":"Филм"):"По кината");
-  return '<a class="card cal-card'+(past?" past":"")+'" href="'+url(k,it)+'" data-nav>'+
+  /* нов епизод на вървящ сериал няма собствена страница — картата се показва, но не е връзка */
+  var hasOwnPage=it.sub!=="episode", tag=hasOwnPage?"a":"div";
+  return "<"+tag+' class="card cal-card'+(past?" past":"")+(hasOwnPage?"":" no-link")+'"'+
+    (hasOwnPage?' href="'+url(k,it)+'" data-nav':'')+'>'+
     '<div class="cal-art">'+
     (p?'<img class="ph r23" src="'+esc(p)+'" alt="'+esc(it.t)+'" loading="lazy">':'<div class="ph r23"></div>')+
     '<span class="cal-tab">'+esc(tab1)+'</span>'+
@@ -799,7 +816,7 @@ function cardP(k,it){
     '<span class="cal-when">'+esc(past?"вече е налично":dt(it.when))+'</span>'+
     '</div>'+
     '<div class="cbody">'+(it.rating?'<div class="cal-body-claps">'+claps(Math.round(it.rating/2),13)+'</div>':'')+'<h3 class="ctitle">'+esc(it.t)+'</h3>'+
-    '<div class="cdate">'+esc((it.kind==="event"?[it.price?("от "+it.price+" €"):"",it.place]:[it.platform]).concat([formatTxt]).filter(Boolean).join(" · "))+'</div></div></a>';
+    '<div class="cdate">'+esc((it.kind==="event"?[it.price?("от "+it.price+" €"):"",it.place]:[it.platform]).concat([formatTxt]).filter(Boolean).join(" · "))+'</div></div></'+tag+'>';
 }
 function card(k,it){return KIND[k].shape==="p"?cardP(k,it):cardH(k,it);}
 function rowEp(it){
@@ -1066,8 +1083,10 @@ function lpCalList(view){
 }
 function calendarListPage(page){
   var head=(D.heads&&D.heads.kalendar)||{};
+  var syncedAt=D.settings.calSyncedAt?dt(new Date(D.settings.calSyncedAt).toISOString()):"";
   var h='<div class="banner cal-banner"><div class="wrap"><h1>'+esc(head.title||"Movie calendar")+'</h1>'+
-    (D.settings.calendarLede?'<p class="lede">'+esc(D.settings.calendarLede)+'</p>':'')+'</div></div>'+
+    (D.settings.calendarLede?'<p class="lede">'+esc(D.settings.calendarLede)+'</p>':'')+
+    (syncedAt?'<p class="cal-updated">Обновено на '+esc(syncedAt)+'</p>':'')+'</div></div>'+
     '<div class="wrap"><div class="filters" id="lpCalFilters"></div><div class="filters sub" id="lpCalSubFilters"></div>'+
     '<div id="lpCalGrid"></div><div id="lpCalPager"></div></div>';
   document.getElementById("app").innerHTML=h;
@@ -1188,8 +1207,10 @@ function pager(base,p,pages){
 /* ---------- страница на тема ---------- */
 function tagPage(slug){
   var list=byTag(slug);
-  if(list.length<2){ notFound(); return; }
-  var h='<div class="banner"><div class="wrap"><h1 style="font-size:28px">'+esc(tagLabel(slug))+'</h1></div></div><div class="wrap"><div class="list">'+
+  if(!list.length){ notFound(); return; }
+  var latest=list.map(function(x){return String(x.i.updatedAt||x.i.when||"").slice(0,10);}).filter(Boolean).sort().pop();
+  var h='<div class="banner"><div class="wrap"><h1 style="font-size:28px">'+esc(tagLabel(slug))+'</h1>'+
+    '<p class="meta">'+list.length+' материала в Men In A Movie'+(latest?' · обновено на '+esc(dt(latest)):'')+'</p></div></div><div class="wrap"><div class="list">'+
     list.map(function(x){
       var p=pic(x.k,x.i), shape=KIND[x.k].shape==="p"?"r23":"r169";
       return '<a class="li" href="'+url(x.k,x.i)+'" data-nav>'+
@@ -1248,6 +1269,7 @@ function article(kindKey,id){
   if(kindKey==="episodes"&&it.sp) h+='<a class="btn" href="'+esc(it.sp)+'" target="_blank" rel="noopener">Слушай в Spotify</a>';
 
   if(it.authorName) h+='<div class="sign">— '+esc(it.authorName)+'</div>';
+  h+=pubdateHTML(it);
 
   var rel=[]; (it.tags||[]).forEach(function(s){byTag(s).forEach(function(x){
     if(x.i.id!==it.id&&rel.filter(function(y){return y.i.id===x.i.id;}).length===0) rel.push(x);});});
@@ -1274,7 +1296,8 @@ function reviewItemPage(it){
     '<div class="movie-hero-body">'+
     '<span class="platform-tab">Ревю</span>'+
     '<h1 class="hl-stack">'+titleBlocks(it.t,20)+'</h1>'+
-    (it.s?'<div class="claps-big cal-claps">'+claps(it.s,20)+'</div>':'')+
+    (it.s?'<div class="claps-big cal-claps">'+claps(it.s,20)+
+      '<span class="claps-txt">Оценка: '+Math.max(0,Math.min(5,Math.round(+it.s||0)))+' от 5 клапи</span></div>':'')+
     (metaRow?'<p class="movie-meta">'+esc(metaRow)+'</p>':'')+
     ((it.lead||it.verdict)?'<p class="lede">'+esc(txt(it.lead||it.verdict))+'</p>':'')+
     '<div class="btns movie-actions">'+
@@ -1291,6 +1314,7 @@ function reviewItemPage(it){
   h+='<div class="art-body"><div class="wrap"><div class="section overview">';
   if(it.body) h+='<div class="prose">'+md(it.body)+'</div>';
   if(it.authorName) h+='<div class="sign">— '+esc(it.authorName)+'</div>';
+  h+=pubdateHTML(it);
   var tagsH=tagsHTML(it);
   if(tagsH) h+=tagsH;
   h+='</div>';
@@ -1385,7 +1409,8 @@ function enrichCalTmdb(it){
       if(h1&&!document.querySelector(".cal-claps")){
         var cw=document.createElement("div");
         cw.className="claps-big cal-claps";
-        cw.innerHTML=claps(Math.round(x.rating/2),22);
+        var cwScore=Math.max(0,Math.min(5,Math.round(x.rating/2)));
+        cw.innerHTML=claps(cwScore,22)+'<span class="claps-txt">Оценка: '+cwScore+' от 5 клапи (TMDB)</span>';
         h1.parentNode.insertBefore(cw,h1.nextSibling);
       }
     }
