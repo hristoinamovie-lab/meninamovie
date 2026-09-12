@@ -399,7 +399,7 @@ function tmdbPickTrailer(results) {
 }
 /** Трейлър + резюме (+ оценка на епизод, ако е приложимо) — тегли се при отваряне на страницата, не при синхронизацията. */
 async function tmdbExtra(env, media, tmdbId, season, episode) {
-  const out = { trailer: "", overview: "", rating: null, cast: [], director: "", runtime: null };
+  const out = { trailer: "", overview: "", rating: null, cast: [], director: "", runtime: null, numberOfEpisodes: null, seasonEpisodes: {} };
   if (!env.TMDB_KEY || !tmdbId) return out;
   try {
     if (media === "movie") {
@@ -436,6 +436,11 @@ async function tmdbExtra(env, media, tmdbId, season, episode) {
       const credits = d.credits || {};
       out.cast = (credits.cast || []).slice(0, 5).filter((c) => c.name).map((c) => ({ name: c.name, photo: c.profile_path ? PROFILE + c.profile_path : "" }));
       out.director = ((d.created_by || [])[0] || {}).name || "";
+      // за FAQ-а "Колко епизода има?" — броят на конкретния сезон, ако го знаем, иначе на целия сериал
+      out.numberOfEpisodes = d.number_of_episodes || null;
+      out.seasonEpisodes = Array.isArray(d.seasons)
+        ? d.seasons.reduce((m, s) => { m[s.season_number] = s.episode_count || null; return m; }, {})
+        : {};
     }
   } catch (e) {}
   return out;
@@ -844,6 +849,76 @@ function seoDateBg(iso) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ""));
   return m ? +m[3] + " " + BG_MONTHS[+m[2] - 1] + " " + m[1] : "";
 }
+/* кратък фактологичен отговор в началото на ревю — точно това, което цитират AI асистентите:
+   къде/кога излиза филмът (ако има запис в календара за същото заглавие) + оценката */
+function seoReviewAnswer(it, data) {
+  const cal = calMatchFor(data, it);
+  const bits = [];
+  const title = String(it.t || "").trim();
+  if (cal) {
+    const where = cal.kind === "cinema" ? "по кината" : cal.platform ? "по " + cal.platform : "по стрийминг";
+    const past = String(cal.when || "") < ymd(new Date());
+    bits.push("«" + title + "» " + (past ? "вече е налично " + where + " в България." : "излиза " + where + " в България на " + seoDateBg(cal.when) + "."));
+  }
+  if (it.s) bits.push("Оценка: " + Math.max(0, Math.min(5, Math.round(+it.s || 0))) + " от 5 клапи.");
+  return { text: bits.join(" "), cal };
+}
+/* три въпроса за ревю, попълвани от вече наличните данни — Google игнорира FAQPage схема,
+   ако отговорите не са и видими на самата страница, затова връщаме готово HTML заедно със схемата */
+function seoReviewFaq(it) {
+  const title = String(it.t || "").trim();
+  const qa = [];
+  if (it.s) {
+    const s = Math.max(0, Math.min(5, Math.round(+it.s || 0)));
+    const verdict = s >= 4 ? "Да — получава " + s + " от 5 клапи в нашето ревю." : s <= 2 ? "По-скоро не — само " + s + " от 5 клапи в нашето ревю." : "Колебливо да — " + s + " от 5 клапи, зависи от вкуса.";
+    qa.push({ q: "Струва ли си „" + title + "“?", a: verdict });
+  }
+  const desc = seoDesc("reviews", it, 220);
+  if (desc) qa.push({ q: "За какво се разказва в „" + title + "“?", a: desc });
+  if (it.mins) qa.push({ q: "Колко е дълъг „" + title + "“?", a: "„" + title + "“ трае " + it.mins + " минути." });
+  return qa;
+}
+/* три въпроса за календарен запис — различни за филм и за сериал, попълвани от TMDB/собствените данни */
+function seoCalendarFaq(it, tmdbX) {
+  if (it.kind === "event") return [];
+  const title = String(it.t || "").trim();
+  const past = String(it.when || "") < ymd(new Date());
+  const where = it.kind === "cinema" ? "по кината" : it.platform ? "по " + it.platform : "по стрийминг";
+  const qa = [];
+  const isSeries = it.kind === "stream" && !!it.sub;
+  if (isSeries && it.season) {
+    qa.push({
+      q: "Кога излиза сезон " + it.season + " на „" + title + "“?",
+      a: past ? "Сезон " + it.season + " на „" + title + "“ вече е налично " + where + " в България." : "Сезон " + it.season + " на „" + title + "“ излиза " + where + " в България на " + seoDateBg(it.when) + ".",
+    });
+    const epCount = (tmdbX.seasonEpisodes || {})[it.season] || tmdbX.numberOfEpisodes;
+    if (epCount) qa.push({ q: "Колко епизода има сезон " + it.season + "?", a: "Сезон " + it.season + " на „" + title + "“ има " + epCount + " епизода." });
+  } else {
+    qa.push({
+      q: "Кога излиза „" + title + "“" + (it.kind === "cinema" ? " по кината в България?" : " в България?"),
+      a: past ? "„" + title + "“ вече е налично " + where + " в България." : "„" + title + "“ излиза " + where + " в България на " + seoDateBg(it.when) + ".",
+    });
+  }
+  qa.push({ q: "Къде може да се гледа „" + title + "“?", a: it.kind === "cinema" ? "По кината в България." : it.platform ? "По " + it.platform + "." : "Все още няма обявена платформа за България." });
+  const trailer = it.video || tmdbX.trailer || "";
+  qa.push({ q: "Има ли трейлър на „" + title + "“?", a: trailer ? "Да, трейлърът е достъпен на страницата." : "Все още няма обявен трейлър." });
+  return qa.slice(0, 3);
+}
+function seoFaqHTML(qa) {
+  if (!qa.length) return "";
+  return '<div class="faq">' + qa.map((x) =>
+    "<h2>" + escHtml(x.q) + "</h2><p>" + escHtml(x.a) + "</p>").join("") + "</div>";
+}
+function seoFaqJsonLd(qa) {
+  if (!qa.length) return null;
+  return {
+    "@context": "https://schema.org", "@type": "FAQPage",
+    mainEntity: qa.map((x) => ({
+      "@type": "Question", name: x.q,
+      acceptedAnswer: { "@type": "Answer", text: x.a },
+    })),
+  };
+}
 /* видим ред "Публикувано на … · Обновено на …" под статия — второто само ако реално се различава */
 function seoDatesRow(kind, it) {
   const pub = seoDate(kind, it);
@@ -864,9 +939,39 @@ function calReviewFor(data, it) {
   if (!t) return null;
   return (data.reviews || []).find((r) => seoLive("reviews", r, data) && String(r.t || "").trim().toLowerCase() === t) || null;
 }
+/* обратното на calReviewFor — за дадено ревю/епизод намира записа му в календара, по заглавие;
+   ако има няколко (напр. театрално + стрийминг), предпочита предстоящия пред минали дати */
+function calMatchFor(data, it) {
+  const t = String(it && it.t || "").trim().toLowerCase();
+  if (!t) return null;
+  const matches = (data.calendar || []).filter((c) => seoLive("calendar", c, data) && String(c.t || "").trim().toLowerCase() === t);
+  if (!matches.length) return null;
+  matches.sort((a, b) => String(a.when || "").localeCompare(String(b.when || "")));
+  const today = ymd(new Date());
+  return matches.find((c) => String(c.when || "") >= today) || matches[matches.length - 1];
+}
+/* епизод на подкаста за същия филм/сериал, по заглавие — за бутона "Гледай епизода" в календара */
+function episodeFor(data, it) {
+  const t = String(it && it.t || "").trim().toLowerCase();
+  if (!t) return null;
+  return (data.episodes || []).find((e) => seoLive("episodes", e, data) && String(e.t || "").trim().toLowerCase() === t) || null;
+}
+/* "Още по темата" под календарна страница — календарните записи почти никога нямат тагове,
+   затова търсим ревю/новина/епизод за СЪЩОТО заглавие, за да ги предложим на "Още по темата" */
+function calTitleMatches(data, it) {
+  const out = [];
+  const rv = calReviewFor(data, it);
+  if (rv) out.push({ kind: "reviews", it: rv, url: seoUrl("reviews", rv) });
+  const ep = episodeFor(data, it);
+  if (ep) out.push({ kind: "episodes", it: ep, url: seoUrl("episodes", ep) });
+  const t = String(it.t || "").trim().toLowerCase();
+  if (t) for (const n of data.news || [])
+    if (seoLive("news", n, data) && String(n.t || "").trim().toLowerCase() === t) out.push({ kind: "news", it: n, url: seoUrl("news", n) });
+  return out;
+}
 
 /* ---------- структурирани данни ---------- */
-function seoJsonLd(kind, it, origin, canon, image, data) {
+function seoJsonLd(kind, it, origin, canon, image, data, faqLd) {
   const org = { "@type": "Organization", name: "Men In A Movie", url: origin + "/", logo: origin + "/og.jpg" };
   const author = it.authorName ? { "@type": "Person", name: it.authorName } : org;
   const date = seoDate(kind, it);
@@ -931,7 +1036,8 @@ function seoJsonLd(kind, it, origin, canon, image, data) {
       { "@type": "ListItem", position: 3, name: it.t, item: canon },
     ],
   };
-  const clean = JSON.parse(JSON.stringify([node, crumbs]));
+  const list = [node, crumbs].concat(faqLd ? [faqLd] : []);
+  const clean = JSON.parse(JSON.stringify(list));
   return '<script type="application/ld+json">' + JSON.stringify(clean).replace(/</g, "\\u003c") + "</script>";
 }
 
@@ -1004,6 +1110,8 @@ nav.main a:hover{border-bottom-color:#141210}
 .platform-tab{display:inline-flex;background:#F6C92B;color:#141210;font-family:Oswald,system-ui,sans-serif;font-weight:600;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;padding:6px 12px 6px 8px;clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%);margin-bottom:12px}
 .movie-meta{font-family:Oswald,system-ui,sans-serif;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:#A6A196;margin:10px 0 0}
 .movie-hero-body .lede{color:#F2F0EB;border-left-color:#F6C92B;font-size:18px;line-height:1.5;font-style:italic;border-left-width:4px;padding-left:16px;margin-top:16px;max-width:56ch}
+.movie-hero-body .answer{color:#F2F0EB;border-left:4px solid #F6C92B;font-size:17px;line-height:1.5;padding-left:16px;margin:16px 0 0;max-width:56ch}
+.movie-hero-body .answer a{color:#F6C92B;text-decoration:underline}
 .movie-actions{margin-top:20px}
 .facts-row{display:flex;flex-wrap:wrap;gap:20px 36px;margin-top:22px;padding-top:20px;border-top:1px solid #2A2723}
 .fact-l{font-family:Oswald,system-ui,sans-serif;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#8C877C;margin:0 0 4px}
@@ -1075,6 +1183,10 @@ main{padding-bottom:30px}
 .sig{margin-top:26px;padding-top:14px;border-top:1px solid #2A2723;color:#A6A196;font-size:15px}
 .pubdate{margin:10px 0 0;color:#8C877C;font-size:13px}
 .sig+.pubdate{margin-top:6px}
+.faq{margin:34px 0 0;padding-top:22px;border-top:1px solid #2A2723}
+.faq h2{font-size:16px;margin:18px 0 6px;color:#F2F0EB}
+.faq h2:first-child{margin-top:0}
+.faq p{margin:0;color:#B9B3A6}
 .kicker{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#F6C92B;margin:0 0 8px}
 .meta{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8C877C;margin:0 0 20px}
 
@@ -1277,7 +1389,8 @@ const SEO_FOOTER =
   '<a href="/podkast">Подкаст</a><br><a href="/zad-kadar">Зад кадър</a><br><a href="/kalendar">Какво да гледам</a><br>' +
   '<a href="/karta">Карта на сайта</a></div>' +
   '<div><h4>Последвай ни</h4><a href="https://www.youtube.com/@meninamovie" rel="noopener">YouTube</a><br>' +
-  '<a href="https://www.instagram.com/meninamovie" rel="noopener">Instagram</a></div>' +
+  '<a href="https://www.instagram.com/meninamovie" rel="noopener">Instagram</a><br>' +
+  '<a href="/feed.xml">RSS</a></div>' +
   '<div><h4>Контакт</h4><a href="mailto:hristoinamovie@gmail.com">hristoinamovie@gmail.com</a></div>' +
   "</div>" +
   '<div class="fin"><span>© 2026 Men In A Movie</span>' +
@@ -1323,12 +1436,20 @@ const SHARE_JS =
   "navigator.clipboard&&navigator.clipboard.writeText(u).then(function(){var t=b.textContent;b.textContent='Копирано';" +
   "setTimeout(function(){b.textContent=t},1600)})})})();<\/script>";
 
-function seoRelated(data, kind, it, limit) {
+function seoRelated(data, kind, it, limit, extra) {
   const mine = new Set(itemTags(it, data).map((t) => t.slug));
   const all = seoAll(data).filter((x) => !(x.kind === kind && x.it.id === it.id));
   const score = (x) => itemTags(x.it, data).filter((t) => mine.has(t.slug)).length;
   const shared = all.filter((x) => score(x) > 0).sort((a, b) => score(b) - score(a));
-  const rest = all.filter((x) => score(x) === 0 && x.kind === kind);
+  // за календара тагове почти никога няма — но същото заглавие има ревю/новина/епизод, намерени по име
+  if (extra && extra.length) {
+    const seen = new Set(shared.map((x) => x.kind + ":" + x.it.id));
+    for (const x of extra) {
+      const key = x.kind + ":" + x.it.id;
+      if (!seen.has(key)) { shared.push(x); seen.add(key); }
+    }
+  }
+  const rest = all.filter((x) => score(x) === 0 && x.kind === kind && !shared.some((s) => s.kind === x.kind && s.it.id === x.it.id));
   const pick = shared.concat(rest).slice(0, limit || 4);
   if (!pick.length) return "";
   const shot = (x) => {
@@ -1446,6 +1567,7 @@ async function seoReviewItemPage(it, data, origin) {
   const metaRow = [it.y, it.mins ? it.mins + " мин." : "", genreArr(it.g).join(", ")].filter(Boolean).join(" · ");
   const lede = it.lead || it.verdict || "";
   const tags = itemTags(it, data);
+  const answer = seoReviewAnswer(it, data);
 
   let actions = "";
   if (it.imdb) actions += '<a class="btn" rel="nofollow" href="' + escHtml(/^https?:/.test(it.imdb) ? it.imdb : "https://www.imdb.com/title/" + it.imdb + "/") + '">IMDb</a>';
@@ -1486,21 +1608,25 @@ async function seoReviewItemPage(it, data, origin) {
     (it.s ? '<div class="claps-big cal-claps">' + clapsHTML(it.s, 20) +
       '<span class="claps-txt">Оценка: ' + Math.max(0, Math.min(5, Math.round(+it.s || 0))) + " от 5 клапи</span></div>" : "") +
     (metaRow ? '<p class="movie-meta">' + escHtml(metaRow) + "</p>" : "") +
+    (answer.text ? '<p class="answer">' + escHtml(answer.text) +
+      (answer.cal ? ' <a href="' + escHtml(seoUrl("calendar", answer.cal)) + '">Виж в календара</a>' : "") + "</p>" : "") +
     (lede ? '<p class="lede">' + escHtml(plain(lede, 300)) + "</p>" : "") +
     '<div class="btns movie-actions">' + likeBtn + SHARE_BTN + actions + '<a class="btn" href="/revyuta">Всички ревюта</a></div>' +
     "</div></div></div></div>";
 
+  const faq = seoReviewFaq(it);
   const body =
     '<div class="wrap"><div class="section overview">' + seoBody(it.body) +
     (it.authorName ? '<p class="sig">— ' + escHtml(it.authorName) + "</p>" : "") +
     seoDatesRow("reviews", it) +
     (tags.length ? tagChipsHTML(it, data) : "") +
+    seoFaqHTML(faq) +
     "</div></div>" + seoRelated(data, "reviews", it, 4);
 
   return seoShell({
     title, desc: seoDesc("reviews", it, 180), canon, image, ogType: "article",
     keywords: itemTags(it, data).map((t) => t.name).join(", "),
-    head: seoJsonLd("reviews", it, origin, canon, image, data),
+    head: seoJsonLd("reviews", it, origin, canon, image, data, seoFaqJsonLd(faq)),
     body: hero + body + countJs + SHARE_JS,
   });
 }
@@ -1512,7 +1638,7 @@ async function seoCalendarItemPage(it, data, origin, env) {
   const image = seoImage("calendar", it, origin);
   const backdrop = it.backdrop && /^https?:/.test(it.backdrop) ? it.backdrop : (it.poster && /^https?:/.test(it.poster) ? it.poster : "");
   const calPast = String(it.when || "") < ymd(new Date());
-  let tmdbX = { trailer: "", overview: "", rating: null, cast: [], director: "", runtime: null };
+  let tmdbX = { trailer: "", overview: "", rating: null, cast: [], director: "", runtime: null, numberOfEpisodes: null, seasonEpisodes: {} };
   if (it.src === "tmdb" && it.tmdbId && env) {
     const media = it.kind === "cinema" || (it.kind === "stream" && !it.sub) ? "movie" : "tv";
     const s = it.sub === "episode" ? it.season : "", e = it.sub === "episode" ? it.episode : "";
@@ -1528,12 +1654,14 @@ async function seoCalendarItemPage(it, data, origin, env) {
 
   const trailer = it.video || tmdbX.trailer || "";
   const rv = calReviewFor(data, it);
+  const ep = episodeFor(data, it);
   let actions = "";
   if (trailer) actions += '<a class="btn gold" rel="nofollow" href="' + escHtml(trailer) + '">Виж трейлъра</a>';
   if (it.kind === "event" && it.ticketUrl) actions += '<a class="btn" rel="nofollow" href="' + escHtml(it.ticketUrl) + '">Билети</a>';
   if (it.kind === "stream" && it.watchUrl) actions += '<a class="btn" rel="nofollow" href="' + escHtml(it.watchUrl) + '">Гледай в ' + escHtml(it.platform || "платформата") + '</a>';
   if (it.kind === "cinema" && data.settings && data.settings.cinemaProgramUrl) actions += '<a class="btn" rel="nofollow" href="' + escHtml(data.settings.cinemaProgramUrl) + '">Програма по кината</a>';
   if (rv) actions += '<a class="btn" href="' + escHtml(seoUrl("reviews", rv)) + '">Прочети ревюто</a>';
+  if (ep) actions += '<a class="btn" href="' + escHtml(seoUrl("episodes", ep)) + '">Гледай епизода</a>';
 
   const likeBtn = '<button class="btn like" id="lk" type="button" aria-label="Харесай">' +
     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
@@ -1590,18 +1718,20 @@ async function seoCalendarItemPage(it, data, origin, env) {
     it.when ? [calPast ? "Излезе на" : "Премиера", seoDateBg(it.when)] : null,
   ].filter(Boolean);
 
+  const faq = seoCalendarFaq(it, tmdbX);
   const body =
     '<div class="wrap"><div class="section overview">' +
     (bodyTxt ? seoBody(bodyTxt) : "") +
     (factsRow.length ? '<div class="facts-row">' + factsRow.map((f) => '<div class="fact"><p class="fact-l">' + escHtml(f[0]) + '</p><p class="fact-v">' + escHtml(f[1]) + "</p></div>").join("") + "</div>" : "") +
+    seoFaqHTML(faq) +
     "</div>" + castRow +
     '<div class="section">' + calItemLinks(data, it) + "</div></div>" +
-    seoRelated(data, "calendar", it, 4);
+    seoRelated(data, "calendar", it, 4, calTitleMatches(data, it));
 
   return seoShell({
     title, desc: seoDesc("calendar", it, 180), canon, image, ogType: "article",
     keywords: itemTags(it, data).map((t) => t.name).join(", "),
-    head: seoJsonLd("calendar", it, origin, canon, image, data),
+    head: seoJsonLd("calendar", it, origin, canon, image, data, seoFaqJsonLd(faq)),
     body: hero + body + countJs + SHARE_JS,
     // нов епизод на вървящ сериал — страницата остава достъпна (стари връзки не пропадат), но не се индексира
     robots: it.sub === "episode" ? "noindex, follow" : undefined,
