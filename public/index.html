@@ -635,6 +635,23 @@ function normalize(raw){
 var MON=["януари","февруари","март","април","май","юни","юли","август","септември","октомври","ноември","декември"];
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
 function dt(s){if(!s)return"";var p=String(s).slice(0,10).split("-");if(p.length<3)return s;return (+p[2])+" "+MON[+p[1]-1]+" "+p[0];}
+/* същата сметка като на сървъра — "09:00" в България, на дадена дата, като истински момент,
+   за да не се вижда насрочена статия по-рано тук, отколкото на страницата за търсачките */
+function sofiaToUtcMs(dateStr,timeStr){
+  var guess=new Date(dateStr+"T"+timeStr+":00Z");
+  if(isNaN(guess.getTime())) return NaN;
+  var fmt=new Intl.DateTimeFormat("en-US",{timeZone:"Europe/Sofia",hour12:false,
+    year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  var p={}; fmt.formatToParts(guess).forEach(function(x){p[x.type]=x.value;});
+  var asIfSofia=Date.UTC(+p.year,+p.month-1,+p.day,+p.hour===24?0:+p.hour,+p.minute,+p.second);
+  return guess.getTime()-(asIfSofia-guess.getTime());
+}
+function isScheduled(it){
+  if(!it||!/^\d{4}-\d{2}-\d{2}$/.test(it.when||"")) return false;
+  var t=/^\d{2}:\d{2}$/.test(it.time||"")?it.time:"00:00";
+  var at=sofiaToUtcMs(it.when,t);
+  return !isNaN(at)&&at>Date.now();
+}
 /* видим ред "Публикувано на … · Обновено на …" — второто само ако реално се различава */
 function pubdateHTML(it){
   var pub=String(it.when||"").slice(0,10); if(!pub) return "";
@@ -799,8 +816,13 @@ function calPlatformActive(it){
 }
 function items(k){return (D[k]||[]).filter(function(i){
   if((i.status||"published")!=="published") return false;
-  if(k==="calendar"&&i.hidden) return false;
-  if(k==="calendar"&&!calPlatformActive(i)) return false;
+  if(k==="calendar"){
+    if(i.hidden) return false;
+    if(!calPlatformActive(i)) return false;
+    return true;
+  }
+  // насрочена статия чака си датата/часа, същата проверка като на страницата за търсачките
+  if(i.schedule!==false&&isScheduled(i)) return false;
   return true;
 });}
 function url(k,it){return "/"+KIND[k].path+"/"+slugify(it.t)+"-"+idTail(it.id);}
