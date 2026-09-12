@@ -158,6 +158,8 @@ section{margin-top:46px}
 .platform-tab{display:inline-flex;background:var(--y);color:var(--black);font-family:Oswald,sans-serif;font-weight:600;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;padding:6px 12px 6px 8px;clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%);margin-bottom:12px}
 .movie-meta{font-family:Oswald,sans-serif;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--tx2);margin:10px 0 0}
 .movie-hero-body .lede{color:var(--tx);border-left-color:var(--y);font-size:18px;line-height:1.5;font-style:italic;border-left-width:4px;padding-left:16px;margin-top:16px;max-width:56ch}
+.movie-hero-body .answer{color:var(--tx);border-left:4px solid var(--y);font-size:17px;line-height:1.5;padding-left:16px;margin:16px 0 0;max-width:56ch}
+.movie-hero-body .answer a{color:var(--y);text-decoration:underline}
 .movie-actions{margin-top:20px}
 .facts-row{display:flex;flex-wrap:wrap;gap:20px 36px;margin-top:22px;padding-top:20px;border-top:1px solid var(--line)}
 .fact-l{font-family:Oswald,sans-serif;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx2);margin:0 0 4px}
@@ -237,6 +239,10 @@ section{margin-top:46px}
 .sign{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:var(--tx2);font-size:15px}
 .pubdate{margin:10px 0 0;color:var(--tx2);font-size:13px}
 .sign+.pubdate{margin-top:6px}
+.faq{margin:34px 0 0;padding-top:22px;border-top:1px solid var(--line)}
+.faq h2{font-size:16px;margin:18px 0 6px;color:var(--tx)}
+.faq h2:first-child{margin-top:0}
+.faq p{margin:0;color:var(--tx2)}
 .embed{position:relative;aspect-ratio:16/9;background:#000;margin:6px 0 0}
 .embed iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 
@@ -688,6 +694,69 @@ function calCat(c){
 function reviewFor(c){
   var t=String(c.t||"").trim().toLowerCase(); if(!t) return null;
   return items("reviews").filter(function(r){return String(r.t||"").trim().toLowerCase()===t;})[0]||null;
+}
+/* обратното на reviewFor — за дадено ревю/епизод намира записа му в календара, по заглавие */
+function calMatchFor(it){
+  var t=String(it&&it.t||"").trim().toLowerCase(); if(!t) return null;
+  var m=items("calendar").filter(function(c){return String(c.t||"").trim().toLowerCase()===t;});
+  if(!m.length) return null;
+  m.sort(function(a,b){return String(a.when||"").localeCompare(String(b.when||""));});
+  var today=todayISO();
+  return m.filter(function(c){return String(c.when||"")>=today;})[0]||m[m.length-1];
+}
+/* епизод на подкаста за същия филм/сериал, по заглавие */
+function episodeFor(it){
+  var t=String(it&&it.t||"").trim().toLowerCase(); if(!t) return null;
+  return items("episodes").filter(function(e){return String(e.t||"").trim().toLowerCase()===t;})[0]||null;
+}
+/* кратък фактологичен отговор в началото на ревю — къде/кога излиза филмът + оценката */
+function reviewAnswerHTML(it){
+  var cal=calMatchFor(it), bits=[], title=String(it.t||"").trim();
+  if(cal){
+    var where=cal.kind==="cinema"?"по кината":(cal.platform?"по "+cal.platform:"по стрийминг");
+    var past=String(cal.when||"")<todayISO();
+    bits.push("«"+title+"» "+(past?"вече е налично "+where+" в България.":"излиза "+where+" в България на "+dt(cal.when)+"."));
+  }
+  if(it.s) bits.push("Оценка: "+Math.max(0,Math.min(5,Math.round(+it.s||0)))+" от 5 клапи.");
+  if(!bits.length) return "";
+  return '<p class="answer">'+esc(bits.join(" "))+(cal?' <a href="'+url("calendar",cal)+'" data-nav>Виж в календара</a>':'')+'</p>';
+}
+/* три въпроса за ревю, попълвани от вече наличните данни — виждат се на страницата, не само в схема */
+function reviewFaqQA(it){
+  var title=String(it.t||"").trim(), qa=[];
+  if(it.s){
+    var s=Math.max(0,Math.min(5,Math.round(+it.s||0)));
+    var verdict=s>=4?"Да — получава "+s+" от 5 клапи в нашето ревю.":(s<=2?"По-скоро не — само "+s+" от 5 клапи в нашето ревю.":"Колебливо да — "+s+" от 5 клапи, зависи от вкуса.");
+    qa.push({q:"Струва ли си „"+title+"“?", a:verdict});
+  }
+  var desc=txt(it.body||it.lead||it.verdict||"").slice(0,220);
+  if(desc) qa.push({q:"За какво се разказва в „"+title+"“?", a:desc});
+  if(it.mins) qa.push({q:"Колко е дълъг „"+title+"“?", a:"„"+title+"“ трае "+it.mins+" минути."});
+  return qa;
+}
+function faqHTML(qa){
+  if(!qa.length) return "";
+  return '<div class="faq">'+qa.map(function(x){return "<h2>"+esc(x.q)+"</h2><p>"+esc(x.a)+"</p>";}).join("")+'</div>';
+}
+/* три въпроса за календарен запис — различни за филм и за сериал; x е резултатът от /api/tmdb-extra */
+function calendarFaqQA(it,x){
+  if(it.kind==="event") return [];
+  var title=String(it.t||"").trim(), past=String(it.when||"")<todayISO();
+  var where=it.kind==="cinema"?"по кината":(it.platform?"по "+it.platform:"по стрийминг");
+  var qa=[], isSeries=it.kind==="stream"&&!!it.sub;
+  if(isSeries&&it.season){
+    qa.push({q:"Кога излиза сезон "+it.season+" на „"+title+"“?",
+      a: past?"Сезон "+it.season+" на „"+title+"“ вече е налично "+where+" в България.":"Сезон "+it.season+" на „"+title+"“ излиза "+where+" в България на "+dt(it.when)+"."});
+    var epCount=(x&&x.seasonEpisodes&&x.seasonEpisodes[it.season])||(x&&x.numberOfEpisodes);
+    if(epCount) qa.push({q:"Колко епизода има сезон "+it.season+"?", a:"Сезон "+it.season+" на „"+title+"“ има "+epCount+" епизода."});
+  } else {
+    qa.push({q:"Кога излиза „"+title+"“"+(it.kind==="cinema"?" по кината в България?":" в България?"),
+      a: past?"„"+title+"“ вече е налично "+where+" в България.":"„"+title+"“ излиза "+where+" в България на "+dt(it.when)+"."});
+  }
+  qa.push({q:"Къде може да се гледа „"+title+"“?", a: it.kind==="cinema"?"По кината в България.":(it.platform?"По "+it.platform+".":"Все още няма обявена платформа за България.")});
+  var trailer=it.video||(x&&x.trailer)||"";
+  qa.push({q:"Има ли трейлър на „"+title+"“?", a: trailer?"Да, трейлърът е достъпен на страницата.":"Все още няма обявен трейлър."});
+  return qa.slice(0,3);
 }
 
 function md(s){
@@ -1299,6 +1368,7 @@ function reviewItemPage(it){
     (it.s?'<div class="claps-big cal-claps">'+claps(it.s,20)+
       '<span class="claps-txt">Оценка: '+Math.max(0,Math.min(5,Math.round(+it.s||0)))+' от 5 клапи</span></div>':'')+
     (metaRow?'<p class="movie-meta">'+esc(metaRow)+'</p>':'')+
+    reviewAnswerHTML(it)+
     ((it.lead||it.verdict)?'<p class="lede">'+esc(txt(it.lead||it.verdict))+'</p>':'')+
     '<div class="btns movie-actions">'+
       '<button class="btn like" id="lk" type="button" aria-label="Харесай">'+
@@ -1317,6 +1387,7 @@ function reviewItemPage(it){
   h+=pubdateHTML(it);
   var tagsH=tagsHTML(it);
   if(tagsH) h+=tagsH;
+  h+=faqHTML(reviewFaqQA(it));
   h+='</div>';
 
   var rel=[]; (it.tags||[]).forEach(function(s){byTag(s).forEach(function(x){
@@ -1336,12 +1407,13 @@ function movieItemPage(it){
   var metaRow=[past?"вече е налично":dt(it.when), it.mins?(it.mins+" мин."):"", genreArr(it.genre).length?genreTxt(it.genre):"",
     it.time, it.place, it.kind==="event"&&it.price?("от "+it.price+" €"):""].filter(Boolean).join(" · ");
   var backdrop=it.backdrop||it.poster||"";
-  var rv=reviewFor(it);
+  var rv=reviewFor(it), ep=episodeFor(it);
   var actions="";
   if(it.kind==="event"&&it.ticketUrl) actions+='<a class="btn gold" target="_blank" rel="noopener" href="'+esc(it.ticketUrl)+'">Билети</a>';
   if(it.kind==="stream"&&it.watchUrl) actions+='<a class="btn gold" target="_blank" rel="noopener" href="'+esc(it.watchUrl)+'">Гледай в '+esc(it.platform||"платформата")+'</a>';
   if(it.kind==="cinema"&&D.settings.cinemaProgramUrl) actions+='<a class="btn" target="_blank" rel="noopener" href="'+esc(D.settings.cinemaProgramUrl)+'">Програма по кината</a>';
   if(rv) actions+='<a class="btn" href="'+url("reviews",rv)+'" data-nav>Прочети ревюто</a>';
+  if(ep) actions+='<a class="btn" href="'+url("episodes",ep)+'" data-nav>Гледай епизода</a>';
 
   var h='<div class="movie-hero">'+
     (backdrop?'<div class="movie-hero-art"><img src="'+esc(backdrop)+'" alt=""></div>':'')+
@@ -1374,11 +1446,20 @@ function movieItemPage(it){
   if(it.when) factsRow.push([past?"Излезе на":"Премиера",dt(it.when)]);
   if(factsRow.length) h+='<div class="facts-row" id="movieFacts">'+factsRow.map(function(f){
     return '<div class="fact"><p class="fact-l">'+esc(f[0])+'</p><p class="fact-v">'+esc(f[1])+'</p></div>';}).join("")+'</div>';
+  h+='<div id="movieFaq">'+faqHTML(calendarFaqQA(it,null))+'</div>';
   h+='</div>';
   h+='<div class="section">'+calItemLinksHTML(it)+'</div>';
 
   var rel=[]; (it.tags||[]).forEach(function(s){byTag(s).forEach(function(x){
     if(x.i.id!==it.id&&rel.filter(function(y){return y.i.id===x.i.id;}).length===0) rel.push(x);});});
+  // календарните записи почти никога нямат тагове — добавяме ревю/новина/епизод за същото заглавие
+  if(rv) rel.push({k:"reviews",i:rv});
+  if(ep) rel.push({k:"episodes",i:ep});
+  (function(){
+    var t=String(it.t||"").trim().toLowerCase();
+    if(!t) return;
+    items("news").forEach(function(n){ if(String(n.t||"").trim().toLowerCase()===t) rel.push({k:"news",i:n}); });
+  })();
   if(rel.length) h+='<div class="section"><div class="s-head"><h2 style="font-size:20px">Още по темата</h2></div>'+
     '<div class="grid4">'+rel.slice(0,4).map(function(x){return card(x.k,x.i);}).join("")+'</div></div>';
   h+='</div></div>';
@@ -1396,6 +1477,8 @@ function enrichCalTmdb(it){
   if(it.sub==="episode"&&it.season&&it.episode) qs+="&season="+it.season+"&episode="+it.episode;
   fetch("/api/tmdb-extra?"+qs).then(function(r){return r.ok?r.json():null;}).then(function(x){
     if(!x) return;
+    var faqEl=document.getElementById("movieFaq");
+    if(faqEl) faqEl.innerHTML=faqHTML(calendarFaqQA(it,x));
     if(x.overview){
       var ov=document.querySelector("#movieOverview .prose");
       if(!ov){
@@ -1441,8 +1524,7 @@ function tagsHTML(it){
   var tg=(it.tags||[]).filter(Boolean);
   if(!tg.length) return "";
   return '<div class="tags">'+tg.map(function(s){
-    return tagCount(s)>1 ? '<a href="/tema/'+s+'" data-nav>'+esc(tagLabel(s))+'</a>'
-                         : '<span class="tag-off">'+esc(tagLabel(s))+'</span>';
+    return '<a class="tag" href="/tema/'+s+'" data-nav>'+esc(tagLabel(s))+'</a>';
   }).join("")+'</div>';
 }
 /* "Виж и:" — връзки към месеца и платформата/кината на заглавието, същото каквото и сървърната версия показва */
@@ -1470,8 +1552,9 @@ function likeShareHTML(kindKey,it){
     if(it.kind==="event"&&it.ticketUrl) calBtns+='<a class="btn gold" target="_blank" rel="noopener" href="'+esc(it.ticketUrl)+'">Билети</a>';
     if(it.kind==="stream"&&it.watchUrl) calBtns+='<a class="btn gold" target="_blank" rel="noopener" href="'+esc(it.watchUrl)+'">Гледай в '+esc(it.platform||"платформата")+'</a>';
     if(it.kind==="cinema"&&D.settings.cinemaProgramUrl) calBtns+='<a class="btn" target="_blank" rel="noopener" href="'+esc(D.settings.cinemaProgramUrl)+'">Програма по кината</a>';
-    var rv=reviewFor(it);
+    var rv=reviewFor(it), ep=episodeFor(it);
     if(rv) calBtns+='<a class="btn" href="'+url("reviews",rv)+'" data-nav>Прочети ревюто</a>';
+    if(ep) calBtns+='<a class="btn" href="'+url("episodes",ep)+'" data-nav>Гледай епизода</a>';
     calBtns+='<a class="btn" href="/kalendar" data-nav>Целият календар</a>';
   }
   return '<div class="btns">'+
@@ -1602,7 +1685,8 @@ function chrome(){
   var soc={youtube:"YouTube",instagram:"Instagram",tiktok:"TikTok",spotify:"Spotify",apple:"Apple Podcasts"};
   document.getElementById("fSocial").innerHTML=Object.keys(D.settings.links||{})
     .filter(function(k){return soc[k]&&(D.settings.links[k]||"#")!=="#";})
-    .map(function(k){return '<a href="'+esc(D.settings.links[k])+'" target="_blank" rel="noopener">'+soc[k]+"</a>";}).join("");
+    .map(function(k){return '<a href="'+esc(D.settings.links[k])+'" target="_blank" rel="noopener">'+soc[k]+"</a>";}).join("")+
+    '<a href="/feed.xml">RSS</a>';
   document.getElementById("fContact").innerHTML='<a href="mailto:'+esc(D.settings.contactEmail||"")+'">'+esc(D.settings.contactEmail||"")+"</a>";
   document.getElementById("fCopy").textContent=D.settings.copyright||"© 2026 Men In A Movie";
   document.getElementById("tmdbCredit").hidden=!items("calendar").length;
