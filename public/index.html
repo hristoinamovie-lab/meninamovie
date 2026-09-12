@@ -729,7 +729,7 @@ function reviewFaqQA(it){
     var verdict=s>=4?"Да — получава "+s+" от 5 клапи в нашето ревю.":(s<=2?"По-скоро не — само "+s+" от 5 клапи в нашето ревю.":"Колебливо да — "+s+" от 5 клапи, зависи от вкуса.");
     qa.push({q:"Струва ли си „"+title+"“?", a:verdict});
   }
-  var desc=txt(it.body||it.lead||it.verdict||"").slice(0,220);
+  var desc=txt(it.body||it.lead||it.verdict||"").replace(/[*_>#[\]()]/g,"").replace(/\s+/g," ").trim().slice(0,220);
   if(desc) qa.push({q:"За какво се разказва в „"+title+"“?", a:desc});
   if(it.mins) qa.push({q:"Колко е дълъг „"+title+"“?", a:"„"+title+"“ трае "+it.mins+" минути."});
   return qa;
@@ -1158,13 +1158,13 @@ function lpCalList(view){
 function calendarListPage(page){
   var head=(D.heads&&D.heads.kalendar)||{};
   var syncedAt=D.settings.calSyncedAt?dt(new Date(D.settings.calSyncedAt).toISOString()):"";
-  var h='<div class="banner cal-banner"><div class="wrap"><h1>'+esc(head.title||"Movie calendar")+'</h1>'+
+  var h='<div class="banner cal-banner"><div class="wrap"><h1>'+esc(head.title||"Какво да гледам")+'</h1>'+
     (D.settings.calendarLede?'<p class="lede">'+esc(D.settings.calendarLede)+'</p>':'')+
     (syncedAt?'<p class="cal-updated">Обновено на '+esc(syncedAt)+'</p>':'')+'</div></div>'+
     '<div class="wrap"><div class="filters" id="lpCalFilters"></div><div class="filters sub" id="lpCalSubFilters"></div>'+
     '<div id="lpCalGrid"></div><div id="lpCalPager"></div></div>';
   document.getElementById("app").innerHTML=h;
-  document.title=(head.title||"Movie calendar")+" — Men In A Movie";
+  document.title=(head.title||"Какво да гледам")+" — Men In A Movie";
   renderLpCal(lpCalView,page||1);
 }
 function renderLpCal(view,p){
