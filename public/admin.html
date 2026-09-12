@@ -169,6 +169,8 @@ a{color:inherit;text-decoration:none}
 .p-toolbar .pcnt{font-family:Oswald,sans-serif;font-size:11px;color:var(--tx3);letter-spacing:.04em}
 .p-row{display:flex;align-items:center;gap:13px;background:var(--card3);border:1px solid var(--line);padding:9px 12px;margin-bottom:7px;cursor:pointer}
 .p-row:hover{border-color:rgba(246,201,43,.4)}
+.p-row.is-sched{opacity:.55}
+.p-row.is-sched:hover{opacity:.85}
 .p-row img{width:56px;height:34px;flex:none;object-fit:cover;background:var(--card2);display:block}
 .p-row img.p{width:24px;height:36px}
 .p-row .pinfo{flex:1;min-width:0}
@@ -638,7 +640,7 @@ function listRowNew(k,it){
   var rcls = sched?"scheduled":st==="published"?"published":st==="hidden"?"hidden":st==="review"?"review":"";
   var lbl = sched?"Насрочено":(STATUS[st]||st);
   var can2 = canPublish()&&(st==="published"||st==="hidden");
-  return '<div class="p-row" style="cursor:default" data-title="'+esc2(String(it.t||"").toLowerCase())+'"'+
+  return '<div class="p-row'+(sched?" is-sched":"")+'" style="cursor:default" data-title="'+esc2(String(it.t||"").toLowerCase())+'"'+
     (catField?' data-cat="'+esc2(it[catField]||"")+'"':"")+
     ' data-tags="'+esc2((it.tags||[]).join(","))+'">'+
     (img?'<img class="'+(T.shape==="p"?"p":"")+'" src="'+esc2(img)+'" alt="">':'<img class="'+(T.shape==="p"?"p":"")+'" alt="">')+
@@ -951,7 +953,7 @@ function edDetails(k,it){
   }
   return "";
 }
-/* търсене по заглавие в TMDB → жанр/година/минути наведнъж, вместо да се въвеждат на ръка */
+/* търсене по заглавие в TMDB → жанр/година/минути/постер наведнъж, вместо да се въвеждат на ръка */
 function edTmdbSyncBlock(it){
   var m=A.revTmdbMatch;
   return '<div class="ed-f ed-tmdbsync">'+
@@ -961,7 +963,7 @@ function edTmdbSyncBlock(it){
       : m ? '<div class="tmdb-match"><div class="tmdb-match-poster"'+(m.poster?' style="background-image:url(\''+esc2(m.poster)+'\')"':'')+'></div>'+
         '<div class="tmdb-match-info"><b>'+esc2(m.titleBg||m.titleLatin||"")+'</b>'+
         '<span>'+esc2([m.year,m.director].filter(Boolean).join(" · "))+'</span></div></div>'+
-        '<button type="button" class="a-btn pri" style="margin-top:9px;width:100%" data-act="revtmdbsync">Синхронизирай жанр / година / минути</button>'
+        '<button type="button" class="a-btn pri" style="margin-top:9px;width:100%" data-act="revtmdbsync">Синхронизирай жанр / година / минути / постер</button>'
       : "")+
     '</div>';
 }
@@ -991,7 +993,8 @@ function edRail(k,it,T){
   var h='<div class="ed-sec open"><div class="ed-sec-h" data-sec>'+ICO.pub+'<span class="ed-lbl">Публикуване</span><span class="ed-chev">▾</span></div>'+
     '<div class="ed-sec-b">'+edStatusSeg(it)+
     (merged
-      ? '<div class="ed-row3">'+edF("Дата","when",it.when,"date")+edF("Час","time",it.time,"time")+edF("Подпис на автора","authorName",it.authorName)+'</div>'+
+      ? '<div class="ed-row">'+edF("Дата","when",it.when,"date")+edF("Час","time",it.time,"time")+'</div>'+
+        edF("Подпис на автора","authorName",it.authorName)+
         edScheduleNote(it)+edDetails(k,it)
       : '<div class="ed-row">'+edF("Дата","when",it.when,"date")+edF("Подпис на автора","authorName",it.authorName)+'</div>')+
     '</div></div>';
@@ -1396,7 +1399,8 @@ function onClick(e){
       var matched=m2.genresBg.filter(function(g){return have.indexOf(g)>=0;});
       if(matched.length){ A.edit.g=matched; applied.push(matched.join(", ")); }
     }
-    flash(applied.length?"Синхронизирано: "+applied.join(" · "):"TMDB не върна жанр/година/минути за това заглавие.");
+    if(m2.poster){ A.edit.poster=m2.poster; applied.push("постер"); }
+    flash(applied.length?"Синхронизирано: "+applied.join(" · "):"TMDB не върна жанр/година/минути/постер за това заглавие.");
     return; }
   if(act==="togglegenre"){ var gf=t.getAttribute("data-gf"), g=t.getAttribute("data-g");
     var garr=genreArr(A.edit[gf]).slice(), gi=garr.indexOf(g);
