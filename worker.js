@@ -1220,7 +1220,7 @@ a.tag:hover{border-color:#F6C92B;color:#F6C92B}
 .banner h1{margin:0;font-family:Montserrat,system-ui,sans-serif;font-weight:900;font-style:italic;text-transform:uppercase;font-size:34px;line-height:1;letter-spacing:-.02em;color:#F2F0EB}
 .banner.cal-banner{border-bottom:none}
 .banner.cal-banner h1{margin:0 0 6px}
-.banner.cal-banner .lede{margin:0;font-size:15px;opacity:.75;max-width:60ch}
+.banner.cal-banner .lede{margin:0;font-size:15px;opacity:.75;max-width:60ch;color:#F2F0EB;border-left:none;padding-left:0}
 .cal-updated{margin:8px 0 0;font-size:13px;opacity:.55}
 .list{max-width:1180px;margin:26px auto 0;padding:0 22px;display:flex;flex-direction:column;gap:12px}
 .li{display:flex;gap:20px;background:#161412;border:1px solid rgba(246,242,230,.09);padding:14px;color:#F2F0EB;height:210px;overflow:hidden}
@@ -1908,7 +1908,7 @@ function seoTagPage(tag, data, origin) {
    /kalendar/streaming        — само стрийминга
    /kalendar/netflix          — само една платформа
 */
-const CAL_SUB_LABEL = { series: "Нов сериал", season: "Нов сезон", episode: "Нов епизод" };
+const CAL_SUB_LABEL = { series: "Нов сериал" };
 
 function calMonthName(ym) {
   const m = /^(\d{4})-(\d{2})$/.exec(String(ym || ""));
@@ -1994,7 +1994,10 @@ function calWords(v) {
 function calRow(it, origin) {
   const im = it.poster || it.backdrop || "";
   const tab1 = calCat(it);
-  const tab2 = CAL_SUB_LABEL[it.sub] || (it.sub === "episode" && it.season && it.episode ? "S" + it.season + " · E" + it.episode : "");
+  const tab2 = String(it.note || "").trim() ? it.note
+    : it.sub === "season" ? (it.season ? "Сезон " + it.season : "Нов сезон")
+    : it.sub === "episode" ? (it.season && it.episode ? "S" + it.season + " · E" + it.episode : "Нов епизод")
+    : CAL_SUB_LABEL[it.sub] || "";
   const past = it.when < ymd(new Date());
   const formatTxt = it.kind === "event" ? "Събитие" : it.kind === "stream" ? (it.sub ? "Сериал" : "Филм") : "По кината";
   // нов епизод на вървящ сериал няма собствена страница — картата се показва, но не е връзка
@@ -2089,7 +2092,11 @@ function calListPage(data, origin, view) {
   const today = ymd(new Date());
   const items = view ? view.items : calLive(data).filter((x) => x.when >= calWindowStart() && x.when <= calWindowEnd());
   const w = calWords(view);
-  if (!view && data.settings && data.settings.calendarLede) w.lede = data.settings.calendarLede;
+  if (!view) {
+    const hd = (data.heads && data.heads.kalendar) || {};
+    if (hd.title) { w.h1 = hd.title; w.title = hd.title + " | Men In A Movie"; }
+    if (data.settings && data.settings.calendarLede) w.lede = data.settings.calendarLede;
+  }
   const canon = origin + "/kalendar" + (view ? "/" + view.slug : "");
   const first = items.find((it) => it.poster && /^https?:/.test(it.poster));
   const image = first ? first.poster : origin + "/og.jpg";
