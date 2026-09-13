@@ -267,7 +267,7 @@ a{color:inherit;text-decoration:none}
 .tmdb-match-poster{width:32px;height:48px;flex:none;background:var(--line2) center/cover;background-image:linear-gradient(160deg,#3a352c,#211d18)}
 .tmdb-match-info b{display:block;font-size:13px;color:var(--tx)}
 .tmdb-match-info span{font-size:11px;color:var(--tx3)}
-.ed-tabbar{display:flex;gap:2px;margin:18px 0 4px}
+.ed-tabbar{display:flex;gap:2px;margin:18px 0 4px;position:sticky;top:100px;z-index:14;background:#0D0C0A;padding:10px 0 4px}
 .ed-tabbar button{background:none;border:1px solid var(--line2);color:var(--tx2);font-family:Oswald,sans-serif;font-size:11.5px;
   letter-spacing:.06em;text-transform:uppercase;padding:9px 20px;cursor:pointer}
 .ed-tabbar button.on{background:var(--y);border-color:var(--y);color:var(--black)}
@@ -811,7 +811,7 @@ function editor(){
 function edF(label,name,val,type,extra){
   var field = type==="area"
     ? '<textarea data-f="'+name+'">'+esc2(val||"")+'</textarea>'
-    : '<input data-f="'+name+'" type="'+(type||"text")+'" value="'+esc2(val==null?"":val)+'" '+(extra||"")+'>';
+    : '<input data-f="'+name+'" type="'+(type||"text")+'"'+(type==="time"?' lang="bg-BG"':"")+' value="'+esc2(val==null?"":val)+'" '+(extra||"")+'>';
   return '<div class="ed-f"><label>'+esc2(label)+'</label>'+field+'</div>';
 }
 function edSel(label,name,val,opts){
