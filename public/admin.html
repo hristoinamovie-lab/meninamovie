@@ -809,9 +809,13 @@ function editor(){
   return editorGeneric(k,it,T);
 }
 function edF(label,name,val,type,extra){
+  /* нарочно текстово поле вместо type=time — Safari показва 12-часов AM/PM формат
+     на нативния time picker според системния регион и не се влияе от lang="" */
   var field = type==="area"
     ? '<textarea data-f="'+name+'">'+esc2(val||"")+'</textarea>'
-    : '<input data-f="'+name+'" type="'+(type||"text")+'"'+(type==="time"?' lang="bg-BG"':"")+' value="'+esc2(val==null?"":val)+'" '+(extra||"")+'>';
+    : type==="time"
+    ? '<input data-f="'+name+'" type="text" inputmode="numeric" placeholder="ЧЧ:ММ" maxlength="5" value="'+esc2(val==null?"":val)+'" '+(extra||"")+'>'
+    : '<input data-f="'+name+'" type="'+(type||"text")+'" value="'+esc2(val==null?"":val)+'" '+(extra||"")+'>';
   return '<div class="ed-f"><label>'+esc2(label)+'</label>'+field+'</div>';
 }
 function edSel(label,name,val,opts){
@@ -1456,8 +1460,18 @@ function onClick(e){
   if(act==="deluser"){ D.settings.users.splice(+t.getAttribute("data-i"),1); persist("Изтрит потребител."); return; }
 }
 function val(n){ var e=document.querySelector('[data-f="'+n+'"]'); return e?e.value:""; }
+/* докато пишеш ЧЧММ в текстовото поле за час — вкарва двоеточието и пази 24-часовите граници */
+function fmtTimeInput(el){
+  var raw=el.value.replace(/\D/g,"").slice(0,4), out;
+  if(raw.length===4){
+    var hh=Math.min(23,+raw.slice(0,2)), mm=Math.min(59,+raw.slice(2));
+    out=(hh<10?"0":"")+hh+":"+(mm<10?"0":"")+mm;
+  } else out=raw.length>2?raw.slice(0,2)+":"+raw.slice(2):raw;
+  if(out!==el.value) el.value=out;
+}
 function onInput(e){
   var el=e.target;
+  if(el.getAttribute&&el.getAttribute("data-f")==="time") fmtTimeInput(el);
   if(el.hasAttribute&&el.hasAttribute("data-f")&&A.edit){ collect(); if(el.getAttribute("data-f")==="body"||el.getAttribute("data-f")==="lead") preview();
     if(el.getAttribute("data-f")==="tagsTxt") checkTags(); }
   if(el.id==="fltr") applyListFilters();
