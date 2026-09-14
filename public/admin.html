@@ -916,9 +916,9 @@ function edTagsSection(it){
     '<div class="ed-sec-b">'+
     '<div class="ed-f"><label>Тагове — латиница, през запетая</label>'+
     '<input data-f="tagsTxt" value="'+esc2((it.tags||[]).join(", "))+'">'+
-    '<div class="ed-tagcloud" style="margin-top:8px">'+tagKeysByUsage().map(function(s){
+    '<div class="ed-tagcloud" style="margin-top:8px">'+tagKeysByUsage().slice(0,5).map(function(s){
       return '<span data-act="addtag" data-tag="'+esc2(s)+'">'+esc2(D.tagLabels[s])+'</span>';}).join("")+'</div>'+
-    '<p class="rail-note">Тема със страница се появява при два материала с един и същ таг. Най-използваните тагове са отгоре.</p>'+
+    '<p class="rail-note">Тема със страница се появява при два материала с един и същ таг. По-долу са 5-те най-използвани тагове — за бърз избор.</p>'+
     '<p class="a-warn" id="tagWarn"></p>'+
     '</div>'+
     '<div class="ed-sub">Предложи тагове от TMDB</div>'+

@@ -96,7 +96,7 @@ section{margin-top:46px}
 .news-lead{grid-column:span 2;grid-row:span 2;display:flex;flex-direction:column}
 .news-lead .ph{flex:1;min-height:0}
 .news-lead .ctitle{font-size:22px;line-height:1.25}
-.news-sm{background:var(--card2);display:flex;flex-direction:column;justify-content:center}
+.news-sm{background:var(--card2);display:flex;flex-direction:column;height:100%}
 
 /* ревю карта */
 .rev .ph{position:relative}
@@ -383,8 +383,11 @@ main section:first-child{border-top:0}
 .news-lead .ctitle{color:var(--black);font-family:Montserrat,sans-serif;font-style:italic;font-weight:900;font-size:23px;text-transform:none;line-height:1.12}
 .news-lead .clead{color:rgba(0,0,0,.72);-webkit-line-clamp:2}
 .news-sm{gap:6px}
+.news-sm .ph{aspect-ratio:16/9;margin:0}
+.news-sm .cbody{flex:1}
 .card-btn{align-self:flex-start;margin-top:10px;font-family:Oswald,sans-serif;font-size:11.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:8px 14px;border:0;cursor:pointer}
 .cbody .card-btn{margin-top:12px}
+.news-sm .card-btn{margin-top:auto}
 .card-btn.dark{background:var(--black);color:var(--y)}
 .card-btn.dark:hover{background:#000}
 .card-btn.gold{background:var(--y);color:var(--black)}
@@ -996,7 +999,9 @@ function renderNews(p){
       '<div class="cbody"><div class="cdate">'+dt(lead.when)+(lead.cat?' · '+esc(lead.cat):'')+'</div>'+
       '<h3 class="ctitle">'+esc(lead.t)+'</h3><p class="clead">'+esc(txt(lead.lead))+'</p>'+
       '<button class="card-btn dark" type="button">Виж повече</button></div></a>';}
-  h+=rest.map(function(n){return '<a class="card news-sm" href="'+url("news",n)+'" data-nav>'+
+  h+=rest.map(function(n){var img2=pic("news",n);
+    return '<a class="card news-sm" href="'+url("news",n)+'" data-nav>'+
+      (img2?'<img class="ph" src="'+esc(img2)+'" alt="'+esc(n.t)+'">':'<div class="ph r169"></div>')+
       '<div class="cbody"><div class="cdate">'+dt(n.when)+(n.cat?' · '+esc(n.cat):'')+'</div>'+
       '<h3 class="ctitle">'+esc(n.t)+'</h3>'+
       '<button class="card-btn gold" type="button">Виж повече</button></div></a>';}).join("");
