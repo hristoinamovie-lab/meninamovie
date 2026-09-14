@@ -777,6 +777,11 @@ function seoLive(kind, it, data) {
 function seoDate(kind, it) {
   return String(it.when || it.d || "").slice(0, 10) || "";
 }
+/* сортировъчен ключ дата+час — две статии от един ден се подреждат правилно по часа на публикуване */
+function seoPubKey(kind, it) {
+  const t = /^\d{2}:\d{2}$/.test(it.time || "") ? it.time : "00:00";
+  return seoDate(kind, it) + "T" + t;
+}
 /* lastmod в sitemap.xml трябва да значи "кога е пипната тази страница", не "кога излиза филмът" —
    стара TMDB дата (напр. премиерата на филм от 2006) обърква търсачките, че страницата не е обновявана скоро.
    За материали без дата на публикуване (стари ревюта, въведени преди полето "when") пада на updatedAt/createdAt,
@@ -1811,7 +1816,7 @@ function seoListPage(slug, page, data, origin) {
   const banner = hd.banner ? (String(hd.banner).indexOf("/img/") === 0 ? origin + hd.banner : hd.banner) : "";
 
   let list = (data[kind] || []).filter((it) => it && (kind === "merch" ? (it.status || "published") === "published" : seoLive(kind, it, data)));
-  list = list.slice().sort((a, b) => String(seoDate(kind, b) || "").localeCompare(String(seoDate(kind, a) || "")));
+  list = list.slice().sort((a, b) => seoPubKey(kind, b).localeCompare(seoPubKey(kind, a)));
 
   const pages = Math.max(1, Math.ceil(list.length / SEO_PER_PAGE));
   const p = Math.min(Math.max(1, page || 1), pages);
@@ -2246,7 +2251,7 @@ function seoFeed(data, origin) {
   const items = seoAll(data)
     .filter((x) => x.kind !== "calendar")
     .map((x) => Object.assign({ date: seoDate(x.kind, x.it) }, x))
-    .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+    .sort((a, b) => seoPubKey(b.kind, b.it).localeCompare(seoPubKey(a.kind, a.it)))
     .slice(0, 40);
   const rows = items.map((x) => {
     const loc = origin + x.url;
