@@ -94,7 +94,6 @@ section{margin-top:46px}
 /* новини: голяма + малки */
 .news-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 .news-lead{grid-column:span 2;grid-row:span 2;display:flex;flex-direction:column}
-.news-lead .ph{flex:1;min-height:0}
 .news-lead .ctitle{font-size:22px;line-height:1.25}
 .news-sm{background:var(--card2);display:flex;flex-direction:column;height:100%}
 
@@ -248,9 +247,9 @@ section{margin-top:46px}
 
 /* ---------- списък ---------- */
 .list{display:flex;flex-direction:column;gap:10px;margin-top:20px}
-.li{display:flex;gap:18px;background:var(--card2);padding:12px;height:190px;overflow:hidden}
+.li{display:flex;gap:18px;background:var(--card2);padding:12px;overflow:hidden}
 .li:hover{outline:2px solid var(--y)}
-.li .lim{flex:0 0 30%;max-width:330px;height:100%;object-fit:cover;background:var(--card)}
+.li .lim{flex:0 0 30%;max-width:330px;align-self:flex-start;object-fit:cover;background:var(--card)}
 .li .lim.r23{flex:0 0 132px}
 .li .lb{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column}
 .li .card-btn{margin-top:auto;align-self:flex-end;flex:none}
@@ -378,7 +377,7 @@ main section:first-child{border-top:0}
 /* ---------- новини: голяма жълта карта + бутони ---------- */
 .news-lead{background:var(--y);color:var(--black);display:flex;flex-direction:column}
 .news-lead .ph{aspect-ratio:16/10;margin:0}
-.news-lead .cbody{padding:16px 18px 20px;display:flex;flex-direction:column;gap:8px}
+.news-lead .cbody{padding:16px 18px 20px;display:flex;flex-direction:column;gap:8px;flex:1;justify-content:center}
 .news-lead .cdate{color:rgba(0,0,0,.6)}
 .news-lead .ctitle{color:var(--black);font-family:Montserrat,sans-serif;font-style:italic;font-weight:900;font-size:23px;text-transform:none;line-height:1.12}
 .news-lead .clead{color:rgba(0,0,0,.72);-webkit-line-clamp:2}
