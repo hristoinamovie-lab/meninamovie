@@ -654,6 +654,11 @@ function isScheduled(it){
   var at=sofiaToUtcMs(it.when,t);
   return !isNaN(at)&&at>Date.now();
 }
+/* сортировъчен ключ дата+час — две статии от един ден се подреждат правилно по часа на публикуване */
+function pubKey(it){
+  var t=/^\d{2}:\d{2}$/.test(it&&it.time||"")?it.time:"00:00";
+  return (it&&it.when||"")+"T"+t;
+}
 /* видим ред "Публикувано на … · Обновено на …" — второто само ако реално се различава */
 function pubdateHTML(it){
   var pub=String(it.when||"").slice(0,10); if(!pub) return "";
@@ -850,7 +855,7 @@ function tagCount(s){
 function byTag(s){
   var out=[];["reviews","news","craft","episodes"].forEach(function(k){
     items(k).forEach(function(i){if((i.tags||[]).indexOf(s)>=0)out.push({k:k,i:i});});});
-  return out.sort(function(a,b){return (b.i.when||"").localeCompare(a.i.when||"");});
+  return out.sort(function(a,b){return pubKey(b.i).localeCompare(pubKey(a.i));});
 }
 
 /* ---------- карти ---------- */
@@ -927,7 +932,7 @@ function rowEp(it){
 function home(){
   var h="";
   var eps=items("episodes"), nw=items("news"), rv=items("reviews"), mr=items("merch");
-  var cf=items("craft").slice().sort(function(a,b){return (b.when||"").localeCompare(a.when||"");});
+  var cf=items("craft").slice().sort(function(a,b){return pubKey(b).localeCompare(pubKey(a));});
 
   if(eps[0]){
     var e=eps[0], eth=ytThumb(e.yt), ethAlt=ytThumbAlt(e.yt);
@@ -991,7 +996,7 @@ function home(){
 }
 var newsPages=1, revPages=1, calPages=1, calView="all", calPlatform="", calMedia="", calTrendSub="cinema";
 function renderNews(p){
-  newsPages=p; var nw=items("news").slice().sort(function(a,b){return (b.when||"").localeCompare(a.when||"");}), lead=nw[0], rest=nw.slice(1,1+4+(p-1)*8);
+  newsPages=p; var nw=items("news").slice().sort(function(a,b){return pubKey(b).localeCompare(pubKey(a));}), lead=nw[0], rest=nw.slice(1,1+4+(p-1)*8);
   var h="";
   if(lead){var img=pic("news",lead);
     h+='<a class="card news-lead" href="'+url("news",lead)+'" data-nav>'+
@@ -1008,7 +1013,7 @@ function renderNews(p){
   document.getElementById("newsGrid").innerHTML=h;
 }
 function renderRev(p){
-  revPages=p; var rv=items("reviews").slice().sort(function(a,b){return (b.when||"").localeCompare(a.when||"");}).slice(0,8*p);
+  revPages=p; var rv=items("reviews").slice().sort(function(a,b){return pubKey(b).localeCompare(pubKey(a));}).slice(0,8*p);
   document.getElementById("revGrid").innerHTML=rv.map(function(i){return card("reviews",i);}).join("");
 }
 /* прозорецът на календара: от 1-во число на текущия месец до +30 дни от днес —
@@ -1146,7 +1151,7 @@ function listPage(kindKey,page){
   if(kindKey==="merch"){ merchListPage(page); return; }
   var K=KIND[kindKey], head=(D.heads&&D.heads[K.list])||{};
   var all=items(kindKey);
-  all.sort(function(a,b){return (b.when||"").localeCompare(a.when||"");});
+  all.sort(function(a,b){return pubKey(b).localeCompare(pubKey(a));});
   var pages=Math.max(1,Math.ceil(all.length/PER_PAGE)), p=Math.min(Math.max(1,page),pages);
   var slice=all.slice((p-1)*PER_PAGE,p*PER_PAGE);
   var h='<div class="banner"><div class="wrap"><h1>'+esc(head.title||K.label)+'</h1></div></div>'+
@@ -1159,7 +1164,7 @@ function listPage(kindKey,page){
 /* ---------- ревюта: grid с вертикални постери, като началната ---------- */
 function reviewsListPage(page){
   var head=(D.heads&&D.heads.revyuta)||{};
-  var all=items("reviews").slice().sort(function(a,b){return (b.when||"").localeCompare(a.when||"");});
+  var all=items("reviews").slice().sort(function(a,b){return pubKey(b).localeCompare(pubKey(a));});
   var pages=Math.max(1,Math.ceil(all.length/PER_PAGE)), p=Math.min(Math.max(1,page||1),pages);
   var slice=all.slice((p-1)*PER_PAGE,p*PER_PAGE);
   var h='<div class="banner"><div class="wrap"><h1>'+esc(head.title||"Ревюта")+'</h1></div></div>'+
