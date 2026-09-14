@@ -926,7 +926,8 @@ function rowEp(it){
 /* ---------- начална ---------- */
 function home(){
   var h="";
-  var eps=items("episodes"), nw=items("news"), rv=items("reviews"), cf=items("craft"), mr=items("merch");
+  var eps=items("episodes"), nw=items("news"), rv=items("reviews"), mr=items("merch");
+  var cf=items("craft").slice().sort(function(a,b){return (b.when||"").localeCompare(a.when||"");});
 
   if(eps[0]){
     var e=eps[0], eth=ytThumb(e.yt), ethAlt=ytThumbAlt(e.yt);
@@ -990,7 +991,7 @@ function home(){
 }
 var newsPages=1, revPages=1, calPages=1, calView="all", calPlatform="", calMedia="", calTrendSub="cinema";
 function renderNews(p){
-  newsPages=p; var nw=items("news"), lead=nw[0], rest=nw.slice(1,1+4+(p-1)*8);
+  newsPages=p; var nw=items("news").slice().sort(function(a,b){return (b.when||"").localeCompare(a.when||"");}), lead=nw[0], rest=nw.slice(1,1+4+(p-1)*8);
   var h="";
   if(lead){var img=pic("news",lead);
     h+='<a class="card news-lead" href="'+url("news",lead)+'" data-nav>'+
@@ -1007,7 +1008,7 @@ function renderNews(p){
   document.getElementById("newsGrid").innerHTML=h;
 }
 function renderRev(p){
-  revPages=p; var rv=items("reviews").slice(0,8*p);
+  revPages=p; var rv=items("reviews").slice().sort(function(a,b){return (b.when||"").localeCompare(a.when||"");}).slice(0,8*p);
   document.getElementById("revGrid").innerHTML=rv.map(function(i){return card("reviews",i);}).join("");
 }
 /* прозорецът на календара: от 1-во число на текущия месец до +30 дни от днес —
