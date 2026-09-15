@@ -161,11 +161,13 @@ function keepSecrets(incoming, prev) {
 }
 
 /* при всеки запис бележим кога е публикуван и кога последно пипнат всеки материал —
-   нужно за "Публикувано на / Обновено на" на страницата и за lastmod в sitemap.xml.
+   нужно за "Публикувано на / Обновено на" на страницата, за lastmod в sitemap.xml,
+   и за "Започната на" (дата+час) в админ панела. Пълен ISO момент (не само дата), за
+   да имаме и часа — старите записи, създадени преди тази проверка, си остават само с дата.
    Работи само от съдържанието — не иска нищо ново от админ панела. */
 const TIMESTAMP_KINDS = ["reviews", "news", "craft", "episodes"];
 function stampTimestamps(merged, prev) {
-  const today = ymd(new Date());
+  const nowIso = new Date().toISOString();
   const prevById = {};
   for (const kind of TIMESTAMP_KINDS)
     for (const it of (prev && prev[kind]) || []) prevById[kind + ":" + it.id] = it;
@@ -173,8 +175,8 @@ function stampTimestamps(merged, prev) {
     for (const it of merged[kind] || []) {
       const old = prevById[kind + ":" + it.id];
       if (!old) {
-        if (!it.createdAt) it.createdAt = today;
-        it.updatedAt = today;
+        if (!it.createdAt) it.createdAt = nowIso;
+        it.updatedAt = nowIso;
         continue;
       }
       // createdAt/updatedAt не са реално съдържание — не бива самото им добавяне (при първия
@@ -182,8 +184,8 @@ function stampTimestamps(merged, prev) {
       const a = Object.assign({}, old); delete a.updatedAt; delete a.createdAt;
       const b = Object.assign({}, it); delete b.updatedAt; delete b.createdAt;
       const changed = JSON.stringify(a) !== JSON.stringify(b);
-      it.createdAt = it.createdAt || old.createdAt || old.when || today;
-      it.updatedAt = changed ? today : (old.updatedAt || today);
+      it.createdAt = it.createdAt || old.createdAt || old.when || nowIso;
+      it.updatedAt = changed ? nowIso : (old.updatedAt || nowIso);
     }
   }
   return merged;
