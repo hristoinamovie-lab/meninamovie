@@ -322,6 +322,15 @@ function sofiaToUtcMs(dateStr,timeStr){
   var asIfSofia=Date.UTC(+p.year,+p.month-1,+p.day,+p.hour===24?0:+p.hour,+p.minute,+p.second);
   return guess.getTime()-(asIfSofia-guess.getTime());
 }
+/* обратното на sofiaToUtcMs — за показване на "Започната на" по българско време */
+function fmtSofiaDateTime(isoUtc){
+  if(!isoUtc) return "";
+  var d=new Date(isoUtc); if(isNaN(d.getTime())) return "";
+  var fmt=new Intl.DateTimeFormat("en-US",{timeZone:"Europe/Sofia",hour12:false,
+    day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  var p={}; fmt.formatToParts(d).forEach(function(x){p[x.type]=x.value;});
+  return p.day&&p.hour?(p.day+"."+p.month+"."+p.year+" "+p.hour+":"+p.minute+" ч."):"";
+}
 function isScheduled(it){
   if(!it||!/^\d{4}-\d{2}-\d{2}$/.test(it.when||"")) return false;
   var t=/^\d{2}:\d{2}$/.test(it.time||"")?it.time:"00:00";
@@ -860,6 +869,15 @@ function edScheduleNote(it){
   return '<p class="rail-note gold">Ще стане публично автоматично на '+esc2(dt(it.when))+
     (it.time?', '+esc2(it.time)+' ч.':'')+' — българско време.</p>';
 }
+/* "Започната на" — датата (и часа, ако го имаме) на първото запазване на статията;
+   старите статии отпреди тази проверка имат само дата, без час — показваме само нея тогава */
+function edCreatedNote(it){
+  if(!it.createdAt) return "";
+  var hasTime=/T\d{2}:\d{2}/.test(it.createdAt);
+  var shown=hasTime?fmtSofiaDateTime(it.createdAt):ddmmyyyy(it.createdAt);
+  if(!shown) return "";
+  return '<p class="rail-note">Започната на '+esc2(shown)+'.</p>';
+}
 function edCanvasHTML(it,ledeLabel,ledePh,bodyPh){
   return '<input class="c-title" data-f="t" type="text" placeholder="Заглавие…" value="'+esc2(it.t||"")+'">'+
     '<div class="c-lede-lbl">'+esc2(ledeLabel)+'</div>'+
@@ -999,7 +1017,7 @@ function edRail(k,it,T){
     (merged
       ? '<div class="ed-row">'+edF("Дата","when",it.when,"date")+edF("Час","time",it.time,"time")+'</div>'+
         edF("Подпис на автора","authorName",it.authorName)+
-        edScheduleNote(it)+edDetails(k,it)
+        edScheduleNote(it)+edCreatedNote(it)+edDetails(k,it)
       : '<div class="ed-row">'+edF("Дата","when",it.when,"date")+edF("Подпис на автора","authorName",it.authorName)+'</div>')+
     '</div></div>';
 
@@ -1501,6 +1519,11 @@ function onChange(e){
   if(el.hasAttribute&&el.hasAttribute("data-f")&&A.edit){
     collect();
     if(el.getAttribute("data-f")==="t"&&(A.editKind==="calendar"||A.editKind==="reviews")) autoTmdbTags();
+    // смяна на датата напред във времето сама насрочва статията — не иска отделен клик на "Публично"
+    if(el.getAttribute("data-f")==="when"&&(A.editKind==="news"||A.editKind==="reviews"||A.editKind==="craft")
+      &&A.edit.status!=="published"&&isScheduled(A.edit)){
+      A.edit.status="published"; flash("Датата е бъдеща — статията е насрочена автоматично.");
+    }
   }
 }
 function applyListFilters(){
