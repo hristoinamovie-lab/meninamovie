@@ -331,6 +331,12 @@ function fmtSofiaDateTime(isoUtc){
   var p={}; fmt.formatToParts(d).forEach(function(x){p[x.type]=x.value;});
   return p.day&&p.hour?(p.day+"."+p.month+"."+p.year+" "+p.hour+":"+p.minute+" ч."):"";
 }
+/* текущият час по българско време, за поле "Час" — предпопълва се при "+ Нов" с часа на отваряне */
+function sofiaNowTime(){
+  var fmt=new Intl.DateTimeFormat("en-US",{timeZone:"Europe/Sofia",hour12:false,hour:"2-digit",minute:"2-digit"});
+  var p={}; fmt.formatToParts(new Date()).forEach(function(x){p[x.type]=x.value;});
+  return (p.hour==="24"?"00":p.hour)+":"+p.minute;
+}
 function isScheduled(it){
   if(!it||!/^\d{4}-\d{2}-\d{2}$/.test(it.when||"")) return false;
   var t=/^\d{2}:\d{2}$/.test(it.time||"")?it.time:"00:00";
@@ -1519,10 +1525,11 @@ function onChange(e){
   if(el.hasAttribute&&el.hasAttribute("data-f")&&A.edit){
     collect();
     if(el.getAttribute("data-f")==="t"&&(A.editKind==="calendar"||A.editKind==="reviews")) autoTmdbTags();
-    // смяна на датата напред във времето сама насрочва статията — не иска отделен клик на "Публично"
-    if(el.getAttribute("data-f")==="when"&&(A.editKind==="news"||A.editKind==="reviews"||A.editKind==="craft")
+    // смяна на дата или час напред във времето сама насрочва статията — не иска отделен клик на "Публично"
+    if((el.getAttribute("data-f")==="when"||el.getAttribute("data-f")==="time")
+      &&(A.editKind==="news"||A.editKind==="reviews"||A.editKind==="craft")
       &&A.edit.status!=="published"&&isScheduled(A.edit)){
-      A.edit.status="published"; flash("Датата е бъдеща — статията е насрочена автоматично.");
+      A.edit.status="published"; flash("Датата/часът са бъдещи — статията е насрочена автоматично.");
     }
   }
 }
@@ -1643,7 +1650,7 @@ function readImage(el){
 }
 /* ---------- запис ---------- */
 function blank(k){
-  var b={id:uid(k.slice(0,1)==="e"&&k==="episodes"?"e":k.slice(0,1)),t:"",when:today(),time:"",lead:"",body:"",tags:[],
+  var b={id:uid(k.slice(0,1)==="e"&&k==="episodes"?"e":k.slice(0,1)),t:"",when:today(),time:sofiaNowTime(),lead:"",body:"",tags:[],
     status:canPublish()?"published":"review",authorName:A.me?A.me.name:""};
   if(k==="reviews"){b.y="";b.g=[];b.s=4;b.mins="";b.poster="";b.share="";b.video="";b.trailer="";}
   if(k==="news"){b.img="";b.cat="";b.video="";b.trailer="";b.source="";b.sourceUrl="";}
