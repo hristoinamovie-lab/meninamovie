@@ -311,31 +311,61 @@ var MON=["януари","февруари","март","април","май","ю�
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
 function dt(s){if(!s)return"";var p=String(s).slice(0,10).split("-");if(p.length<3)return s;return (+p[2])+" "+MON[+p[1]-1]+" "+p[0];}
 function ddmmyyyy(s){if(!s)return"";var p=String(s).slice(0,10).split("-");if(p.length<3)return s;return p[2]+"."+p[1]+"."+p[0];}
+/* hourCycle:"h23" вместо hour12:false — в Safari hour12:false не винаги е надежден
+   (мълчаливо пада обратно на 12-часовия формат на локала); hourCycle е точен навсякъде */
+var SOFIA_TZ_OPTS={timeZone:"Europe/Sofia",hourCycle:"h23"};
+/* резервен изчисляващ час по Европа/София (БЕЗ Intl) — само ако Intl откаже съвсем;
+   ЕС сменя часа в 01:00 UTC последната неделя на март/октомври, София е UTC+2/+3 */
+function sofiaOffsetHoursFallback(utcDate){
+  var y=utcDate.getUTCFullYear();
+  function lastSundayUtc(month){ var d=new Date(Date.UTC(y,month+1,0)); d.setUTCDate(d.getUTCDate()-d.getUTCDay()); return d; }
+  var dstStart=lastSundayUtc(2); dstStart.setUTCHours(1,0,0,0);
+  var dstEnd=lastSundayUtc(9); dstEnd.setUTCHours(1,0,0,0);
+  return (utcDate>=dstStart&&utcDate<dstEnd)?3:2;
+}
 /* "09:00" в България, на дадена дата, като истински момент — за да познаем кога наистина
    ще излезе насрочена статия (същата сметка като на сървъра, за да не се разминават) */
 function sofiaToUtcMs(dateStr,timeStr){
   var guess=new Date(dateStr+"T"+timeStr+":00Z");
   if(isNaN(guess.getTime())) return NaN;
-  var fmt=new Intl.DateTimeFormat("en-US",{timeZone:"Europe/Sofia",hour12:false,
-    year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"});
-  var p={}; fmt.formatToParts(guess).forEach(function(x){p[x.type]=x.value;});
-  var asIfSofia=Date.UTC(+p.year,+p.month-1,+p.day,+p.hour===24?0:+p.hour,+p.minute,+p.second);
-  return guess.getTime()-(asIfSofia-guess.getTime());
+  try{
+    var fmt=new Intl.DateTimeFormat("en-US",Object.assign({year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"},SOFIA_TZ_OPTS));
+    var p={}; fmt.formatToParts(guess).forEach(function(x){p[x.type]=x.value;});
+    var hh=+p.hour; if(isNaN(hh)||hh===24) hh=0;
+    var asIfSofia=Date.UTC(+p.year,+p.month-1,+p.day,hh,+p.minute,+p.second);
+    return guess.getTime()-(asIfSofia-guess.getTime());
+  }catch(e){
+    return guess.getTime()-sofiaOffsetHoursFallback(guess)*3600000;
+  }
 }
 /* обратното на sofiaToUtcMs — за показване на "Започната на" по българско време */
 function fmtSofiaDateTime(isoUtc){
   if(!isoUtc) return "";
   var d=new Date(isoUtc); if(isNaN(d.getTime())) return "";
-  var fmt=new Intl.DateTimeFormat("en-US",{timeZone:"Europe/Sofia",hour12:false,
-    day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
-  var p={}; fmt.formatToParts(d).forEach(function(x){p[x.type]=x.value;});
-  return p.day&&p.hour?(p.day+"."+p.month+"."+p.year+" "+p.hour+":"+p.minute+" ч."):"";
+  try{
+    var fmt=new Intl.DateTimeFormat("en-US",Object.assign({day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"},SOFIA_TZ_OPTS));
+    var p={}; fmt.formatToParts(d).forEach(function(x){p[x.type]=x.value;});
+    var hh=p.hour==="24"?"00":p.hour;
+    return p.day&&hh?(p.day+"."+p.month+"."+p.year+" "+hh+":"+p.minute+" ч."):"";
+  }catch(e){
+    var off=sofiaOffsetHoursFallback(d); var loc=new Date(d.getTime()+off*3600000);
+    var dd=String(loc.getUTCDate()).padStart(2,"0"),mm=String(loc.getUTCMonth()+1).padStart(2,"0");
+    return dd+"."+mm+"."+loc.getUTCFullYear()+" "+String(loc.getUTCHours()).padStart(2,"0")+":"+String(loc.getUTCMinutes()).padStart(2,"0")+" ч.";
+  }
 }
 /* текущият час по българско време, за поле "Час" — предпопълва се при "+ Нов" с часа на отваряне */
 function sofiaNowTime(){
-  var fmt=new Intl.DateTimeFormat("en-US",{timeZone:"Europe/Sofia",hour12:false,hour:"2-digit",minute:"2-digit"});
-  var p={}; fmt.formatToParts(new Date()).forEach(function(x){p[x.type]=x.value;});
-  return (p.hour==="24"?"00":p.hour)+":"+p.minute;
+  var now=new Date();
+  try{
+    var fmt=new Intl.DateTimeFormat("en-US",Object.assign({hour:"2-digit",minute:"2-digit"},SOFIA_TZ_OPTS));
+    var p={}; fmt.formatToParts(now).forEach(function(x){p[x.type]=x.value;});
+    var hh=p.hour==="24"?"00":p.hour;
+    if(!hh||!p.minute) throw 0;
+    return hh+":"+p.minute;
+  }catch(e){
+    var off=sofiaOffsetHoursFallback(now); var loc=new Date(now.getTime()+off*3600000);
+    return String(loc.getUTCHours()).padStart(2,"0")+":"+String(loc.getUTCMinutes()).padStart(2,"0");
+  }
 }
 function isScheduled(it){
   if(!it||!/^\d{4}-\d{2}-\d{2}$/.test(it.when||"")) return false;
