@@ -71,13 +71,11 @@ async function stored(env) {
 }
 /* ---------- IndexNow: Bing (и през него ChatGPT search), Yandex, Seznam научават веднага
    за нов/променен адрес, вместо да чакат следващото си обхождане ---------- */
+// ключът е генериран от Bing Webmaster Tools (meninamovie.com → IndexNow → Generate API Key),
+// затова е фиксиран тук, вместо да се генерира сам — за да съвпада с това, което Bing очаква
+const INDEXNOW_KEY = "ea6605793e4f4661a3764c2132dbbfca";
 async function indexNowKey(env) {
-  let key = await env.MIM.get("indexnow-key");
-  if (!key) {
-    key = randHex(16);
-    await env.MIM.put("indexnow-key", key);
-  }
-  return key;
+  return INDEXNOW_KEY;
 }
 async function pingIndexNow(env, origin, urls) {
   if (!urls || !urls.length) return;
