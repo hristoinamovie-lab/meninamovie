@@ -1506,7 +1506,7 @@ const SEO_HEADER =
   '<button class="sbtn" aria-label="Търсене" title="Търсене">' +
   '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>' +
   "</button>" +
-  '<a class="btn-cal" href="/kalendar">Movie calendar</a>' +
+  '<a class="btn-cal" href="/kalendar">Какво да гледам</a>' +
   "</div>" +
   "</div></header>" +
   '<script>(function(){var b=document.getElementById("btnMenu"),h=document.getElementById("hbtns");if(!b||!h)return;' +
