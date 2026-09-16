@@ -636,6 +636,7 @@ function normalize(raw){
 /* ---------- дреболии ---------- */
 var MON=["януари","февруари","март","април","май","юни","юли","август","септември","октомври","ноември","декември"];
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+function cleanAuthor(s){return String(s||"").trim().replace(/^[-–—\s]+/,"");}
 function dt(s){if(!s)return"";var p=String(s).slice(0,10).split("-");if(p.length<3)return s;return (+p[2])+" "+MON[+p[1]-1]+" "+p[0];}
 /* hourCycle:"h23" вместо hour12:false — в Safari hour12:false не винаги е надежден
    (мълчаливо пада обратно на 12-часовия формат на локала); hourCycle е точен навсякъде.
@@ -714,7 +715,7 @@ function titleBlocks(t,limit){
   if(cur) lines.push(cur);
   return lines.slice(0,3).map(function(l,i,a){
     return '<span class="hl'+(i===a.length-1?" hl-notch":"")+'">'+esc(l)+"</span>";
-  }).join("");
+  }).join(" ");
 }
 function txt(s){return String(s||"").replace(/<[^>]+>/g,"").replace(/\s+/g," ").trim();}
 
@@ -733,11 +734,12 @@ function calCat(c){
 }
 function reviewFor(c){
   var t=String(c.t||"").trim().toLowerCase(); if(!t) return null;
-  return items("reviews").filter(function(r){return String(r.t||"").trim().toLowerCase()===t;})[0]||null;
+  // заглавието на ревюто може да е цяло изречение — свързваме по полето "Филм", ако е попълнено
+  return items("reviews").filter(function(r){return String(r.movieTitle||r.t||"").trim().toLowerCase()===t;})[0]||null;
 }
 /* обратното на reviewFor — за дадено ревю/епизод намира записа му в календара, по заглавие */
 function calMatchFor(it){
-  var t=String(it&&it.t||"").trim().toLowerCase(); if(!t) return null;
+  var t=String(it&&(it.movieTitle||it.t)||"").trim().toLowerCase(); if(!t) return null;
   var m=items("calendar").filter(function(c){return String(c.t||"").trim().toLowerCase()===t;});
   if(!m.length) return null;
   m.sort(function(a,b){return String(a.when||"").localeCompare(String(b.when||""));});
@@ -751,7 +753,7 @@ function episodeFor(it){
 }
 /* кратък фактологичен отговор в началото на ревю — къде/кога излиза филмът + оценката */
 function reviewAnswerHTML(it){
-  var cal=calMatchFor(it), bits=[], title=String(it.t||"").trim();
+  var cal=calMatchFor(it), bits=[], title=String(it.movieTitle||it.t||"").trim();
   if(cal){
     var where=cal.kind==="cinema"?"по кината":(cal.platform?"по "+cal.platform:"по стрийминг");
     var past=String(cal.when||"")<todayISO();
@@ -763,14 +765,15 @@ function reviewAnswerHTML(it){
 }
 /* три въпроса за ревю, попълвани от вече наличните данни — виждат се на страницата, не само в схема */
 function reviewFaqQA(it){
-  var title=String(it.t||"").trim(), qa=[];
+  var title=String(it.movieTitle||it.t||"").trim(), qa=[];
   if(it.s){
     var s=Math.max(0,Math.min(5,Math.round(+it.s||0)));
     var verdict=s>=4?"Да — получава "+s+" от 5 клапи в нашето ревю.":(s<=2?"По-скоро не — само "+s+" от 5 клапи в нашето ревю.":"Колебливо да — "+s+" от 5 клапи, зависи от вкуса.");
     qa.push({q:"Струва ли си „"+title+"“?", a:verdict});
   }
-  var desc=txt(it.body||it.lead||it.verdict||"").replace(/[*_>#[\]()]/g,"").replace(/\s+/g," ").trim().slice(0,220);
-  if(desc) qa.push({q:"За какво се разказва в „"+title+"“?", a:desc});
+  // само ако "Сюжет накратко" е попълнено нарочно от редакцията — иначе не е истински отговор
+  var synopsis=txt(it.synopsis||"").replace(/\s+/g," ").trim().slice(0,220);
+  if(synopsis) qa.push({q:"За какво се разказва в „"+title+"“?", a:synopsis});
   if(it.mins) qa.push({q:"Колко е дълъг „"+title+"“?", a:"„"+title+"“ трае "+it.mins+" минути."});
   return qa;
 }
@@ -1390,7 +1393,7 @@ function article(kindKey,id){
   }
   if(kindKey==="episodes"&&it.sp) h+='<a class="btn" href="'+esc(it.sp)+'" target="_blank" rel="noopener">Слушай в Spotify</a>';
 
-  if(it.authorName) h+='<div class="sign">— '+esc(it.authorName)+'</div>';
+  if(it.authorName) h+='<div class="sign">— '+esc(cleanAuthor(it.authorName))+'</div>';
   h+=pubdateHTML(it);
 
   var rel=[]; (it.tags||[]).forEach(function(s){byTag(s).forEach(function(x){
@@ -1436,7 +1439,7 @@ function reviewItemPage(it){
 
   h+='<div class="art-body"><div class="wrap"><div class="section overview">';
   if(it.body) h+='<div class="prose">'+md(it.body)+'</div>';
-  if(it.authorName) h+='<div class="sign">— '+esc(it.authorName)+'</div>';
+  if(it.authorName) h+='<div class="sign">— '+esc(cleanAuthor(it.authorName))+'</div>';
   h+=pubdateHTML(it);
   var tagsH=tagsHTML(it);
   if(tagsH) h+=tagsH;

@@ -1034,9 +1034,14 @@ function edDetails(k,it){
   }
   if(k==="reviews"){
     return '<div class="ed-sub">За филма</div>'+
+      '<div class="ed-row">'+edF("Филм","movieTitle",it.movieTitle,"text",'placeholder="'+esc2(it.t||"Както се казва филмът")+'"')+
+      edF("Оригинално заглавие","origTitle",it.origTitle)+'</div>'+
+      '<p class="rail-note">Ако заглавието на ревюто е цяло изречение, попълни тук само името на филма — '+
+      'за да сочи вярно в структурираните данни и към записа в календара. Празно = ползва се заглавието на ревюто.</p>'+
       '<div class="ed-row">'+edF("Година","y",it.y)+edF("Минути","mins",it.mins)+'</div>'+
       '<div class="ed-f"><label>Оценка</label><div class="claps-pick" id="clapsPick"></div></div>'+
       genreField("g",it.g)+
+      edF("Сюжет накратко — за „За какво се разказва в…“ (по избор)","synopsis",it.synopsis,"area")+
       edTmdbSyncBlock(it);
   }
   if(k==="craft"){
@@ -1498,6 +1503,8 @@ function onClick(e){
   if(act==="revtmdbsync"){
     var m2=A.revTmdbMatch; if(!m2||!A.edit) return;
     var applied=[];
+    if(m2.titleBg&&!A.edit.movieTitle){ A.edit.movieTitle=m2.titleBg; applied.push("филм"); }
+    if(m2.titleLatin&&!A.edit.origTitle){ A.edit.origTitle=m2.titleLatin; applied.push("ориг. заглавие"); }
     if(m2.year){ A.edit.y=m2.year; applied.push(m2.year); }
     if(m2.runtime){ A.edit.mins=m2.runtime; applied.push(m2.runtime+" мин."); }
     if(m2.genresBg&&m2.genresBg.length){
@@ -1730,7 +1737,7 @@ function readImage(el){
 function blank(k){
   var b={id:uid(k.slice(0,1)==="e"&&k==="episodes"?"e":k.slice(0,1)),t:"",when:today(),time:sofiaNowTime(),lead:"",body:"",tags:[],
     status:canPublish()?"published":"review",authorName:A.me?A.me.name:""};
-  if(k==="reviews"){b.y="";b.g=[];b.s=4;b.mins="";b.poster="";b.share="";b.video="";b.trailer="";}
+  if(k==="reviews"){b.y="";b.g=[];b.s=4;b.mins="";b.poster="";b.share="";b.video="";b.trailer="";b.movieTitle="";b.origTitle="";b.synopsis="";}
   if(k==="news"){b.img="";b.cat="";b.video="";b.trailer="";b.source="";b.sourceUrl="";}
   if(k==="craft"){b.img="";b.cat="";b.video="";b.trailer="";}
   if(k==="episodes"){b.yt="";b.sp="";b.n="";b.len="";b.cat="";}
