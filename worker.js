@@ -73,7 +73,7 @@ async function stored(env) {
    за нов/променен адрес, вместо да чакат следващото си обхождане ---------- */
 // ключът е генериран от Bing Webmaster Tools (meninamovie.com → IndexNow → Generate API Key),
 // затова е фиксиран тук, вместо да се генерира сам — за да съвпада с това, което Bing очаква
-const INDEXNOW_KEY = "ea6605793e4f4661a3764c2132dbbfca";
+const INDEXNOW_KEY = "bca36e3da5204448a9b6cecf0502b0bc";
 async function indexNowKey(env) {
   return INDEXNOW_KEY;
 }
