@@ -15,6 +15,7 @@
  *   всичко друго       → статичните файлове
  */
 
+const SITE_ORIGIN = "https://meninamovie.com";
 const JSON_HEADERS = {
   "content-type": "application/json; charset=utf-8",
   "cache-control": "no-store",
@@ -68,6 +69,47 @@ async function stored(env) {
     return null;
   }
 }
+/* ---------- IndexNow: Bing (и през него ChatGPT search), Yandex, Seznam научават веднага
+   за нов/променен адрес, вместо да чакат следващото си обхождане ---------- */
+async function indexNowKey(env) {
+  let key = await env.MIM.get("indexnow-key");
+  if (!key) {
+    key = randHex(16);
+    await env.MIM.put("indexnow-key", key);
+  }
+  return key;
+}
+async function pingIndexNow(env, origin, urls) {
+  if (!urls || !urls.length) return;
+  try {
+    const key = await indexNowKey(env);
+    await fetch("https://api.indexnow.org/indexnow", {
+      method: "POST",
+      headers: { "content-type": "application/json; charset=utf-8" },
+      body: JSON.stringify({
+        host: new URL(origin).host, key, keyLocation: origin + "/" + key + ".txt",
+        urlList: urls.slice(0, 10000),
+      }),
+    });
+  } catch (e) { /* само подсказка към търсачките — грешка тук не бива да чупи записа в админа */ }
+}
+/* кои адреси реално са нови или пипнати от последния запис — само тях пращаме на IndexNow */
+function indexNowChangedUrls(prev, merged, origin) {
+  const prevById = {};
+  for (const kind of TIMESTAMP_KINDS)
+    for (const it of (prev && prev[kind]) || []) prevById[kind + ":" + it.id] = it;
+  const out = [];
+  for (const kind of TIMESTAMP_KINDS) {
+    for (const it of merged[kind] || []) {
+      if (!seoLive(kind, it, merged)) continue;
+      const old = prevById[kind + ":" + it.id];
+      if (old && old.updatedAt === it.updatedAt) continue;
+      out.push(origin + seoUrl(kind, it));
+    }
+  }
+  return out;
+}
+
 /** Записът за достъпа: {users:[{id,email,name,role,salt,hash}]} */
 async function authRecord(env) {
   const raw = await env.MIM.get("auth");
@@ -165,7 +207,7 @@ function keepSecrets(incoming, prev) {
    и за "Започната на" (дата+час) в админ панела. Пълен ISO момент (не само дата), за
    да имаме и часа — старите записи, създадени преди тази проверка, си остават само с дата.
    Работи само от съдържанието — не иска нищо ново от админ панела. */
-const TIMESTAMP_KINDS = ["reviews", "news", "craft", "episodes"];
+const TIMESTAMP_KINDS = ["reviews", "news", "craft", "episodes", "calendar"];
 function stampTimestamps(merged, prev) {
   const nowIso = new Date().toISOString();
   const prevById = {};
@@ -637,13 +679,21 @@ async function syncCalendar(env, months) {
   for (const it of old)
     if (it.src === "tmdb" && it.when < cut && (it.edited || it.hidden || trendingIds.has(it.tmdbId))) out.push(it);
 
+  // "кога е пипнат" запис за TMDB-импортираните — за lastmod в sitemap.xml (виж seoLastmod):
+  // ново заглавие → createdAt сега; заглавие или дата реално са се променили → updatedAt сега;
+  // TMDB-то си движи популярност/рейтинг на всеки sync, затова те не се броят за "промяна"
   const seen = {};
+  const syncNowIso = new Date().toISOString();
   for (const f of fresh) {
     if (seen[f.id]) continue;
     seen[f.id] = 1;
     const o = byId[f.id];
     if (o && (o.edited || o.hidden)) { if (!out.some((x) => x.id === o.id)) out.push(o); continue; }
-    out.push(o ? Object.assign({}, o, f) : f);
+    const rec = o ? Object.assign({}, o, f) : Object.assign({}, f);
+    const changed = !o || o.t !== rec.t || o.when !== rec.when;
+    rec.createdAt = (o && o.createdAt) || syncNowIso;
+    rec.updatedAt = changed ? syncNowIso : ((o && o.updatedAt) || syncNowIso);
+    out.push(rec);
   }
   // заглавие, останало на японски/корейски/т.н. (нито кирилица, нито латиница) — адресът пада на "без заглавие";
   // взимаме английското от TMDB само за адреса на страницата, не разчитаме на превод, който TMDB няма
@@ -684,6 +734,8 @@ async function syncCalendar(env, months) {
   data.settings.calSyncedAt = Date.now();
   await env.MIM.put("content", JSON.stringify(data));
   await publishPublicCache(env, data);
+  const freshUrls = indexNowChangedUrls({ calendar: old }, { calendar: out }, SITE_ORIGIN);
+  if (freshUrls.length) await pingIndexNow(env, SITE_ORIGIN, freshUrls);
   return {
     ok: true, count: out.length, added: fresh.length,
     movies: nMovies, series: nSeries, perPlatform: perPlatform,
@@ -703,6 +755,8 @@ function itemImage(it) {
   if (!it) return "";
   return it.poster || it.img || "";
 }
+/* без случайно въведено тире/интервал в началото на името — иначе "— " + "- Алекс" излиза "— - Алекс" */
+function cleanAuthor(s) { return String(s || "").trim().replace(/^[-–—\s]+/, ""); }
 function ytIdOf(u) {
   u = String(u || "").trim();
   const pats = [/youtu\.be\/([\w-]{6,})/, /youtube\.com\/shorts\/([\w-]{6,})/, /youtube\.com\/live\/([\w-]{6,})/, /youtube\.com\/embed\/([\w-]{6,})/, /[?&]v=([\w-]{6,})/];
@@ -789,6 +843,9 @@ function seoPubKey(kind, it) {
    За материали без дата на публикуване (стари ревюта, въведени преди полето "when") пада на updatedAt/createdAt,
    за да не липсва lastmod изобщо. */
 function seoLastmod(kind, it) {
+  // при календара it.when е премиерата на филма/сериала, не датата на редакция — тя може да е
+  // с година напред или назад и обърква търсачките, че страницата не е пипана скоро
+  if (kind === "calendar") return String(it.updatedAt || it.createdAt || it.when || "").slice(0, 10) || "";
   return String(it.when || it.updatedAt || it.createdAt || it.d || "").slice(0, 10) || "";
 }
 function seoValidLastmod(d) {
@@ -916,7 +973,7 @@ function seoDateBg(iso) {
 function seoReviewAnswer(it, data) {
   const cal = calMatchFor(data, it);
   const bits = [];
-  const title = String(it.t || "").trim();
+  const title = String(it.movieTitle || it.t || "").trim();
   if (cal) {
     const where = cal.kind === "cinema" ? "по кината" : cal.platform ? "по " + cal.platform : "по стрийминг";
     const past = String(cal.when || "") < ymd(new Date());
@@ -928,15 +985,17 @@ function seoReviewAnswer(it, data) {
 /* три въпроса за ревю, попълвани от вече наличните данни — Google игнорира FAQPage схема,
    ако отговорите не са и видими на самата страница, затова връщаме готово HTML заедно със схемата */
 function seoReviewFaq(it) {
-  const title = String(it.t || "").trim();
+  const title = String(it.movieTitle || it.t || "").trim();
   const qa = [];
   if (it.s) {
     const s = Math.max(0, Math.min(5, Math.round(+it.s || 0)));
     const verdict = s >= 4 ? "Да — получава " + s + " от 5 клапи в нашето ревю." : s <= 2 ? "По-скоро не — само " + s + " от 5 клапи в нашето ревю." : "Колебливо да — " + s + " от 5 клапи, зависи от вкуса.";
     qa.push({ q: "Струва ли си „" + title + "“?", a: verdict });
   }
-  const desc = seoDesc("reviews", it, 220);
-  if (desc) qa.push({ q: "За какво се разказва в „" + title + "“?", a: desc });
+  // само ако е попълнено нарочно поле "Сюжет накратко" — иначе въпросът не е истински отговор,
+  // а просто първите изречения на ревюто (виж и точка 9 в списъка с SEO поправки)
+  const synopsis = plain(it.synopsis || "", 220);
+  if (synopsis) qa.push({ q: "За какво се разказва в „" + title + "“?", a: synopsis });
   if (it.mins) qa.push({ q: "Колко е дълъг „" + title + "“?", a: "„" + title + "“ трае " + it.mins + " минути." });
   return qa;
 }
@@ -999,12 +1058,14 @@ function calCat(c) {
 function calReviewFor(data, it) {
   const t = String(it.t || "").trim().toLowerCase();
   if (!t) return null;
-  return (data.reviews || []).find((r) => seoLive("reviews", r, data) && String(r.t || "").trim().toLowerCase() === t) || null;
+  // заглавието на ревюто може да е цяло изречение ("Х най-накрая филм за Y") — свързваме по
+  // полето "Филм", ако е попълнено, иначе по текущото заглавие, за да не се чупят стари ревюта
+  return (data.reviews || []).find((r) => seoLive("reviews", r, data) && String(r.movieTitle || r.t || "").trim().toLowerCase() === t) || null;
 }
 /* обратното на calReviewFor — за дадено ревю/епизод намира записа му в календара, по заглавие;
    ако има няколко (напр. театрално + стрийминг), предпочита предстоящия пред минали дати */
 function calMatchFor(data, it) {
-  const t = String(it && it.t || "").trim().toLowerCase();
+  const t = String(it && (it.movieTitle || it.t) || "").trim().toLowerCase();
   if (!t) return null;
   const matches = (data.calendar || []).filter((c) => seoLive("calendar", c, data) && String(c.t || "").trim().toLowerCase() === t);
   if (!matches.length) return null;
@@ -1031,11 +1092,19 @@ function calTitleMatches(data, it) {
     if (seoLive("news", n, data) && String(n.t || "").trim().toLowerCase() === t) out.push({ kind: "news", it: n, url: seoUrl("news", n) });
   return out;
 }
+/* автоматичен TMDB запис без добавена стойност (текст, свързано ревю/новина/епизод) —
+   твърде тънко съдържание за да получи собствено място в sitemap.xml/индекса; страницата
+   си остава достъпна (старите връзки не пропадат), просто не се предлага на търсачките */
+function calIsThin(data, it) {
+  if (it.src !== "tmdb") return false; // ръчните събития никога не са тънки
+  if (String(it.body || "").trim()) return false;
+  return calTitleMatches(data, it).length === 0;
+}
 
 /* ---------- структурирани данни ---------- */
 function seoJsonLd(kind, it, origin, canon, image, data, faqLd) {
   const org = { "@type": "Organization", name: "Men In A Movie", url: origin + "/", logo: origin + "/og.jpg" };
-  const author = it.authorName ? { "@type": "Person", name: it.authorName } : org;
+  const author = it.authorName ? { "@type": "Person", name: cleanAuthor(it.authorName) } : org;
   const date = seoDate(kind, it);
   const base = {
     "@context": "https://schema.org",
@@ -1057,7 +1126,7 @@ function seoJsonLd(kind, it, origin, canon, image, data, faqLd) {
   if (kind === "reviews") {
     node = Object.assign({}, base, {
       "@type": "Review",
-      itemReviewed: { "@type": "Movie", name: it.t, image: [image], ...(it.y ? { dateCreated: String(it.y) } : {}), ...(genreArr(it.g).length ? { genre: genreArr(it.g) } : {}) },
+      itemReviewed: { "@type": "Movie", name: it.movieTitle || it.t, ...(it.origTitle ? { alternateName: it.origTitle } : {}), image: [image], ...(it.y ? { dateCreated: String(it.y) } : {}), ...(genreArr(it.g).length ? { genre: genreArr(it.g) } : {}) },
       reviewRating: { "@type": "Rating", ratingValue: String(it.s || ""), bestRating: "5", worstRating: "1" },
       reviewBody: plain(it.body, 1500),
     });
@@ -1484,9 +1553,11 @@ function titleBlocksHTML(t, limit) {
     else cur = (cur + " " + x).trim();
   }
   if (cur) lines.push(cur);
+  // интервал между span-овете — иначе последната дума на един ред и първата на следващия
+  // се сливат в едно (напр. "BrandNew") щом текстът се чете без CSS (Google, четци на екрана)
   return lines.slice(0, 3).map((l, i, a) =>
     '<span class="hl' + (i === a.length - 1 ? " hl-notch" : "") + '">' + escHtml(l) + "</span>"
-  ).join("");
+  ).join(" ");
 }
 
 /* бутон за споделяне — копира адреса */
@@ -1606,7 +1677,7 @@ async function seoItemPage(kind, it, data, origin, env) {
     '<div class="col">' +
     seoBody(bodyTxt) +
     (it.guest ? '<p class="meta" style="margin-top:22px">Гост: ' + escHtml(it.guest) + (it.role ? " · " + escHtml(it.role) : "") + "</p>" : "") +
-    (it.authorName ? '<p class="sig">— ' + escHtml(it.authorName) + "</p>" : "") +
+    (it.authorName ? '<p class="sig">— ' + escHtml(cleanAuthor(it.authorName)) + "</p>" : "") +
     seoDatesRow(kind, it) +
     "</div>" +
     seoRelated(data, kind, it, 4);
@@ -1679,7 +1750,7 @@ async function seoReviewItemPage(it, data, origin) {
   const faq = seoReviewFaq(it);
   const body =
     '<div class="wrap"><div class="section overview">' + seoBody(it.body) +
-    (it.authorName ? '<p class="sig">— ' + escHtml(it.authorName) + "</p>" : "") +
+    (it.authorName ? '<p class="sig">— ' + escHtml(cleanAuthor(it.authorName)) + "</p>" : "") +
     seoDatesRow("reviews", it) +
     (tags.length ? tagChipsHTML(it, data) : "") +
     seoFaqHTML(faq) +
@@ -1795,8 +1866,9 @@ async function seoCalendarItemPage(it, data, origin, env) {
     keywords: itemTags(it, data).map((t) => t.name).join(", "),
     head: seoJsonLd("calendar", it, origin, canon, image, data, seoFaqJsonLd(faq)),
     body: hero + body + countJs + SHARE_JS,
-    // нов епизод на вървящ сериал — страницата остава достъпна (стари връзки не пропадат), но не се индексира
-    robots: it.sub === "episode" ? "noindex, follow" : undefined,
+    // нов епизод на вървящ сериал, или тънък автоматичен TMDB запис без добавена стойност —
+    // страницата остава достъпна (стари връзки не пропадат), но не се индексира
+    robots: (it.sub === "episode" || calIsThin(data, it)) ? "noindex, follow" : undefined,
   });
 }
 
@@ -1883,6 +1955,69 @@ function seoListPage(slug, page, data, origin) {
     body:
       '<div class="banner"><div class="wrap"><h1>' + escHtml(hd.title || cfg.title) + "</h1></div></div>" +
       '<div class="' + (kind === "reviews" || kind === "merch" ? "grid-cards" : "list") + '">' + (rows || '<p class="kicker">Още няма нищо тук.</p>') + "</div>" + pager,
+  });
+}
+
+/* началната страница за ботове (същия принцип като всички други SEO-страници в този файл —
+   виж isBotRequest по-долу): истинските посетители продължават да виждат SPA-то, а ботовете
+   вече получават истински текст и връзки към последните новини/ревюта/зад кадър/подкаст,
+   вместо празната "Зарежда се…" обвивка. */
+function seoHomeRow(kind, it, origin) {
+  const u = seoUrl(kind, it);
+  const im = seoImage(kind, it, origin);
+  const meta = [SEO_LABEL[kind], seoDateBg(seoDate(kind, it))].filter(Boolean);
+  return '<a class="li" href="' + u + '">' +
+    (im && !/\/og\.jpg$/.test(im) ? '<img src="' + escHtml(im) + '" alt="' + escHtml(it.t) + '" loading="lazy">' : "<div></div>") +
+    '<div class="tx"><p class="kicker">' + escHtml(meta.join(" · ")) + "</p>" +
+    "<h3>" + escHtml(it.t) + "</h3>" +
+    "<p>" + escHtml(plain(it.lead || it.p || it.verdict || it.desc || it.body || "", 180)) + "</p>" +
+    '<span class="more">Виж повече</span></div></a>';
+}
+function seoHomeLatest(kind, data, n) {
+  return (data[kind] || []).filter((it) => seoLive(kind, it, data))
+    .slice().sort((a, b) => seoPubKey(kind, b).localeCompare(seoPubKey(kind, a))).slice(0, n);
+}
+function seoHomeSection(kind, label, listSlug, data, origin, n) {
+  const list = seoHomeLatest(kind, data, n);
+  if (!list.length) return "";
+  return '<section class="wrap" style="margin-top:34px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:14px"><h2>' + escHtml(label) + "</h2>" +
+    '<a class="more" href="/' + listSlug + '">Виж всички</a></div>' +
+    '<div class="list">' + list.map((it) => seoHomeRow(kind, it, origin)).join("") + "</div></section>";
+}
+function seoHomePage(data, origin) {
+  const canon = origin + "/";
+  const title = "Men In A Movie — кино, подкаст и ревюта";
+  const desc = "Men In A Movie — канал за комерсиално кино. Ревюта, подкаст, новини от индустрията и рубриката „Зад кадър“, на български.";
+  const latestReview = seoHomeLatest("reviews", data, 1)[0];
+  const image = latestReview ? seoImage("reviews", latestReview, origin) : origin + "/og.jpg";
+
+  const sections =
+    seoHomeSection("news", "Новини", "novini", data, origin, 6) +
+    seoHomeSection("reviews", "Ревюта", "revyuta", data, origin, 6) +
+    seoHomeSection("craft", "Зад кадър", "zad-kadar", data, origin, 4) +
+    seoHomeSection("episodes", "Подкаст", "podkast", data, origin, 4);
+
+  const items = [];
+  for (const kind of ["news", "reviews", "craft", "episodes"])
+    for (const it of seoHomeLatest(kind, data, 6))
+      items.push({ "@type": "ListItem", position: items.length + 1, url: origin + seoUrl(kind, it), name: it.t });
+  const ld = {
+    "@context": "https://schema.org", "@type": "WebSite", name: "Men In A Movie", url: origin + "/", description: desc,
+    ...(items.length ? { mainEntity: { "@type": "ItemList", itemListElement: items } } : {}),
+  };
+
+  const body =
+    '<div class="banner"><div class="wrap"><h1>Men In A Movie</h1>' +
+    '<p class="lede">Канал за комерсиално кино. Ревюта, подкаст и новини от индустрията — на български.</p>' +
+    '<div class="btns" style="margin-top:16px"><a class="btn gold" href="/kalendar">Какво да гледам</a>' +
+    '<a class="btn" href="/revyuta">Ревюта</a><a class="btn" href="/podkast">Подкаст</a></div>' +
+    "</div></div>" + (sections || '<p class="wrap kicker">Още няма нищо тук.</p>');
+
+  return seoShell({
+    title, desc, canon, image, ogType: "website",
+    head: '<script type="application/ld+json">' + JSON.stringify(ld) + "<\/script>",
+    body,
   });
 }
 
@@ -2238,6 +2373,8 @@ function seoSitemap(data, origin) {
   for (const v of calViews(data))
     rows.push("<url><loc>" + origin + "/kalendar/" + v.slug + "</loc><changefreq>daily</changefreq><priority>0.7</priority></url>");
   for (const x of seoAll(data)) {
+    // тънък автоматичен запис от TMDB — страницата остава достъпна, но не се предлага в sitemap-а
+    if (x.kind === "calendar" && calIsThin(data, x.it)) continue;
     const d = seoValidLastmod(seoLastmod(x.kind, x.it));
     rows.push("<url><loc>" + origin + x.url + "</loc>" + (d ? "<lastmod>" + d + "</lastmod>" : "") +
       "<changefreq>weekly</changefreq><priority>0.8</priority></url>");
@@ -2619,6 +2756,8 @@ async function handleRequest(request, env, ctx) {
         if (prev) await env.MIM.put("content-prev", JSON.stringify(prev));
         await env.MIM.put("content", text);
         ctx.waitUntil(publishPublicCache(env, merged));
+        const freshUrls = indexNowChangedUrls(prev, merged, url.origin);
+        if (freshUrls.length) ctx.waitUntil(pingIndexNow(env, url.origin, freshUrls));
         return json({
           ok: true, at: Date.now(), by: who ? who.role : "bootstrap",
           scope: who && who.role === "author" ? "own" : "all",
@@ -2771,6 +2910,13 @@ async function handleRequest(request, env, ctx) {
       return new Response("Няма admin.html в public/", { status: 404 });
     }
 
+    /* IndexNow — ключов файл за проверка (Bing/Yandex/Seznam го искат на корена, с името на самия ключ) */
+    if (/^\/[0-9a-f]{32}\.txt$/.test(path)) {
+      const key = await indexNowKey(env);
+      if (path === "/" + key + ".txt")
+        return new Response(key, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=86400" } });
+    }
+
     /* robots.txt — кой бот какво може */
     if (path === "/robots.txt") {
       return new Response(seoRobots(url.origin, isTestEnv(env)), {
@@ -2856,6 +3002,17 @@ async function handleRequest(request, env, ctx) {
       if (!tag) return Response.redirect(url.origin + "/karta", 302);
       if (!isBotRequest(request)) return serveSpa(request, env);
       return new Response(seoTagPage(tag, data, url.origin), {
+        headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" },
+      });
+    }
+
+    /* началната страница — истинските хора продължават да виждат SPA-то (isBotRequest по-долу
+       различава истински посетител от бот, както навсякъде другаде в този файл); ботовете вече
+       получават готов HTML с последните материали, вместо празната "Зарежда се…" обвивка */
+    if (path === "/" || path === "") {
+      if (!isBotRequest(request)) return serveSpa(request, env);
+      const data = (await stored(env)) || {};
+      return new Response(seoHomePage(data, url.origin), {
         headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" },
       });
     }
