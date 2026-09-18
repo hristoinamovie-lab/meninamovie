@@ -2122,8 +2122,10 @@ function calLive(data) {
 }
 /* подстраниците, които наистина имат съдържание */
 function calViews(data) {
-  const today = ymd(new Date());
-  const soon = calLive(data).filter((x) => x.when >= today);
+  // същият прозорец, който вижда главната /kalendar страница (1-во число на текущия месец до
+  // +30 дни) — иначе платформа/месец с вече отминали заглавия изчезва оттук, докато все още се
+  // вижда на главната страница, и връзка към нея ("Виж и: Netflix") води към несъществуваща страница
+  const soon = calLive(data).filter((x) => x.when >= calWindowStart() && x.when <= calWindowEnd());
   const views = [];
   const push = (v) => { if (v.items.length && !views.some((o) => o.slug === v.slug)) views.push(v); };
 
