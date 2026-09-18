@@ -2197,17 +2197,15 @@ function calRow(it, origin) {
     : CAL_SUB_LABEL[it.sub] || "";
   const past = it.when < ymd(new Date());
   const formatTxt = it.kind === "event" ? "Събитие" : it.kind === "stream" ? (it.sub ? "Сериал" : "Филм") : "По кината";
-  // нов епизод на вървящ сериал няма собствена страница — картата се показва, но не е връзка
-  const hasOwnPage = it.sub !== "episode";
-  const tag = hasOwnPage ? "a" : "div";
-  return "<" + tag + ' class="calcard' + (past ? " past" : "") + (hasOwnPage ? "" : " no-link") + '"' +
-    (hasOwnPage ? ' href="' + seoUrl("calendar", it) + '"' : "") + '><div class="calcard-art">' +
+  // нов епизод на вървящ сериал си има собствена страница (просто не е в sitemap.xml/индекса —
+  // виж seoAll/robots по-долу, за да не се дели SEO тежестта на всеки нов епизод) — картата вече води до нея
+  return '<a class="calcard' + (past ? " past" : "") + '" href="' + seoUrl("calendar", it) + '"><div class="calcard-art">' +
     (im && /^https?:/.test(im) ? '<img src="' + escHtml(im) + '" alt="' + escHtml(it.t) + '" loading="lazy">' : "") +
     '<span class="calcard-tab">' + escHtml(tab1) + "</span>" +
     (tab2 ? '<span class="calcard-tab2">' + escHtml(tab2) + "</span>" : "") +
     '<span class="calcard-when">' + escHtml(past ? "вече е налично" : seoDateBg(it.when)) + "</span>" +
     '</div><div class="cbody">' + (it.rating ? '<div class="cal-body-claps">' + clapsHTML(Math.round(it.rating / 2), 13) + "</div>" : "") + '<h3>' + escHtml(it.t) + '</h3>' +
-    '<p class="kicker">' + escHtml((it.kind === "event" ? [it.price ? "от " + it.price + " €" : "", it.place] : [it.platform]).concat([formatTxt]).filter(Boolean).join(" · ")) + "</p></div></" + tag + ">";
+    '<p class="kicker">' + escHtml((it.kind === "event" ? [it.price ? "от " + it.price + " €" : "", it.place] : [it.platform]).concat([formatTxt]).filter(Boolean).join(" · ")) + "</p></div></a>";
 }
 /* прозорецът на главната /kalendar страница: от 1-во число на текущия месец до +30 дни от днес */
 function calWindowStart() { return ymd(new Date()).slice(0, 7) + "-01"; }
