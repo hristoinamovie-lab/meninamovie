@@ -1080,6 +1080,55 @@ function calList(view){
 function calListHome(view){
   return calList(view).filter(function(c){ return c.sub !== "episode"; });
 }
+/* /kalendar/<месец-година|платформа|kino|streaming> — дълбоки връзки към отделен разрез на
+   календара (огледало на calViews() в worker.js, за да не води "Виж и: Netflix" до празна
+   страница — самият прозорец от дати трябва да съвпада) */
+function calViews(){
+  var soon=items("calendar").filter(calInWindow), views=[];
+  function push(v){ if(v.items.length&&!views.some(function(o){return o.slug===v.slug;})) views.push(v); }
+  var months=[];
+  soon.forEach(function(it){ var ym=(it.when||"").slice(0,7); if(months.indexOf(ym)<0) months.push(ym); });
+  months.slice(0,6).forEach(function(ym){
+    var lbl=calMonthLabel(ym), parts=lbl.split(" ");
+    push({slug:slugify(parts[0])+"-"+parts[1], type:"month", name:lbl,
+      items:soon.filter(function(x){return (x.when||"").slice(0,7)===ym;})});
+  });
+  push({slug:"kino", type:"cinema", name:"По кината", items:soon.filter(function(x){return x.kind==="cinema";})});
+  var str=soon.filter(function(x){return x.kind==="stream";});
+  push({slug:"streaming", type:"stream", name:"Стрийминг", items:str});
+  var byPlat={};
+  str.forEach(function(it){ var p=(it.platform||"").trim(); if(p){ (byPlat[p]=byPlat[p]||[]).push(it); } });
+  Object.keys(byPlat).sort().forEach(function(p){ push({slug:slugify(p), type:"platform", name:p, items:byPlat[p]}); });
+  return views;
+}
+function calFindView(slug){
+  var want=(slug||"").toLowerCase();
+  var m=calViews().filter(function(v){return v.slug===want;});
+  return m.length?m[0]:null;
+}
+function calViewWords(v){
+  if(v.type==="month") return {h1:"Какво излиза през "+v.name, lede:"Всичко, което излиза през "+v.name+" — по кината и по стрийминга."};
+  if(v.type==="cinema") return {h1:"Премиери по кината", lede:"Филмите, които влизат по кината в България — подредени по дата на премиерата."};
+  if(v.type==="stream") return {h1:"Какво излиза по стрийминга", lede:"Нови сериали, нови сезони и отделни епизоди по платформите, които се гледат в България."};
+  return {h1:"Какво ново по "+v.name, lede:"Всичко ново по "+v.name+", което се пуска в България, с датата до всяко заглавие."};
+}
+function calOtherViewsHTML(views,currentSlug){
+  var rest=views.filter(function(v){return v.slug!==currentSlug;});
+  if(!rest.length) return "";
+  return '<div class="tags" style="margin-top:20px"><span>Виж и:</span>'+
+    rest.map(function(v){return '<a class="tag" href="/kalendar/'+v.slug+'" data-nav>'+esc(v.name)+' ('+v.items.length+')</a>';}).join("")+
+    '</div>';
+}
+function calViewPage(view){
+  var w=calViewWords(view), views=calViews();
+  var h='<div class="banner cal-banner"><div class="wrap"><h1>'+esc(w.h1)+'</h1><p class="lede">'+esc(w.lede)+'</p></div></div>'+
+    '<div class="wrap"><div class="grid4">'+
+    (view.items.length?calGridHTML(view.items,view.items.length):'<p class="clead">Точно сега няма обявени заглавия тук.</p>')+
+    '</div><div class="btns" style="margin-top:34px"><a class="btn gold" href="/kalendar" data-nav>Целият календар</a></div>'+
+    calOtherViewsHTML(views,view.slug)+'</div>';
+  document.getElementById("app").innerHTML=h;
+  document.title=w.h1+" — Men In A Movie";
+}
 function calStreamPlatforms(useWindow){
   var all=items("calendar").filter(function(c){return (useWindow?calInWindow(c):(c.when||"")>=todayISO())&&c.kind==="stream";});
   var seen={}, out=[];
@@ -1583,16 +1632,18 @@ function tagsHTML(it){
 }
 /* "Виж и:" — връзки към месеца и платформата/кината на заглавието, същото каквото и сървърната версия показва */
 function calItemLinksHTML(it){
-  var links=[], ym=String(it.when||"").slice(0,7);
+  var want=[], ym=String(it.when||"").slice(0,7);
   if(/^\d{4}-\d{2}$/.test(ym)){
     var lbl=calMonthLabel(ym), parts=lbl.split(" ");
-    links.push(["/kalendar/"+slugify(parts[0])+"-"+parts[1],"Какво излиза през "+lbl]);
+    want.push(slugify(parts[0])+"-"+parts[1]);
   }
-  if(it.kind==="cinema") links.push(["/kalendar/kino","По кината"]);
-  else if(it.platform) links.push(["/kalendar/"+slugify(it.platform),it.platform]);
-  if(!links.length) return "";
+  if(it.kind==="cinema") want.push("kino");
+  else if(it.platform) want.push(slugify(it.platform));
+  var pick=calViews().filter(function(v){return want.indexOf(v.slug)>=0;});
+  if(!pick.length) return "";
   return '<div class="tags" style="margin-top:30px"><span>Виж и:</span>'+
-    links.map(function(l){return '<a class="tag" href="'+esc(l[0])+'" data-nav>'+esc(l[1])+'</a>';}).join("")+
+    pick.map(function(v){return '<a class="tag" href="/kalendar/'+v.slug+'" data-nav>'+
+      esc(v.type==="month"?"Какво излиза през "+v.name:v.name)+'</a>';}).join("")+
     '<a class="tag" href="/kalendar" data-nav>Целият календар</a></div>';
 }
 function likeShareHTML(kindKey,it){
@@ -1683,6 +1734,10 @@ function route(){
     var found=items(k).filter(function(x){return idTail(x.id)===tail;})[0];
     if(!found) found=items(k).filter(function(x){return String(x.id).toLowerCase()===tail||slugify(x.t)+"-"+idTail(x.id)===seg[1];})[0];
     if(found){ (k==="merch"?merchPage(found):k==="calendar"?movieItemPage(found):k==="reviews"?reviewItemPage(found):article(k,found.id)); markNav(KIND[k].list); window.scrollTo(0,0); return; }
+  }
+  if(seg[0]==="kalendar"&&seg[1]){
+    var view=calFindView(seg[1]);
+    if(view){ calViewPage(view); markNav("kalendar"); window.scrollTo(0,0); return; }
   }
   notFound(); window.scrollTo(0,0);
 }
