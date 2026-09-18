@@ -829,7 +829,7 @@ var KIND={
   episodes: {path:"epizod", list:"podkast",   label:"Подкаст",       img:"",       shape:"h"},
   craft:    {path:"zad-kadar",list:"zad-kadar",label:"Зад кадър",    img:"img",    shape:"h"},
   merch:    {path:"produkt",list:"march",     label:"Мърч",          img:"img",    shape:"h"},
-  calendar: {path:"kalendar",list:"kalendar", label:"Movie calendar",img:"poster", shape:"p"}
+  calendar: {path:"kalendar",list:"kalendar", label:"Какво да гледам",img:"poster", shape:"p"}
 };
 var PER_PAGE=8, EP_HOME=4;
 
@@ -922,10 +922,8 @@ function cardP(k,it){
   /* movie calendar карта — платформа/тип горе вляво, епизод под нея, дата долу вляво */
   var tab1=calCat(it), tab2=it.kind==="stream"?subLabel(it):"", past=String(it.when||"")<todayISO();
   var formatTxt=it.kind==="event"?"Събитие":(it.kind==="stream"?(it.sub?"Сериал":"Филм"):"По кината");
-  /* нов епизод на вървящ сериал няма собствена страница — картата се показва, но не е връзка */
-  var hasOwnPage=it.sub!=="episode", tag=hasOwnPage?"a":"div";
-  return "<"+tag+' class="card cal-card'+(past?" past":"")+(hasOwnPage?"":" no-link")+'"'+
-    (hasOwnPage?' href="'+url(k,it)+'" data-nav':'')+'>'+
+  /* нов епизод на вървящ сериал си има собствена страница (просто не е в sitemap-а/индекса — виж worker.js) — вече води до нея */
+  return '<a class="card cal-card'+(past?" past":"")+'" href="'+url(k,it)+'" data-nav>'+
     '<div class="cal-art">'+
     (p?'<img class="ph r23" src="'+esc(p)+'" alt="'+esc(it.t)+'" loading="lazy">':'<div class="ph r23"></div>')+
     '<span class="cal-tab">'+esc(tab1)+'</span>'+
@@ -933,7 +931,7 @@ function cardP(k,it){
     '<span class="cal-when">'+esc(past?"вече е налично":dt(it.when))+'</span>'+
     '</div>'+
     '<div class="cbody">'+(it.rating?'<div class="cal-body-claps">'+claps(Math.round(it.rating/2),13)+'</div>':'')+'<h3 class="ctitle">'+esc(it.t)+'</h3>'+
-    '<div class="cdate">'+esc((it.kind==="event"?[it.price?("от "+it.price+" €"):"",it.place]:[it.platform]).concat([formatTxt]).filter(Boolean).join(" · "))+'</div></div></'+tag+'>';
+    '<div class="cdate">'+esc((it.kind==="event"?[it.price?("от "+it.price+" €"):"",it.place]:[it.platform]).concat([formatTxt]).filter(Boolean).join(" · "))+'</div></div></a>';
 }
 function card(k,it){return KIND[k].shape==="p"?cardP(k,it):cardH(k,it);}
 function rowEp(it){
@@ -1751,7 +1749,7 @@ function chrome(){
 /* ---------- търсене (overlay) ---------- */
 function searchIndex(){
   var out=[];
-  ["reviews","news","craft","episodes"].forEach(function(k){ items(k).forEach(function(i){ out.push({k:k,i:i}); }); });
+  ["reviews","news","craft","episodes","calendar"].forEach(function(k){ items(k).forEach(function(i){ out.push({k:k,i:i}); }); });
   return out;
 }
 function recentSearches(){ try{ return JSON.parse(localStorage.getItem("mim-recent")||"[]"); }catch(e){ return []; } }
@@ -1783,7 +1781,7 @@ function renderSearchResults(q){
   }
   var s=slugify(q);
   var hits=searchIndex().filter(function(x){
-    return slugify(x.i.t).indexOf(s)>=0 || slugify(txt(x.i.lead)).indexOf(s)>=0;
+    return slugify(x.i.t).indexOf(s)>=0 || slugify(txt(x.i.lead||x.i.p||"")).indexOf(s)>=0;
   }).slice(0,20);
   if(!hits.length){ res.innerHTML='<div class="s-none">Нищо не е намерено за „'+esc(q)+'“.</div>'; return; }
   res.innerHTML='<div class="s-group">Резултати</div>'+hits.map(function(x){return searchHit(x.k,x.i);}).join("");
