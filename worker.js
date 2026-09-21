@@ -2342,12 +2342,12 @@ function seoMapPage(data, origin) {
 /* Google News иска отделна карта — само новини от последните 48 часа */
 function seoNewsSitemap(data, origin) {
   const cutoff = Date.now() - 2 * 24 * 60 * 60 * 1000;
-  const items = (data.news || []).filter((it) => {
-    if (!seoLive("news", it, data)) return false;
-    const d = seoDate("news", it);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
-    return new Date(d + "T12:00:00Z").getTime() >= cutoff;
-  });
+  const dated = (data.news || []).filter((it) => seoLive("news", it, data) && /^\d{4}-\d{2}-\d{2}$/.test(seoDate("news", it)));
+  let items = dated.filter((it) => new Date(seoDate("news", it) + "T12:00:00Z").getTime() >= cutoff);
+  // ако през последните 48 часа няма нова новина, картата остава валидна с най-свежата —
+  // празен <urlset> без нито един <url> Google Search Console отчита като грешка ("Missing XML tag: url")
+  if (!items.length && dated.length)
+    items = [dated.slice().sort((a, b) => seoPubKey("news", b).localeCompare(seoPubKey("news", a)))[0]];
   const rows = items.map((it) => {
     const loc = origin + seoUrl("news", it);
     const pubDate = seoDate("news", it) + "T12:00:00+03:00";
