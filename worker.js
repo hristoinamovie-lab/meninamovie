@@ -219,13 +219,18 @@ function stampTimestamps(merged, prev) {
         it.updatedAt = nowIso;
         continue;
       }
-      // createdAt/updatedAt не са реално съдържание — не бива самото им добавяне (при първия
+      // createdAt/updatedAt/edited не са реално съдържание — не бива самото им добавяне (при първия
       // запис след пускането на тази проверка) да се брои за "промяна" на материала
-      const a = Object.assign({}, old); delete a.updatedAt; delete a.createdAt;
-      const b = Object.assign({}, it); delete b.updatedAt; delete b.createdAt;
+      const a = Object.assign({}, old); delete a.updatedAt; delete a.createdAt; delete a.edited;
+      const b = Object.assign({}, it); delete b.updatedAt; delete b.createdAt; delete b.edited;
       const changed = JSON.stringify(a) !== JSON.stringify(b);
       it.createdAt = it.createdAt || old.createdAt || old.when || nowIso;
       it.updatedAt = changed ? nowIso : (old.updatedAt || nowIso);
+      // ръчна редакция на TMDB-теглен календарен запис вече пази записа от следващото "Опресни от
+      // TMDB" (виж syncCalendar) — иначе поправка като "платформата всъщност е Apple TV+, не
+      // Netflix" изчезва още при следващото опресняване; веднъж пипнат на ръка, остава си пипнат
+      if (kind === "calendar" && it.src === "tmdb" && changed) it.edited = true;
+      else if (old.edited) it.edited = true;
     }
   }
   return merged;
@@ -2823,17 +2828,27 @@ async function handleRequest(request, env, ctx) {
     }
 
     /* търсене по заглавие направо в TMDB, за конкретно заглавие, което админът знае, че го има,
-       но автоматичният sync не го е хванал (напр. извън капака от най-популярни) — 1 заявка към
-       TMDB, независимо от платформа/дата, затова е евтино за ръчно търсене колкото пъти трябва */
+       но автоматичният sync не го е хванал (напр. извън капака от най-популярни) — за всеки от
+       до 6-те резултата отгоре пита и по коя платформа се гледа в България (watch/providers),
+       за да се различат заглавия с еднакво име (напр. няколко филма/сериала, казващи се "Братя") */
     if (path === "/api/tmdb-search-title" && request.method === "GET") {
       const q = (url.searchParams.get("q") || "").trim();
       if (!q || !env.TMDB_KEY) return json({ results: [] });
       try {
         const s = await tmdbGet(env, "/search/multi", { query: q, language: "bg-BG", include_adult: "false" });
-        const results = (s.results || [])
-          .filter((r) => r.media_type === "movie" || r.media_type === "tv")
-          .slice(0, 8)
-          .map((r) => ({
+        const data = (await stored(env)) || {};
+        const known = (data.settings && data.settings.calProviders) || [];
+        const hits = (s.results || []).filter((r) => r.media_type === "movie" || r.media_type === "tv").slice(0, 6);
+        const results = await Promise.all(hits.map(async (r) => {
+          let platform = "";
+          try {
+            const wp = await tmdbGet(env, "/" + r.media_type + "/" + r.id + "/watch/providers", {});
+            const flat = (wp && wp.results && wp.results.BG && wp.results.BG.flatrate) || [];
+            const known2 = flat.find((p) => known.some((k) => k.id === p.provider_id));
+            platform = known2 ? (known.find((k) => k.id === known2.provider_id) || {}).name || known2.provider_name
+              : (flat[0] ? flat[0].provider_name : "");
+          } catch (e) {}
+          return {
             tmdbId: r.id, media: r.media_type,
             t: r.title || r.name || "", origTitle: r.original_title || r.original_name || "",
             when: r.release_date || r.first_air_date || "",
@@ -2841,8 +2856,9 @@ async function handleRequest(request, env, ctx) {
             backdrop: r.backdrop_path ? BACKDROP + r.backdrop_path : "",
             overview: (r.overview || "").slice(0, 320),
             genresBg: (r.genre_ids || []).map((id) => TMDB_GENRE_BG[id]).filter(Boolean),
-            rating: r.vote_average || 0,
-          }));
+            rating: r.vote_average || 0, platform,
+          };
+        }));
         return json({ results });
       } catch (e) {
         return json({ results: [], error: e.message });
