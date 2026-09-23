@@ -817,12 +817,10 @@ function calProvidersHTML(){
    автоматичният sync не го е хванал (напр. извън капака от най-популярни/предстоящи).
    1 заявка към TMDB на търсене, независимо от платформа — затова е спокойно за ръчна употреба. */
 function calTmdbSearchHTML(){
-  var plats=calProvidersKnown().filter(function(p){return p.on;});
   var res=A.calSearchResults||[];
   return '<div class="a-form" style="margin:0 0 16px"><div class="a-f">'+
     '<label>Добави конкретно заглавие — знаеш, че го има в TMDB, но не е хванато автоматично</label>'+
-    '<div class="a-grid" style="grid-template-columns:200px 1fr auto">'+
-    '<select id="calSearchPlat">'+plats.map(function(p){return '<option value="'+esc2(p.name)+'">'+esc2(p.name)+'</option>';}).join("")+'</select>'+
+    '<div class="a-grid" style="grid-template-columns:1fr auto">'+
     '<input id="calSearchQ" placeholder="Име на филм/сериал" value="'+esc2(A.calSearchQ||"")+'">'+
     '<button type="button" class="a-btn" data-act="calsearchtmdb">Търси</button>'+
     '</div>'+
@@ -832,7 +830,8 @@ function calTmdbSearchHTML(){
         return '<div style="background:#161412;border:1px solid var(--line);padding:8px">'+
           (r.poster?'<img src="'+esc2(r.poster)+'" style="width:100%;height:170px;object-fit:cover;margin-bottom:6px">':'')+
           '<b style="display:block;font-size:13px">'+esc2(r.t)+'</b>'+
-          '<span class="sub" style="display:block;margin:2px 0 8px">'+esc2([r.when?r.when.slice(0,4):"",r.media==="tv"?"Сериал":"Филм"].filter(Boolean).join(" · "))+'</span>'+
+          '<span class="sub" style="display:block;margin:2px 0 4px">'+esc2([r.when?r.when.slice(0,4):"",r.media==="tv"?"Сериал":"Филм"].filter(Boolean).join(" · "))+'</span>'+
+          '<span class="sub" style="display:block;margin:0 0 8px;color:var(--y)">'+esc2(r.platform||"платформа — неизвестна")+'</span>'+
           '<button type="button" class="a-btn pri" style="width:100%" data-act="calsearchadd" data-idx="'+i+'">Добави</button>'+
           '</div>';
       }).join("")+'</div>'
@@ -1180,6 +1179,7 @@ function editorCalendar(){
       f("Платформа","platform",it.platform)+'</div>'+
       f("Пояснение под датата — ако е попълнено, замества автоматичния текст за сезон/епизод","note",it.note)+
       '<p class="a-note">Полетата по-долу идват автоматично от TMDB за филми и сериали — провери ги и поправи, ако нещо не е точно.</p>'+
+      (it.edited?'<p class="a-note" style="color:var(--y)">Пипнат на ръка — следващото "Опресни от TMDB" вече няма да презаписва тази статия.</p>':"")+
       genreField("genre",it.genre)+
       '<div class="a-grid">'+f("Времетраене в минути","mins",it.mins)+'</div>'+
       '<div class="a-grid">'+
@@ -1504,16 +1504,16 @@ function onClick(e){
       A.calMode=undefined; A.edMode="write"; A.revTmdbMatch=undefined;
       flash("Вече го има в календара — отворено е за редакция.","ok"); draw(); return;
     }
-    var platSelS=document.getElementById("calSearchPlat"), platNameS=platSelS?platSelS.value:"";
     var haveS=D.settings.genres||[], genreMatchS=(rS.genresBg||[]).filter(function(g){return haveS.indexOf(g)>=0;});
-    A.editKind="calendar";
-    A.edit={id:newIdS, kind:"stream", src:"tmdb", tmdbId:rS.tmdbId, t:rS.t, when:rS.when||today(),
-      poster:rS.poster||"", backdrop:rS.backdrop||"", p:rS.overview||"", platform:platNameS,
+    var newItS={id:newIdS, kind:"stream", src:"tmdb", tmdbId:rS.tmdbId, t:rS.t, when:rS.when||today(),
+      poster:rS.poster||"", backdrop:rS.backdrop||"", p:rS.overview||"", platform:rS.platform||"",
       sub:rS.media==="tv"?"series":"", season:rS.media==="tv"?1:null, episode:rS.media==="tv"?1:null,
       video:"", note:"", popularity:0, rating:rS.rating||0, genre:genreMatchS, tags:[],
       status:canPublish()?"published":"review", authorName:A.me?A.me.name:""};
-    A.tab="calendar"; A.calMode=undefined; A.edMode="write"; A.revTmdbMatch=undefined;
-    draw(); return; }
+    /* добавена direct в списъка — не се отваря редактор, редактираш я после като всичко друго */
+    all("calendar").push(newItS);
+    persist("Добавено: "+newItS.t+(newItS.platform?" ("+newItS.platform+")":"")+".");
+    return; }
   if(act==="del"){ if(!confirm("Да изтрия ли „"+(all(k).filter(function(x){return x.id===id;})[0]||{}).t+"“?")) return;
     D[k]=all(k).filter(function(x){return x.id!==id;}); persist("Изтрито."); return; }
   if(act==="rmimg"){ A.edit[t.getAttribute("data-rmf")]=""; draw(); return; }
