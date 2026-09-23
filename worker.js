@@ -588,7 +588,10 @@ async function syncCalendar(env, months) {
       const nw = await tmdbGet(env, "/discover/tv", {
         watch_region: "BG", with_watch_providers: String(pv.id), language: "bg-BG",
         "first_air_date.gte": lo, "first_air_date.lte": hi,
-        sort_by: "popularity.desc", page: "1",
+        // по дата, не по популярност — иначе сериал, който излиза утре, губи мястото си на
+        // някой по-известен, но чак след месеци (точно обратното на смисъла на календара);
+        // филмите вече сортират така (primary_release_date.asc), сериалите бяха пропуснати
+        sort_by: "first_air_date.asc", page: "1",
       });
       for (const t of (nw.results || []).slice(0, 6)) {
         if (!t.first_air_date || t.first_air_date < lo || t.first_air_date > hi) continue;
@@ -624,7 +627,8 @@ async function syncCalendar(env, months) {
       const mvs = await tmdbGet(env, "/discover/movie", {
         watch_region: "BG", with_watch_providers: String(pv.id), language: "bg-BG",
         "primary_release_date.gte": lo, "primary_release_date.lte": hi,
-        sort_by: "popularity.desc", include_adult: "false", page: "1",
+        // по дата, не по популярност — виж коментара при "1) премиери на НОВИ сериали" по-горе
+        sort_by: "primary_release_date.asc", include_adult: "false", page: "1",
       });
       for (const m of (mvs.results || []).slice(0, 8)) {
         if (!m.release_date || m.release_date < lo || m.release_date > hi) continue;
@@ -2815,6 +2819,33 @@ async function handleRequest(request, env, ctx) {
         return json(cr);
       } catch (e) {
         return json(out);
+      }
+    }
+
+    /* търсене по заглавие направо в TMDB, за конкретно заглавие, което админът знае, че го има,
+       но автоматичният sync не го е хванал (напр. извън капака от най-популярни) — 1 заявка към
+       TMDB, независимо от платформа/дата, затова е евтино за ръчно търсене колкото пъти трябва */
+    if (path === "/api/tmdb-search-title" && request.method === "GET") {
+      const q = (url.searchParams.get("q") || "").trim();
+      if (!q || !env.TMDB_KEY) return json({ results: [] });
+      try {
+        const s = await tmdbGet(env, "/search/multi", { query: q, language: "bg-BG", include_adult: "false" });
+        const results = (s.results || [])
+          .filter((r) => r.media_type === "movie" || r.media_type === "tv")
+          .slice(0, 8)
+          .map((r) => ({
+            tmdbId: r.id, media: r.media_type,
+            t: r.title || r.name || "", origTitle: r.original_title || r.original_name || "",
+            when: r.release_date || r.first_air_date || "",
+            poster: r.poster_path ? POSTER + r.poster_path : "",
+            backdrop: r.backdrop_path ? BACKDROP + r.backdrop_path : "",
+            overview: (r.overview || "").slice(0, 320),
+            genresBg: (r.genre_ids || []).map((id) => TMDB_GENRE_BG[id]).filter(Boolean),
+            rating: r.vote_average || 0,
+          }));
+        return json({ results });
+      } catch (e) {
+        return json({ results: [], error: e.message });
       }
     }
 
