@@ -768,7 +768,7 @@ function listTabCalendar(){
     sortSelHTML(sortMode);
 
   h+='<span class="sub" style="color:var(--tx2)">'+list.length+' материала</span></div>';
-  if(canPublish()) h+=calProvidersHTML();
+  if(canPublish()) h+=calProvidersHTML()+calTmdbSearchHTML();
   h+='<div id="aList">';
   h+=list.map(function(it){ return listRowAdm(k,it); }).join("")||'<p class="a-note">Още няма нищо тук.</p>';
   return h+"</div>";
@@ -811,6 +811,32 @@ function calProvidersHTML(){
     ' информация И спира да показва вече изтеглените си заглавия — навсякъде на сайта и в списъка тук долу,'+
     ' докато не я включиш обратно. Нищо не се трие — статиите просто изчезват от изгледа, докато платформата'+
     ' е изключена. Номерата на нови платформи се намират в themoviedb.org.</p>'+
+    '</div></div>';
+}
+/* директно търсене по заглавие в TMDB — за конкретно нещо, което знаеш, че го има, но
+   автоматичният sync не го е хванал (напр. извън капака от най-популярни/предстоящи).
+   1 заявка към TMDB на търсене, независимо от платформа — затова е спокойно за ръчна употреба. */
+function calTmdbSearchHTML(){
+  var plats=calProvidersKnown().filter(function(p){return p.on;});
+  var res=A.calSearchResults||[];
+  return '<div class="a-form" style="margin:0 0 16px"><div class="a-f">'+
+    '<label>Добави конкретно заглавие — знаеш, че го има в TMDB, но не е хванато автоматично</label>'+
+    '<div class="a-grid" style="grid-template-columns:200px 1fr auto">'+
+    '<select id="calSearchPlat">'+plats.map(function(p){return '<option value="'+esc2(p.name)+'">'+esc2(p.name)+'</option>';}).join("")+'</select>'+
+    '<input id="calSearchQ" placeholder="Име на филм/сериал" value="'+esc2(A.calSearchQ||"")+'">'+
+    '<button type="button" class="a-btn" data-act="calsearchtmdb">Търси</button>'+
+    '</div>'+
+    (A.calSearchErr?'<p class="a-warn">'+esc2(A.calSearchErr)+'</p>':'')+
+    (res.length?'<div class="a-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));margin-top:10px">'+
+      res.map(function(r,i){
+        return '<div style="background:#161412;border:1px solid var(--line);padding:8px">'+
+          (r.poster?'<img src="'+esc2(r.poster)+'" style="width:100%;height:170px;object-fit:cover;margin-bottom:6px">':'')+
+          '<b style="display:block;font-size:13px">'+esc2(r.t)+'</b>'+
+          '<span class="sub" style="display:block;margin:2px 0 8px">'+esc2([r.when?r.when.slice(0,4):"",r.media==="tv"?"Сериал":"Филм"].filter(Boolean).join(" · "))+'</span>'+
+          '<button type="button" class="a-btn pri" style="width:100%" data-act="calsearchadd" data-idx="'+i+'">Добави</button>'+
+          '</div>';
+      }).join("")+'</div>'
+      :(A.calSearchDone?'<p class="a-note">Нищо не излезе — провери изписването.</p>':''))+
     '</div></div>';
 }
 function listRowAdm(k,it){
@@ -1454,6 +1480,40 @@ function onClick(e){
       .catch(function(){ flash("Няма връзка със сървъра.","err"); });
     return;
   }
+  if(act==="calsearchtmdb"){
+    var qEl2=document.getElementById("calSearchQ"), q3=(qEl2?qEl2.value:"").trim();
+    A.calSearchQ=q3;
+    if(!q3){ A.calSearchResults=[]; A.calSearchDone=false; A.calSearchErr="Напиши заглавие."; draw(); return; }
+    A.calSearchErr=""; A.calSearchDone=false; draw();
+    fetch("/api/tmdb-search-title?q="+encodeURIComponent(q3))
+      .then(function(r){return r.json();})
+      .then(function(j){
+        A.calSearchResults=j.results||[]; A.calSearchDone=true;
+        if(j.error) A.calSearchErr="TMDB: "+j.error;
+        draw();
+      })
+      .catch(function(){ A.calSearchErr="Няма връзка със сървъра."; A.calSearchDone=true; draw(); });
+    return; }
+  if(act==="calsearchadd"){
+    var idxS=+t.getAttribute("data-idx"), rS=(A.calSearchResults||[])[idxS]; if(!rS) return;
+    var newIdS="tmdb-"+(rS.media==="tv"?"t":"m")+"-"+rS.tmdbId;
+    var existingS=all("calendar").filter(function(x){return x.id===newIdS;})[0];
+    A.calSearchResults=[]; A.calSearchDone=false; A.calSearchQ="";
+    if(existingS){
+      A.editKind="calendar"; A.edit=JSON.parse(JSON.stringify(existingS)); A.tab="calendar";
+      A.calMode=undefined; A.edMode="write"; A.revTmdbMatch=undefined;
+      flash("Вече го има в календара — отворено е за редакция.","ok"); draw(); return;
+    }
+    var platSelS=document.getElementById("calSearchPlat"), platNameS=platSelS?platSelS.value:"";
+    var haveS=D.settings.genres||[], genreMatchS=(rS.genresBg||[]).filter(function(g){return haveS.indexOf(g)>=0;});
+    A.editKind="calendar";
+    A.edit={id:newIdS, kind:"stream", src:"tmdb", tmdbId:rS.tmdbId, t:rS.t, when:rS.when||today(),
+      poster:rS.poster||"", backdrop:rS.backdrop||"", p:rS.overview||"", platform:platNameS,
+      sub:rS.media==="tv"?"series":"", season:rS.media==="tv"?1:null, episode:rS.media==="tv"?1:null,
+      video:"", note:"", popularity:0, rating:rS.rating||0, genre:genreMatchS, tags:[],
+      status:canPublish()?"published":"review", authorName:A.me?A.me.name:""};
+    A.tab="calendar"; A.calMode=undefined; A.edMode="write"; A.revTmdbMatch=undefined;
+    draw(); return; }
   if(act==="del"){ if(!confirm("Да изтрия ли „"+(all(k).filter(function(x){return x.id===id;})[0]||{}).t+"“?")) return;
     D[k]=all(k).filter(function(x){return x.id!==id;}); persist("Изтрито."); return; }
   if(act==="rmimg"){ A.edit[t.getAttribute("data-rmf")]=""; draw(); return; }
