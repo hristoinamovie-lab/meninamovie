@@ -681,11 +681,13 @@ function calTypeKey(it){
   return it.sub ? "series" : "stream-movie";
 }
 /* платформата на календарен запис в момента активна ли е — изключена платформа спира всичко за нея, докато не се включи пак */
+function normPlat(s){ return String(s||"").trim().toLowerCase(); }
+/* без значение на главни/малки букви — "DISNEY PLUS" срещу "Disney Plus" не бива да крие статия */
 function calPlatformActive(it){
   if(!it.platform) return true;
   var cp=D.settings&&D.settings.calProviders;
   if(!Array.isArray(cp)) return true;
-  return cp.some(function(p){return p.name===it.platform;});
+  return cp.some(function(p){return normPlat(p.name)===normPlat(it.platform);});
 }
 function sortSelHTML(current){
   var opts=[["upcoming","Предстоящи напред"],["date-desc","Най-нови"],["date-asc","Най-стари"],["title-az","Заглавие А-Я"]];

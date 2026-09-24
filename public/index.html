@@ -833,12 +833,14 @@ var KIND={
 };
 var PER_PAGE=8, EP_HOME=4;
 
-/* платформата на календарен запис в момента активна ли е — изключена платформа спира всичко за нея, докато не се включи пак */
+function normPlat(s){ return String(s||"").trim().toLowerCase(); }
+/* платформата на календарен запис в момента активна ли е — изключена платформа спира всичко за нея, докато не се включи пак.
+   без значение на главни/малки букви — "DISNEY PLUS" срещу "Disney Plus" не бива да крие статия */
 function calPlatformActive(it){
   if(!it.platform) return true;
   var cp=D.settings&&D.settings.calProviders;
   if(!Array.isArray(cp)) return true; // никога не е пипано — не ограничавай нищо
-  return cp.some(function(p){return p.name===it.platform;});
+  return cp.some(function(p){return normPlat(p.name)===normPlat(it.platform);});
 }
 function items(k){return (D[k]||[]).filter(function(i){
   if((i.status||"published")!=="published") return false;
@@ -1129,11 +1131,19 @@ function calViewPage(view){
   document.getElementById("app").innerHTML=h;
   document.title=w.h1+" — Men In A Movie";
 }
+/* "Netflix" и "NETFLIX" на два различни записа не бива да излизат като две отделни плочки —
+   групира по платформа без значение на главни/малки букви, показва канонично изписаното име */
 function calStreamPlatforms(useWindow){
   var all=items("calendar").filter(function(c){return (useWindow?calInWindow(c):(c.when||"")>=todayISO())&&c.kind==="stream";});
-  var seen={}, out=[];
-  all.forEach(function(c){var p=c.platform||"Друго"; if(!seen[p]){seen[p]=0;out.push(p);} seen[p]++;});
-  return out.map(function(p){return [p,seen[p]];});
+  var cp=(D.settings&&D.settings.calProviders)||[];
+  function canon(p){ var m=cp.filter(function(k){return normPlat(k.name)===normPlat(p);})[0]; return m?m.name:p; }
+  var seen={}, order=[];
+  all.forEach(function(c){
+    var label=canon(c.platform||"Друго"), key=normPlat(label);
+    if(!seen[key]){seen[key]=0; order.push(label);}
+    seen[key]++;
+  });
+  return order.map(function(label){return [label,seen[normPlat(label)]];});
 }
 /* "Най-гледани" — топ 3 по кината (реално вървящи в момента) + топ 3 на всяка активна стрийминг платформа,
    изчислено на сървъра при всяко опресняване от TMDB (D.trending), не е част от обичайния календар с дати */
@@ -1247,7 +1257,7 @@ function lpCalList(view){
   all.sort(function(a,b){return (a.when||"").localeCompare(b.when||"");});
   if(view!=="all") all=all.filter(function(c){return (c.kind||"")===view;});
   if(view==="stream"){
-    if(lpCalPlatform) all=all.filter(function(c){return (c.platform||"")===lpCalPlatform;});
+    if(lpCalPlatform) all=all.filter(function(c){return normPlat(c.platform)===normPlat(lpCalPlatform);});
     if(lpCalMedia==="movie") all=all.filter(function(c){return !c.sub;});
     if(lpCalMedia==="series") all=all.filter(function(c){return !!c.sub;});
   }
