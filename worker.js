@@ -812,12 +812,14 @@ function idTail(id) {
 function seoSlug(it) { return slugify(it && it.t) + "-" + idTail(it && it.id); }
 function seoUrl(kind, it) { return "/" + SEO_PATH[kind] + "/" + seoSlug(it); }
 
-/* платформата на календарен запис в момента активна ли е — изключена платформа спира всичко за нея, докато не се включи пак */
+const normPlat = (s) => String(s || "").trim().toLowerCase();
+/* платформата на календарен запис в момента активна ли е — изключена платформа спира всичко за нея, докато не се включи пак.
+   сравнението е без значение на главни/малки букви — "DISNEY PLUS" срещу "Disney Plus" не бива да прави статия невидима */
 function calPlatformActive(data, it) {
   if (!it.platform) return true;
   const s = data && data.settings;
   if (!s || !Array.isArray(s.calProviders)) return true; // никога не е пипано — не ограничавай нищо
-  return s.calProviders.some((p) => p.name === it.platform);
+  return s.calProviders.some((p) => normPlat(p.name) === normPlat(it.platform));
 }
 /* показва ли се на сайта изобщо */
 function seoLive(kind, it, data) {
@@ -2148,8 +2150,16 @@ function calViews(data) {
   const str = soon.filter((x) => x.kind === "stream");
   push({ slug: "streaming", type: "stream", name: "Стрийминг", items: str });
 
+  // "Netflix" и "NETFLIX" на два записа не бива да делят платформата на два отделни адреса —
+  // slugify() ги събира под същия slug и без това (и двете дават "netflix"), но без тази
+  // нормализация вторият вариант тихо отпадаше цял (push() го маха като "вече съществуващ slug")
+  const known = (data.settings && data.settings.calProviders) || [];
+  const canonPlat = (p) => { const m = known.find((k) => normPlat(k.name) === normPlat(p)); return m ? m.name : p; };
   const byPlat = {};
-  for (const it of str) { const p = String(it.platform || "").trim(); if (p) (byPlat[p] = byPlat[p] || []).push(it); }
+  for (const it of str) {
+    const p = canonPlat(String(it.platform || "").trim());
+    if (p) (byPlat[p] = byPlat[p] || []).push(it);
+  }
   for (const p of Object.keys(byPlat).sort())
     push({ slug: slugify(p), type: "platform", name: p, items: byPlat[p] });
 
