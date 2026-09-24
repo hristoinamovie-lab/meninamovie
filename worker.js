@@ -2839,26 +2839,30 @@ async function handleRequest(request, env, ctx) {
         const data = (await stored(env)) || {};
         const known = (data.settings && data.settings.calProviders) || [];
         const hits = (s.results || []).filter((r) => r.media_type === "movie" || r.media_type === "tv").slice(0, 6);
-        const results = await Promise.all(hits.map(async (r) => {
-          let platform = "";
-          try {
-            const wp = await tmdbGet(env, "/" + r.media_type + "/" + r.id + "/watch/providers", {});
-            const flat = (wp && wp.results && wp.results.BG && wp.results.BG.flatrate) || [];
-            const known2 = flat.find((p) => known.some((k) => k.id === p.provider_id));
-            platform = known2 ? (known.find((k) => k.id === known2.provider_id) || {}).name || known2.provider_name
-              : (flat[0] ? flat[0].provider_name : "");
-          } catch (e) {}
-          return {
-            tmdbId: r.id, media: r.media_type,
-            t: r.title || r.name || "", origTitle: r.original_title || r.original_name || "",
-            when: r.release_date || r.first_air_date || "",
-            poster: r.poster_path ? POSTER + r.poster_path : "",
-            backdrop: r.backdrop_path ? BACKDROP + r.backdrop_path : "",
-            overview: (r.overview || "").slice(0, 320),
-            genresBg: (r.genre_ids || []).map((id) => TMDB_GENRE_BG[id]).filter(Boolean),
-            rating: r.vote_average || 0, platform,
-          };
+        // основните резултати излизат дори платформата да не се разбере за никого от тях —
+        // провалена/бавна watch/providers заявка за едно заглавие не бива да скрива целия списък
+        const results = hits.map((r) => ({
+          tmdbId: r.id, media: r.media_type,
+          t: r.title || r.name || "", origTitle: r.original_title || r.original_name || "",
+          when: r.release_date || r.first_air_date || "",
+          poster: r.poster_path ? POSTER + r.poster_path : "",
+          backdrop: r.backdrop_path ? BACKDROP + r.backdrop_path : "",
+          overview: (r.overview || "").slice(0, 320),
+          genresBg: (r.genre_ids || []).map((id) => TMDB_GENRE_BG[id]).filter(Boolean),
+          rating: r.vote_average || 0, platform: "",
         }));
+        try {
+          const platforms = await Promise.all(hits.map(async (r) => {
+            try {
+              const wp = await tmdbGet(env, "/" + r.media_type + "/" + r.id + "/watch/providers", {});
+              const flat = (wp && wp.results && wp.results.BG && wp.results.BG.flatrate) || [];
+              const known2 = flat.find((p) => known.some((k) => k.id === p.provider_id));
+              return known2 ? (known.find((k) => k.id === known2.provider_id) || {}).name || known2.provider_name
+                : (flat[0] ? flat[0].provider_name : "");
+            } catch (e) { return ""; }
+          }));
+          platforms.forEach((p, i) => { results[i].platform = p; });
+        } catch (e) { /* без платформа на плочките е по-добре, отколкото без резултати изобщо */ }
         return json({ results });
       } catch (e) {
         return json({ results: [], error: e.message });
