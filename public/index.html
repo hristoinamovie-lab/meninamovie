@@ -1298,7 +1298,7 @@ function renderLpCal(view,p){
     } else sf.innerHTML="";
   }
   var list=lpCalList(view);
-  document.getElementById("lpCalGrid").innerHTML=calMonthGroupsHTML(list);
+  document.getElementById("lpCalGrid").innerHTML=list.length?calMonthGroupsHTML(list):'<p class="clead">Нищо не съвпада с тази комбинация от филтри — пробвай друга.</p>';
   var pg=document.getElementById("lpCalPager"); if(pg) pg.innerHTML="";
 }
 
