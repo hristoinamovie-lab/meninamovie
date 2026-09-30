@@ -1029,13 +1029,11 @@ function edSmmHTML(k,it){
     '<textarea data-f="smmCaption" placeholder="Текст под снимката в Instagram/Facebook…" style="min-height:160px;width:100%;background:#0A0908;border:1px solid var(--line);color:var(--tx);padding:10px;font:inherit">'+esc2(s.caption||"")+'</textarea>'+
     '</div>'+
     '<div class="a-f"><label>Къде да се публикува</label>'+
-    '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer">'+
-      '<input type="checkbox" data-smmchk="ig"'+(wantIg?" checked":"")+'> Instagram'+
-    '</label>'+
-    '<label style="display:flex;align-items:center;gap:8px;cursor:pointer">'+
-      '<input type="checkbox" data-smmchk="fb"'+(wantFb?" checked":"")+'> Facebook'+
-    '</label>'+
-    '<p class="a-note">По подразбиране са отметнати и двете — махни отметка, ако искаш да пропуснеш някоя от тях при това публикуване.</p>'+
+    '<div class="tagbox">'+
+      '<span class="'+(wantIg?"on":"")+'" data-act="smmtoggle" data-plat="ig">Instagram</span>'+
+      '<span class="'+(wantFb?"on":"")+'" data-act="smmtoggle" data-plat="fb">Facebook</span>'+
+    '</div>'+
+    '<p class="a-note">По подразбиране са включени и двете — изключи някоя, ако искаш да я пропуснеш при това публикуване.</p>'+
     '</div>'+
     '<p class="a-note">Тази снимка и текст се ползват от бутона SMM до статията в списъка. Запазват се с обикновеното „Запази" горе. Публикуването проверява дали статията вече е публична на сайта — ако е насрочена или скрита, отказва.</p>'+
     '</div></div>';
@@ -1510,6 +1508,10 @@ function onClick(e){
   if(act==="calhide"){ var o3=all(k).filter(function(x){return x.id===id;})[0];
     if(o3){ o3.hidden=!o3.hidden; persist(o3.hidden?"Скрито от календара.":"Върнато в календара."); } return; }
   if(act==="rmsmmimg"){ if(A.edit){ A.edit.smm=A.edit.smm||{}; A.edit.smm.img=""; } draw(); return; }
+  if(act==="smmtoggle"){
+    if(A.edit){ A.edit.smm=A.edit.smm||{}; var p=t.getAttribute("data-plat"), cur=A.edit.smm[p]!==false; A.edit.smm[p]=!cur; draw(); }
+    return;
+  }
   if(act==="smmpublish"){
     var oS=all(k).filter(function(x){return x.id===id;})[0]; if(!oS) return;
     if(!oS.smm||!oS.smm.img||!oS.smm.caption){ flash("Добави снимка и текст в раздел SMM на статията, преди да публикуваш.","err"); return; }
@@ -1711,9 +1713,6 @@ function onInput(e){
 }
 function onChange(e){
   var el=e.target;
-  if(el.hasAttribute&&el.hasAttribute("data-smmchk")&&A.edit){
-    A.edit.smm=A.edit.smm||{}; A.edit.smm[el.getAttribute("data-smmchk")]=el.checked; return;
-  }
   if(el.hasAttribute&&el.hasAttribute("data-img")){ readImage(el); return; }
   if(el.hasAttribute&&el.hasAttribute("data-restore")){ readBackup(el); return; }
   if(el.hasAttribute&&el.hasAttribute("data-head")){ var s=el.getAttribute("data-head");
