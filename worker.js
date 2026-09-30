@@ -2830,37 +2830,53 @@ async function handleRequest(request, env, ctx) {
       const smm = it.smm || {};
       if (!smm.img || !smm.caption)
         return json({ error: "no_smm", message: "Липсва снимка или текст в раздел SMM на статията." }, 400);
-      if (!env.META_TOKEN || !env.META_IG_ID || !env.META_PAGE_ID)
+      // по подразбиране и двете са избрани — само изрично false ги изключва (чекбокс в SMM раздела)
+      const wantIg = smm.ig !== false, wantFb = smm.fb !== false;
+      if (!wantIg && !wantFb)
+        return json({ error: "no_target", message: "Избери поне Instagram или Facebook в раздел SMM на статията." }, 400);
+      if (!env.META_TOKEN || (wantIg && !env.META_IG_ID) || (wantFb && !env.META_PAGE_ID))
         return json({ error: "no_meta_keys", message: "Липсват Meta ключовете (META_TOKEN/META_IG_ID/META_PAGE_ID) в Cloudflare." }, 400);
 
       const imageUrl = /^https?:/.test(smm.img) ? smm.img : url.origin + smm.img;
       let igPostId = "", igErr = "", fbPostId = "", fbErr = "";
 
-      try {
-        const create = await metaFetch(env, env.META_IG_ID + "/media", { image_url: imageUrl, caption: smm.caption });
-        if (!create.id) throw new Error((create.error && create.error.message) || "контейнерът е отказан");
-        const pub = await metaFetch(env, env.META_IG_ID + "/media_publish", { creation_id: create.id });
-        if (!pub.id) throw new Error((pub.error && pub.error.message) || "публикуването е отказано");
-        igPostId = pub.id;
-      } catch (e) { igErr = e.message; }
+      if (wantIg) {
+        try {
+          const create = await metaFetch(env, env.META_IG_ID + "/media", { image_url: imageUrl, caption: smm.caption });
+          if (!create.id) throw new Error((create.error && create.error.message) || "контейнерът е отказан");
+          const pub = await metaFetch(env, env.META_IG_ID + "/media_publish", { creation_id: create.id });
+          if (!pub.id) throw new Error((pub.error && pub.error.message) || "публикуването е отказано");
+          igPostId = pub.id;
+        } catch (e) { igErr = e.message; }
+      }
 
-      // Facebook се пробва независимо — грешка тук не пречи на резултата от Instagram
-      try {
-        const fb = await metaFetch(env, env.META_PAGE_ID + "/photos", { url: imageUrl, caption: smm.caption });
-        if (!fb.id && !fb.post_id) throw new Error((fb.error && fb.error.message) || "публикуването е отказано");
-        fbPostId = fb.post_id || fb.id;
-      } catch (e) { fbErr = e.message; }
+      if (wantFb) {
+        try {
+          const fb = await metaFetch(env, env.META_PAGE_ID + "/photos", { url: imageUrl, caption: smm.caption });
+          if (!fb.id && !fb.post_id) throw new Error((fb.error && fb.error.message) || "публикуването е отказано");
+          fbPostId = fb.post_id || fb.id;
+        } catch (e) { fbErr = e.message; }
+      }
 
-      if (!igPostId)
-        return json({ error: "ig_failed", message: "Instagram: " + (igErr || "неуспешно.") }, 502);
+      // всичко избрано трябва да е минало успешно, иначе бутонът не се отбелязва за готово —
+      // за да може да се натисне пак за повторен опит
+      const igOk = !wantIg || igPostId, fbOk = !wantFb || fbPostId;
+      if (!igOk || !fbOk) {
+        const msgs = [];
+        if (wantIg && !igPostId) msgs.push("Instagram: " + (igErr || "неуспешно."));
+        if (wantFb && !fbPostId) msgs.push("Facebook: " + (fbErr || "неуспешно."));
+        return json({ error: "publish_failed", message: msgs.join(" / "), igPostId, fbPostId }, 502);
+      }
 
-      it.smm = Object.assign({}, smm, { postedAt: new Date().toISOString(), igPostId, fbPostId: fbPostId || smm.fbPostId || "" });
+      const postedAt = new Date().toISOString();
+      it.smm = Object.assign({}, smm, {
+        postedAt,
+        igPostId: igPostId || smm.igPostId || "",
+        fbPostId: fbPostId || smm.fbPostId || "",
+      });
       await env.MIM.put("content", JSON.stringify(data));
       ctx.waitUntil(publishPublicCache(env, data));
-      return json({
-        ok: true, igPostId, fbPostId,
-        warning: fbPostId ? "" : ("Facebook: " + (fbErr || "неуспешно.")),
-      });
+      return json({ ok: true, igPostId, fbPostId, postedAt });
     }
 
     /* кои стрийминг платформи изобщо ги има в България */
