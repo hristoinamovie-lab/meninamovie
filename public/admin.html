@@ -1522,8 +1522,10 @@ function onClick(e){
     fetch("/api/smm-publish",{method:"POST",headers:uHeaders(),body:JSON.stringify({k:k,id:id})})
       .then(function(r){return r.json().catch(function(){return {};}).then(function(j){return {ok:r.ok,j:j};});})
       .then(function(res){
-        if(!res.ok||res.j.error){ flash("Грешка: "+(res.j.message||res.j.error||"неуспешно публикуване."),"err"); return; }
+        // дори при грешка сървърът пази каквото вече е успяло (напр. Instagram да, Facebook не) —
+        // отразяваме го тук, за да не изглежда "нищо не мина" и за да не се дублира при нов опит
         oS.smm.igPostId=res.j.igPostId||oS.smm.igPostId||""; oS.smm.fbPostId=res.j.fbPostId||oS.smm.fbPostId||"";
+        if(!res.ok||res.j.error){ flash("Грешка: "+(res.j.message||res.j.error||"неуспешно публикуване.")+" Натисни SMM пак — успешната част няма да се качи повторно.","err"); draw(); return; }
         oS.smm.postedAt=res.j.postedAt||new Date().toISOString();
         flash("Публикувано в "+targets+".","ok");
         draw();
