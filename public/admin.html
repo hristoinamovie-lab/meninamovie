@@ -138,6 +138,7 @@ a{color:inherit;text-decoration:none}
 .pbtn.pri:hover{background:#d9ad1c;border-color:#d9ad1c}
 .pbtn.sm{padding:5px 10px;font-size:10.5px}
 .pbtn.dan{border-color:#5a2320;color:#e07a76}
+.pbtn.on{border-color:var(--ok);color:var(--ok)}
 
 /* табло */
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(136px,1fr));gap:10px;margin-bottom:22px}
@@ -468,7 +469,9 @@ var STATUS = {draft:"Чернова", review:"За одобрение", publishe
    резерва, докато админът не запази собствен списък там, за да не изчезнат съществуващите статии */
 var CRAFT_TAGS_DEFAULT=["Камера","Монтаж","Звук","VFX","Каскади","Продукция","Кадър по кадър"];
 function craftTags(){ return (D.settings.craftTags&&D.settings.craftTags.length)?D.settings.craftTags:CRAFT_TAGS_DEFAULT; }
-var SIZE = {h:[1200,675], p:[600,900], b:[1200,300]};
+var SIZE = {h:[1200,675], p:[600,900], b:[1200,300], ig:[1080,1350]};
+/* видовете съдържание, за които има SMM раздел (снимка+текст за Instagram/Facebook) в редактора */
+var SMM_KINDS = ["news","reviews","craft"];
 
 /* ---------- V3: икони и клапи за новия дизайн ---------- */
 var NAV_ICON = {
@@ -730,6 +733,13 @@ function listRowNew(k,it){
   var rcls = sched?"scheduled":st==="published"?"published":st==="hidden"?"hidden":st==="review"?"review":"";
   var lbl = sched?"Насрочено":(STATUS[st]||st);
   var can2 = canPublish()&&(st==="published"||st==="hidden");
+  var smmBtn="";
+  if(SMM_KINDS.indexOf(k)>=0&&canPublish()){
+    var posted = !!(it.smm&&it.smm.igPostId);
+    smmBtn = '<button class="pbtn sm'+(posted?" on":"")+'" '+
+      (posted?"disabled":'data-act="smmpublish" data-k="'+k+'" data-id="'+it.id+'"')+'>'+
+      (posted?"✓ Instagram":"→ Instagram")+'</button>';
+  }
   return '<div class="p-row'+(sched?" is-sched":"")+'" style="cursor:default" data-title="'+esc2(String(it.t||"").toLowerCase())+'"'+
     (catField?' data-cat="'+esc2(it[catField]||"")+'"':"")+
     ' data-tags="'+esc2((it.tags||[]).join(","))+'">'+
@@ -737,6 +747,7 @@ function listRowNew(k,it){
     '<div class="pinfo"><div class="pttl">'+esc2(it.t||"(без заглавие)")+'</div>'+
     '<div class="pmeta">'+esc2([it.when,it.authorName].filter(Boolean).join(" · "))+'</div></div>'+
     '<button class="rpill '+rcls+'" style="cursor:'+(can2?"pointer":"default")+'" '+(can2?'data-act="toggle" data-k="'+k+'" data-id="'+it.id+'"':"disabled")+'>'+esc2(lbl)+'</button>'+
+    smmBtn+
     '<button class="pbtn sm" data-act="edit" data-k="'+k+'" data-id="'+it.id+'">Редактирай</button>'+
     (isAdmin()?'<button class="pbtn sm dan" data-act="del" data-k="'+k+'" data-id="'+it.id+'">Изтрий</button>':'')+
     '</div>';
@@ -994,12 +1005,30 @@ function edCanvasHTML(it,ledeLabel,ledePh,bodyPh){
     '</div>'+
     '<textarea class="c-body" data-f="body" placeholder="'+esc2(bodyPh)+'">'+esc2(it.body||"")+'</textarea>';
 }
-function edModeTabs(){
+function edModeTabs(k){
   var m=A.edMode||"write";
   return '<div class="ed-tabbar">'+
     '<button type="button" data-act="edmode" data-mode="write" class="'+(m==="write"?"on":"")+'">Редакция</button>'+
     '<button type="button" data-act="edmode" data-mode="preview" class="'+(m==="preview"?"on":"")+'">Преглед</button>'+
+    (SMM_KINDS.indexOf(k)>=0?'<button type="button" data-act="edmode" data-mode="smm" class="'+(m==="smm"?"on":"")+'">SMM</button>':"")+
     '</div>';
+}
+/* снимка (1080×1350) + текст за Instagram/Facebook — пазят се на самата статия (it.smm),
+   запазват се с общия бутон "Запази", и после се публикуват отделно с бутона до статията в списъка */
+function edSmmHTML(k,it){
+  var s=it.smm||(it.smm={img:"",caption:""});
+  return '<div class="pv-wrap"><div class="a-form"><div class="a-f">'+
+    '<label>Снимка за Instagram — 1080 × 1350</label>'+
+    (s.img
+      ? '<div class="ed-img"><img src="'+esc2(s.img)+'"><button type="button" class="rmx" data-act="rmsmmimg">✕</button></div>'
+      : '<div class="ed-drop">Няма изображение</div>')+
+    '<input type="file" accept="image/*" data-img="smm" data-shape="ig" style="margin-top:8px;width:100%;background:none;border:0;color:var(--tx2);font-size:12px">'+
+    '</div>'+
+    '<div class="a-f"><label>Текст за публикацията (copy)</label>'+
+    '<textarea data-f="smmCaption" placeholder="Текст под снимката в Instagram/Facebook…" style="min-height:160px;width:100%;background:#0A0908;border:1px solid var(--line);color:var(--tx);padding:10px;font:inherit">'+esc2(s.caption||"")+'</textarea>'+
+    '</div>'+
+    '<p class="a-note">Тази снимка и текст се ползват от бутона за Instagram/Facebook до статията в списъка. Запазват се с обикновеното „Запази" горе. Публикуването проверява дали статията вече е публична на сайта — ако е насрочена или скрита, отказва.</p>'+
+    '</div></div>';
 }
 /* пълен преглед — как ще изглежда публикуваната страница, със снимка и тагове */
 function edPreviewHTML(k,it){
@@ -1154,9 +1183,12 @@ function editorGeneric(k,it,T){
   var ledeLabel = "Кратък отговор — това цитират търсачките", ledePh="2–3 изречения, обобщаващи материала…";
   if(k==="episodes") { ledeLabel="Кратко описание"; ledePh="2–3 изречения за епизода…"; }
   if(k==="merch") { ledeLabel="Кратко описание"; ledePh="2–3 изречения за продукта…"; }
-  var h=edTopline(k,it,T)+edModeTabs();
+  var h=edTopline(k,it,T)+edModeTabs(k);
   if(A.edMode==="preview"){
     return h+'<div class="pv-wrap">'+edPreviewHTML(k,it)+'</div>';
+  }
+  if(A.edMode==="smm"&&SMM_KINDS.indexOf(k)>=0){
+    return h+edSmmHTML(k,it);
   }
   h+='<div class="ed-shell"><div class="ed-canvas">'+
     edCanvasHTML(it,ledeLabel,ledePh,"Продължи да пишеш тук…")+
@@ -1467,6 +1499,23 @@ function onClick(e){
     if(o2){ o2.status = o2.status==="hidden"?"published":"hidden"; persist(o2.status==="hidden"?"Скрито от сайта.":"Върнато на сайта."); } return; }
   if(act==="calhide"){ var o3=all(k).filter(function(x){return x.id===id;})[0];
     if(o3){ o3.hidden=!o3.hidden; persist(o3.hidden?"Скрито от календара.":"Върнато в календара."); } return; }
+  if(act==="rmsmmimg"){ if(A.edit){ A.edit.smm=A.edit.smm||{}; A.edit.smm.img=""; } draw(); return; }
+  if(act==="smmpublish"){
+    var oS=all(k).filter(function(x){return x.id===id;})[0]; if(!oS) return;
+    if(!oS.smm||!oS.smm.img||!oS.smm.caption){ flash("Добави снимка и текст в раздел SMM на статията, преди да публикуваш.","err"); return; }
+    if(!confirm('Да публикувам ли "'+oS.t+'" в Instagram и Facebook?')) return;
+    flash("Пращам към Instagram/Facebook…","ok");
+    fetch("/api/smm-publish",{method:"POST",headers:uHeaders(),body:JSON.stringify({k:k,id:id})})
+      .then(function(r){return r.json().catch(function(){return {};}).then(function(j){return {ok:r.ok,j:j};});})
+      .then(function(res){
+        if(!res.ok||res.j.error){ flash("Грешка: "+(res.j.message||res.j.error||"неуспешно публикуване."),"err"); return; }
+        oS.smm.igPostId=res.j.igPostId||oS.smm.igPostId||""; oS.smm.fbPostId=res.j.fbPostId||oS.smm.fbPostId||"";
+        flash(res.j.warning?("Публикувано в Instagram. "+res.j.warning):"Публикувано в Instagram и Facebook.","ok");
+        draw();
+      })
+      .catch(function(){ flash("Няма връзка със сървъра.","err"); });
+    return;
+  }
   if(act==="calsync"){
     if(!confirm("Да заредя ли последните премиери и епизоди от TMDB? Ръчно добавените и вече пипнатите елементи не се пипат.")) return;
     flash("Опреснявам от TMDB…","ok");
@@ -1708,6 +1757,7 @@ function collect(){
       return;
     }
     if(n==="sizesTxt"){ it.sizes=el.value.split(",").map(function(s){return s.trim();}).filter(Boolean); return; }
+    if(n==="smmCaption"){ it.smm=it.smm||{}; it.smm.caption=el.value; return; }
     if(n==="on"){ it.on=!!el.value; return; }
     if(n==="s"){ it.s=+el.value||0; return; }
     if(n==="price"){ it.price=+el.value||0; return; }
@@ -1769,7 +1819,7 @@ function insert(s){
 }
 
 /* ---------- изображения ---------- */
-function resize(file,w,h,cb){
+function resize(file,w,h,cb,forceJpeg){
   var fr=new FileReader();
   fr.onload=function(){
     var im=new Image();
@@ -1777,7 +1827,8 @@ function resize(file,w,h,cb){
       var c=document.createElement("canvas"); c.width=w; c.height=h;
       var sc=Math.max(w/im.width,h/im.height), nw=im.width*sc, nh=im.height*sc;
       c.getContext("2d").drawImage(im,(w-nw)/2,(h-nh)/2,nw,nh);
-      var out=""; try{ out=c.toDataURL("image/webp",.82); }catch(e){}
+      var out="";
+      if(!forceJpeg){ try{ out=c.toDataURL("image/webp",.82); }catch(e){} }
       if(!out||out.indexOf("data:image/webp")!==0) out=c.toDataURL("image/jpeg",.82);
       cb(out, Math.round(out.length*.75/1024));
     };
@@ -1788,12 +1839,14 @@ function resize(file,w,h,cb){
 function readImage(el){
   var file=el.files&&el.files[0]; if(!file) return;
   var name=el.getAttribute("data-img"), sh=el.getAttribute("data-shape")||"h", s=SIZE[sh];
+  /* Instagram/Facebook изискват JPEG, не WebP — за SMM снимката винаги излиза JPEG */
   resize(file,s[0],s[1],function(uri,kb){
     if(name.indexOf("banner:")===0){ var r=name.split(":")[1]; D.heads[r]=D.heads[r]||{}; D.heads[r].banner=uri; }
+    else if(name==="smm"){ if(A.edit){ A.edit.smm=A.edit.smm||{}; A.edit.smm.img=uri; } }
     else if(A.edit) A.edit[name]=uri;
     flash("Снимката е смалена до "+s[0]+"×"+s[1]+" · "+kb+" KB","ok");
     draw();
-  });
+  }, name==="smm");
 }
 /* ---------- запис ---------- */
 function blank(k){
@@ -1805,6 +1858,7 @@ function blank(k){
   if(k==="episodes"){b.yt="";b.sp="";b.n="";b.len="";b.cat="";}
   if(k==="merch"){b.img="";b.price=0;b.sizes=[];b.on=true;}
   if(k==="calendar"){b.kind="event";b.platform="";b.poster="";b.src="manual";b.genre=[];b.price=0;}
+  if(SMM_KINDS.indexOf(k)>=0) b.smm={img:"",caption:""};
   return b;
 }
 /* полетата в Настройки (data-f="s:...") не минават през collect() — той изисква отворен редактор (A.edit),
