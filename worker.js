@@ -246,6 +246,8 @@ const IMG_FIELDS = { reviews: "poster", news: "img", craft: "img", merch: "img" 
 const KEY_OF = { reviews: "r", news: "n", craft: "c", merch: "m" };
 /* допълнителни снимки извън основното поле: кадър за споделяне и банери на рубриките */
 const EXTRA_IMG = [{ key: "rs", kind: "reviews", field: "share" }];
+/* видовете съдържание, за които има SMM (Instagram/Facebook) публикуване от админ панела */
+const SMM_KINDS = ["reviews", "news", "craft"];
 const isDataUri = (v) => typeof v === "string" && v.slice(0, 11) === "data:image/";
 /* при запис: нова снимка (base64) се пази в собствен, отделен KV запис — в основното съдържание остава
    само кратък адрес. Иначе целият сайт трябва да пренася всички снимки при всяко зареждане (причината
@@ -266,6 +268,15 @@ async function keepImages(env, incoming) {
       const key = "img/" + x.key + "/" + encodeURIComponent(it.id);
       await env.MIM.put(key, it[x.field]);
       it[x.field] = "/" + key;
+    }
+  }
+  /* SMM снимка (за Instagram/Facebook) — вложена в it.smm.img, по същия принцип */
+  for (const kind of SMM_KINDS) {
+    for (const it of incoming[kind] || []) {
+      if (!it || !it.smm || !isDataUri(it.smm.img)) continue;
+      const key = "img/sm/" + encodeURIComponent(it.id);
+      await env.MIM.put(key, it.smm.img);
+      it.smm.img = "/" + key;
     }
   }
   for (const r of Object.keys(incoming.heads || {})) {
@@ -2490,6 +2501,19 @@ function seoRobots(origin, test) {
 }
 
 /* data:image/... → същинските байтове */
+/* обаждане към Meta Graph API (Facebook/Instagram) — токенът и ID-тата идват от Cloudflare (env), не от кода */
+async function metaFetch(env, pathAndQuery, params) {
+  const body = new URLSearchParams(Object.assign({ access_token: env.META_TOKEN || "" }, params || {}));
+  const res = await fetch("https://graph.facebook.com/v21.0/" + pathAndQuery, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+  let j = {};
+  try { j = await res.json(); } catch (e) {}
+  return j;
+}
+
 function dataUriToResponse(uri) {
   const m = /^data:([^;,]+);base64,(.*)$/s.exec(String(uri || ""));
   if (!m) return null;
@@ -2782,6 +2806,61 @@ async function handleRequest(request, env, ctx) {
       }
 
       return json({ error: "method" }, 405);
+    }
+
+    /* ---------- ръчно публикуване на статия в Instagram/Facebook — само за вече публична статия ---------- */
+    if (path === "/api/smm-publish" && request.method === "POST") {
+      const data = await stored(env);
+      const who = await whoIs(request, env, data);
+      if (!who || (who.role !== "admin" && who.role !== "moderator"))
+        return json({ error: "forbidden", message: "Нямаш право да публикуваш в SMM." }, 403);
+
+      let body;
+      try { body = await request.json(); } catch (e) { return json({ error: "bad_json", message: "Невалидни данни." }, 400); }
+      const kind = String(body.k || ""), id = String(body.id || "");
+      if (SMM_KINDS.indexOf(kind) < 0 || !data || !Array.isArray(data[kind]))
+        return json({ error: "bad_kind", message: "Непознат тип съдържание." }, 400);
+      const it = data[kind].find((x) => x && String(x.id) === id);
+      if (!it) return json({ error: "not_found", message: "Материалът не е намерен." }, 404);
+
+      // ръчно, само след клик — но никога преди статията реално да е публична на сайта
+      if (!seoLive(kind, it, data))
+        return json({ error: "not_live", message: "Статията още не е публична на сайта — публикувай я първо, после натисни бутона отново." }, 400);
+
+      const smm = it.smm || {};
+      if (!smm.img || !smm.caption)
+        return json({ error: "no_smm", message: "Липсва снимка или текст в раздел SMM на статията." }, 400);
+      if (!env.META_TOKEN || !env.META_IG_ID || !env.META_PAGE_ID)
+        return json({ error: "no_meta_keys", message: "Липсват Meta ключовете (META_TOKEN/META_IG_ID/META_PAGE_ID) в Cloudflare." }, 400);
+
+      const imageUrl = /^https?:/.test(smm.img) ? smm.img : url.origin + smm.img;
+      let igPostId = "", igErr = "", fbPostId = "", fbErr = "";
+
+      try {
+        const create = await metaFetch(env, env.META_IG_ID + "/media", { image_url: imageUrl, caption: smm.caption });
+        if (!create.id) throw new Error((create.error && create.error.message) || "контейнерът е отказан");
+        const pub = await metaFetch(env, env.META_IG_ID + "/media_publish", { creation_id: create.id });
+        if (!pub.id) throw new Error((pub.error && pub.error.message) || "публикуването е отказано");
+        igPostId = pub.id;
+      } catch (e) { igErr = e.message; }
+
+      // Facebook се пробва независимо — грешка тук не пречи на резултата от Instagram
+      try {
+        const fb = await metaFetch(env, env.META_PAGE_ID + "/photos", { url: imageUrl, caption: smm.caption });
+        if (!fb.id && !fb.post_id) throw new Error((fb.error && fb.error.message) || "публикуването е отказано");
+        fbPostId = fb.post_id || fb.id;
+      } catch (e) { fbErr = e.message; }
+
+      if (!igPostId)
+        return json({ error: "ig_failed", message: "Instagram: " + (igErr || "неуспешно.") }, 502);
+
+      it.smm = Object.assign({}, smm, { postedAt: new Date().toISOString(), igPostId, fbPostId: fbPostId || smm.fbPostId || "" });
+      await env.MIM.put("content", JSON.stringify(data));
+      ctx.waitUntil(publishPublicCache(env, data));
+      return json({
+        ok: true, igPostId, fbPostId,
+        warning: fbPostId ? "" : ("Facebook: " + (fbErr || "неуспешно.")),
+      });
     }
 
     /* кои стрийминг платформи изобщо ги има в България */
