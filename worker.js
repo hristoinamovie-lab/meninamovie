@@ -2513,6 +2513,16 @@ async function metaFetch(env, pathAndQuery, params) {
   try { j = await res.json(); } catch (e) {}
   return j;
 }
+/* публикуване на Facebook страница изисква конкретния токен НА СТРАНИЦАТА, не системния токен
+   директно — Meta го дава чрез отделна заявка, стига системният токен да има достъп до страницата */
+async function metaPageToken(env) {
+  const res = await fetch(
+    "https://graph.facebook.com/v21.0/" + env.META_PAGE_ID + "?fields=access_token&access_token=" + encodeURIComponent(env.META_TOKEN || "")
+  );
+  let j = {};
+  try { j = await res.json(); } catch (e) {}
+  return j.access_token || "";
+}
 
 function dataUriToResponse(uri) {
   const m = /^data:([^;,]+);base64,(.*)$/s.exec(String(uri || ""));
@@ -2838,9 +2848,12 @@ async function handleRequest(request, env, ctx) {
         return json({ error: "no_meta_keys", message: "Липсват Meta ключовете (META_TOKEN/META_IG_ID/META_PAGE_ID) в Cloudflare." }, 400);
 
       const imageUrl = /^https?:/.test(smm.img) ? smm.img : url.origin + smm.img;
-      let igPostId = "", igErr = "", fbPostId = "", fbErr = "";
+      // ако предишен опит вече е успял в едната платформа, не я пипаме пак при повторен опит —
+      // иначе неуспешен Facebook би карал Instagram да се дублира при всеки пореден клик
+      let igPostId = smm.igPostId || "", igErr = "";
+      let fbPostId = smm.fbPostId || "", fbErr = "";
 
-      if (wantIg) {
+      if (wantIg && !igPostId) {
         try {
           const create = await metaFetch(env, env.META_IG_ID + "/media", { image_url: imageUrl, caption: smm.caption });
           if (!create.id) throw new Error((create.error && create.error.message) || "контейнерът е отказан");
@@ -2850,33 +2863,30 @@ async function handleRequest(request, env, ctx) {
         } catch (e) { igErr = e.message; }
       }
 
-      if (wantFb) {
+      if (wantFb && !fbPostId) {
         try {
-          const fb = await metaFetch(env, env.META_PAGE_ID + "/photos", { url: imageUrl, caption: smm.caption });
+          const pageToken = await metaPageToken(env);
+          if (!pageToken) throw new Error("не успях да взема токен на страницата — провери дали System User-ът в Meta има достъп (Assign Assets) до тази Facebook страница");
+          const fb = await metaFetch(env, env.META_PAGE_ID + "/photos", { url: imageUrl, caption: smm.caption, access_token: pageToken });
           if (!fb.id && !fb.post_id) throw new Error((fb.error && fb.error.message) || "публикуването е отказано");
           fbPostId = fb.post_id || fb.id;
         } catch (e) { fbErr = e.message; }
       }
 
-      // всичко избрано трябва да е минало успешно, иначе бутонът не се отбелязва за готово —
-      // за да може да се натисне пак за повторен опит
+      // пазим веднага каквото е успяло — дори само едната платформа — за да не се губи при неуспех на другата
+      it.smm = Object.assign({}, smm, { igPostId, fbPostId });
       const igOk = !wantIg || igPostId, fbOk = !wantFb || fbPostId;
-      if (!igOk || !fbOk) {
-        const msgs = [];
-        if (wantIg && !igPostId) msgs.push("Instagram: " + (igErr || "неуспешно."));
-        if (wantFb && !fbPostId) msgs.push("Facebook: " + (fbErr || "неуспешно."));
-        return json({ error: "publish_failed", message: msgs.join(" / "), igPostId, fbPostId }, 502);
-      }
-
-      const postedAt = new Date().toISOString();
-      it.smm = Object.assign({}, smm, {
-        postedAt,
-        igPostId: igPostId || smm.igPostId || "",
-        fbPostId: fbPostId || smm.fbPostId || "",
-      });
+      if (igOk && fbOk) it.smm.postedAt = new Date().toISOString();
       await env.MIM.put("content", JSON.stringify(data));
       ctx.waitUntil(publishPublicCache(env, data));
-      return json({ ok: true, igPostId, fbPostId, postedAt });
+
+      if (!igOk || !fbOk) {
+        const msgs = [];
+        if (wantIg && !igOk) msgs.push("Instagram: " + (igErr || "неуспешно."));
+        if (wantFb && !fbOk) msgs.push("Facebook: " + (fbErr || "неуспешно."));
+        return json({ error: "publish_failed", message: msgs.join(" / "), igPostId, fbPostId }, 502);
+      }
+      return json({ ok: true, igPostId, fbPostId, postedAt: it.smm.postedAt });
     }
 
     /* кои стрийминг платформи изобщо ги има в България */
