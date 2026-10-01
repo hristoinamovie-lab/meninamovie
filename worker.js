@@ -2861,22 +2861,18 @@ async function handleRequest(request, env, ctx) {
         }
       }
 
-      // platform === "fb" — директно снимката на статията (не тази за Instagram) + връзка към статията в
-      // текста, вместо да се разчита на автоматичното "сканиране" на Facebook по og: таговете (понякога
-      // показва стара/грешна визия заради кеша на самия Facebook)
+      // platform === "fb" — споделяне на ЛИНК (не снимка), за да се отваря статията при клик навсякъде
+      // по поста, както при обикновено споделяне. Преди това принудително казваме на Facebook да
+      // презареди og: визията на страницата — иначе понякога показва стар/грешен кеширан резултат.
       if (!env.META_TOKEN || !env.META_PAGE_ID)
         return json({ error: "no_meta_keys", message: "Липсват Meta ключовете (META_TOKEN/META_PAGE_ID) в Cloudflare." }, 400);
       const articleUrl = url.origin + seoUrl(kind, it);
-      const articleImg = itemImage(it);
-      const fbImageUrl = articleImg ? (/^https?:/.test(articleImg) ? articleImg : url.origin + articleImg) : "";
-      const fbMessage = (it.lead ? String(it.lead).trim() + "\n\n" : "") + articleUrl;
       try {
+        await metaFetch(env, "", { id: articleUrl, scrape: "true" });
         const pageToken = await metaPageToken(env);
         if (!pageToken) throw new Error("не успях да взема токен на страницата — провери дали System User-ът в Meta има достъп (Assign Assets) до тази Facebook страница");
-        const fb = fbImageUrl
-          ? await metaFetch(env, env.META_PAGE_ID + "/photos", { url: fbImageUrl, caption: fbMessage, access_token: pageToken })
-          : await metaFetch(env, env.META_PAGE_ID + "/feed", { link: articleUrl, message: it.lead || "", access_token: pageToken });
-        const fbPostId = fb.post_id || fb.id;
+        const fb = await metaFetch(env, env.META_PAGE_ID + "/feed", { link: articleUrl, message: it.lead || "", access_token: pageToken });
+        const fbPostId = fb.id;
         if (!fbPostId) throw new Error((fb.error && fb.error.message) || "публикуването е отказано");
         it.smm = Object.assign({}, smm, { fbPostId, fbAt: new Date().toISOString() });
         await env.MIM.put("content", JSON.stringify(data));
