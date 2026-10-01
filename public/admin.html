@@ -1026,7 +1026,7 @@ function edSmmHTML(k,it){
     '<input type="file" accept="image/*" data-img="smm" data-shape="ig" style="margin-top:8px;width:100%;background:none;border:0;color:var(--tx2);font-size:12px">'+
     '</div>'+
     '<div class="a-f"><label>Текст за публикацията (copy)</label>'+
-    '<textarea data-f="smmCaption" placeholder="Текст под снимката в Instagram/Facebook…" style="min-height:160px;width:100%;background:#0A0908;border:1px solid var(--line);color:var(--tx);padding:10px;font:inherit">'+esc2(s.caption||"")+'</textarea>'+
+    '<textarea data-f="smmCaption" placeholder="Текст за публикацията в Instagram/Facebook…" style="min-height:160px;width:100%;background:#0A0908;border:1px solid var(--line);color:var(--tx);padding:10px;font:inherit">'+esc2(s.caption||"")+'</textarea>'+
     '</div>'+
     '<div class="a-f"><label>Къде да се публикува</label>'+
     '<div class="tagbox">'+
@@ -1035,7 +1035,7 @@ function edSmmHTML(k,it){
     '</div>'+
     '<p class="a-note">По подразбиране са включени и двете — изключи някоя, ако искаш да я пропуснеш при това публикуване.</p>'+
     '</div>'+
-    '<p class="a-note">Тази снимка и текст се ползват от бутона SMM до статията в списъка. Запазват се с обикновеното „Запази" горе. Публикуването проверява дали статията вече е публична на сайта — ако е насрочена или скрита, отказва.</p>'+
+    '<p class="a-note">Instagram качва снимката по-горе директно като публикация. Facebook не ползва тази снимка — споделя линк към статията на сайта (като обикновено споделяне), с визията и заглавието, които сайтът вече показва за нея. Текстът по-горе се ползва и за двете. Запазва се с обикновеното „Запази" горе. Публикуването проверява дали статията вече е публична на сайта — ако е насрочена или скрита, отказва.</p>'+
     '</div></div>';
 }
 /* пълен преглед — как ще изглежда публикуваната страница, със снимка и тагове */
@@ -1514,8 +1514,9 @@ function onClick(e){
   }
   if(act==="smmpublish"){
     var oS=all(k).filter(function(x){return x.id===id;})[0]; if(!oS) return;
-    if(!oS.smm||!oS.smm.img||!oS.smm.caption){ flash("Добави снимка и текст в раздел SMM на статията, преди да публикуваш.","err"); return; }
+    if(!oS.smm||!oS.smm.caption){ flash("Добави текст в раздел SMM на статията, преди да публикуваш.","err"); return; }
     if(oS.smm.ig===false&&oS.smm.fb===false){ flash("Отметни поне Instagram или Facebook в раздел SMM на статията.","err"); return; }
+    if(oS.smm.ig!==false&&!oS.smm.img){ flash("Добави снимка за Instagram в раздел SMM на статията.","err"); return; }
     var targets=[oS.smm.ig!==false?"Instagram":null,oS.smm.fb!==false?"Facebook":null].filter(Boolean).join(" и ");
     if(!confirm('Да публикувам ли "'+oS.t+'" в '+targets+'?')) return;
     flash("Пращам към "+targets+"…","ok");
