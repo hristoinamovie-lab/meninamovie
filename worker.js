@@ -2827,9 +2827,11 @@ async function handleRequest(request, env, ctx) {
 
       let body;
       try { body = await request.json(); } catch (e) { return json({ error: "bad_json", message: "Невалидни данни." }, 400); }
-      const kind = String(body.k || ""), id = String(body.id || "");
+      const kind = String(body.k || ""), id = String(body.id || ""), platform = String(body.platform || "");
       if (SMM_KINDS.indexOf(kind) < 0 || !data || !Array.isArray(data[kind]))
         return json({ error: "bad_kind", message: "Непознат тип съдържание." }, 400);
+      if (platform !== "ig" && platform !== "fb")
+        return json({ error: "bad_platform", message: "Непозната платформа." }, 400);
       const it = data[kind].find((x) => x && String(x.id) === id);
       if (!it) return json({ error: "not_found", message: "Материалът не е намерен." }, 404);
 
@@ -2838,61 +2840,51 @@ async function handleRequest(request, env, ctx) {
         return json({ error: "not_live", message: "Статията още не е публична на сайта — публикувай я първо, после натисни бутона отново." }, 400);
 
       const smm = it.smm || {};
-      if (!smm.caption)
-        return json({ error: "no_smm", message: "Липсва текст в раздел SMM на статията." }, 400);
-      // по подразбиране и двете са избрани — само изрично false ги изключва (бутон в SMM раздела)
-      const wantIg = smm.ig !== false, wantFb = smm.fb !== false;
-      if (!wantIg && !wantFb)
-        return json({ error: "no_target", message: "Избери поне Instagram или Facebook в раздел SMM на статията." }, 400);
-      // снимката е нужна само за Instagram — Facebook споделя линк към статията и взима визията от самия сайт
-      if (wantIg && !smm.img)
-        return json({ error: "no_smm", message: "Липсва снимка за Instagram в раздел SMM на статията." }, 400);
-      if (!env.META_TOKEN || (wantIg && !env.META_IG_ID) || (wantFb && !env.META_PAGE_ID))
-        return json({ error: "no_meta_keys", message: "Липсват Meta ключовете (META_TOKEN/META_IG_ID/META_PAGE_ID) в Cloudflare." }, 400);
 
-      const imageUrl = smm.img ? (/^https?:/.test(smm.img) ? smm.img : url.origin + smm.img) : "";
-      const articleUrl = url.origin + seoUrl(kind, it);
-      // ако предишен опит вече е успял в едната платформа, не я пипаме пак при повторен опит —
-      // иначе неуспешен Facebook би карал Instagram да се дублира при всеки пореден клик
-      let igPostId = smm.igPostId || "", igErr = "";
-      let fbPostId = smm.fbPostId || "", fbErr = "";
-
-      if (wantIg && !igPostId) {
+      if (platform === "ig") {
+        if (!smm.img || !smm.caption)
+          return json({ error: "no_smm", message: "Липсва снимка или текст в раздел Instagram на статията." }, 400);
+        if (!env.META_TOKEN || !env.META_IG_ID)
+          return json({ error: "no_meta_keys", message: "Липсват Meta ключовете (META_TOKEN/META_IG_ID) в Cloudflare." }, 400);
+        const imageUrl = /^https?:/.test(smm.img) ? smm.img : url.origin + smm.img;
         try {
           const create = await metaFetch(env, env.META_IG_ID + "/media", { image_url: imageUrl, caption: smm.caption });
           if (!create.id) throw new Error((create.error && create.error.message) || "контейнерът е отказан");
           const pub = await metaFetch(env, env.META_IG_ID + "/media_publish", { creation_id: create.id });
           if (!pub.id) throw new Error((pub.error && pub.error.message) || "публикуването е отказано");
-          igPostId = pub.id;
-        } catch (e) { igErr = e.message; }
+          it.smm = Object.assign({}, smm, { igPostId: pub.id, igAt: new Date().toISOString() });
+          await env.MIM.put("content", JSON.stringify(data));
+          ctx.waitUntil(publishPublicCache(env, data));
+          return json({ ok: true, igPostId: pub.id });
+        } catch (e) {
+          return json({ error: "ig_failed", message: "Instagram: " + e.message }, 502);
+        }
       }
 
-      // Facebook — не снимка, а споделяне на линк към статията (Facebook сам си тегли визията/
-      // заглавието от og: таговете на страницата, както при обикновено ръчно споделяне)
-      if (wantFb && !fbPostId) {
-        try {
-          const pageToken = await metaPageToken(env);
-          if (!pageToken) throw new Error("не успях да взема токен на страницата — провери дали System User-ът в Meta има достъп (Assign Assets) до тази Facebook страница");
-          const fb = await metaFetch(env, env.META_PAGE_ID + "/feed", { link: articleUrl, message: smm.caption, access_token: pageToken });
-          if (!fb.id) throw new Error((fb.error && fb.error.message) || "публикуването е отказано");
-          fbPostId = fb.id;
-        } catch (e) { fbErr = e.message; }
+      // platform === "fb" — директно снимката на статията (не тази за Instagram) + връзка към статията в
+      // текста, вместо да се разчита на автоматичното "сканиране" на Facebook по og: таговете (понякога
+      // показва стара/грешна визия заради кеша на самия Facebook)
+      if (!env.META_TOKEN || !env.META_PAGE_ID)
+        return json({ error: "no_meta_keys", message: "Липсват Meta ключовете (META_TOKEN/META_PAGE_ID) в Cloudflare." }, 400);
+      const articleUrl = url.origin + seoUrl(kind, it);
+      const articleImg = itemImage(it);
+      const fbImageUrl = articleImg ? (/^https?:/.test(articleImg) ? articleImg : url.origin + articleImg) : "";
+      const fbMessage = (it.lead ? String(it.lead).trim() + "\n\n" : "") + articleUrl;
+      try {
+        const pageToken = await metaPageToken(env);
+        if (!pageToken) throw new Error("не успях да взема токен на страницата — провери дали System User-ът в Meta има достъп (Assign Assets) до тази Facebook страница");
+        const fb = fbImageUrl
+          ? await metaFetch(env, env.META_PAGE_ID + "/photos", { url: fbImageUrl, caption: fbMessage, access_token: pageToken })
+          : await metaFetch(env, env.META_PAGE_ID + "/feed", { link: articleUrl, message: it.lead || "", access_token: pageToken });
+        const fbPostId = fb.post_id || fb.id;
+        if (!fbPostId) throw new Error((fb.error && fb.error.message) || "публикуването е отказано");
+        it.smm = Object.assign({}, smm, { fbPostId, fbAt: new Date().toISOString() });
+        await env.MIM.put("content", JSON.stringify(data));
+        ctx.waitUntil(publishPublicCache(env, data));
+        return json({ ok: true, fbPostId });
+      } catch (e) {
+        return json({ error: "fb_failed", message: "Facebook: " + e.message }, 502);
       }
-
-      // пазим веднага каквото е успяло — дори само едната платформа — за да не се губи при неуспех на другата
-      it.smm = Object.assign({}, smm, { igPostId, fbPostId });
-      const igOk = !wantIg || igPostId, fbOk = !wantFb || fbPostId;
-      if (igOk && fbOk) it.smm.postedAt = new Date().toISOString();
-      await env.MIM.put("content", JSON.stringify(data));
-      ctx.waitUntil(publishPublicCache(env, data));
-
-      if (!igOk || !fbOk) {
-        const msgs = [];
-        if (wantIg && !igOk) msgs.push("Instagram: " + (igErr || "неуспешно."));
-        if (wantFb && !fbOk) msgs.push("Facebook: " + (fbErr || "неуспешно."));
-        return json({ error: "publish_failed", message: msgs.join(" / "), igPostId, fbPostId }, 502);
-      }
-      return json({ ok: true, igPostId, fbPostId, postedAt: it.smm.postedAt });
     }
 
     /* кои стрийминг платформи изобщо ги има в България */
