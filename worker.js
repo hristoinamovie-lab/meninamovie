@@ -2838,16 +2838,20 @@ async function handleRequest(request, env, ctx) {
         return json({ error: "not_live", message: "Статията още не е публична на сайта — публикувай я първо, после натисни бутона отново." }, 400);
 
       const smm = it.smm || {};
-      if (!smm.img || !smm.caption)
-        return json({ error: "no_smm", message: "Липсва снимка или текст в раздел SMM на статията." }, 400);
-      // по подразбиране и двете са избрани — само изрично false ги изключва (чекбокс в SMM раздела)
+      if (!smm.caption)
+        return json({ error: "no_smm", message: "Липсва текст в раздел SMM на статията." }, 400);
+      // по подразбиране и двете са избрани — само изрично false ги изключва (бутон в SMM раздела)
       const wantIg = smm.ig !== false, wantFb = smm.fb !== false;
       if (!wantIg && !wantFb)
         return json({ error: "no_target", message: "Избери поне Instagram или Facebook в раздел SMM на статията." }, 400);
+      // снимката е нужна само за Instagram — Facebook споделя линк към статията и взима визията от самия сайт
+      if (wantIg && !smm.img)
+        return json({ error: "no_smm", message: "Липсва снимка за Instagram в раздел SMM на статията." }, 400);
       if (!env.META_TOKEN || (wantIg && !env.META_IG_ID) || (wantFb && !env.META_PAGE_ID))
         return json({ error: "no_meta_keys", message: "Липсват Meta ключовете (META_TOKEN/META_IG_ID/META_PAGE_ID) в Cloudflare." }, 400);
 
-      const imageUrl = /^https?:/.test(smm.img) ? smm.img : url.origin + smm.img;
+      const imageUrl = smm.img ? (/^https?:/.test(smm.img) ? smm.img : url.origin + smm.img) : "";
+      const articleUrl = url.origin + seoUrl(kind, it);
       // ако предишен опит вече е успял в едната платформа, не я пипаме пак при повторен опит —
       // иначе неуспешен Facebook би карал Instagram да се дублира при всеки пореден клик
       let igPostId = smm.igPostId || "", igErr = "";
@@ -2863,13 +2867,15 @@ async function handleRequest(request, env, ctx) {
         } catch (e) { igErr = e.message; }
       }
 
+      // Facebook — не снимка, а споделяне на линк към статията (Facebook сам си тегли визията/
+      // заглавието от og: таговете на страницата, както при обикновено ръчно споделяне)
       if (wantFb && !fbPostId) {
         try {
           const pageToken = await metaPageToken(env);
           if (!pageToken) throw new Error("не успях да взема токен на страницата — провери дали System User-ът в Meta има достъп (Assign Assets) до тази Facebook страница");
-          const fb = await metaFetch(env, env.META_PAGE_ID + "/photos", { url: imageUrl, caption: smm.caption, access_token: pageToken });
-          if (!fb.id && !fb.post_id) throw new Error((fb.error && fb.error.message) || "публикуването е отказано");
-          fbPostId = fb.post_id || fb.id;
+          const fb = await metaFetch(env, env.META_PAGE_ID + "/feed", { link: articleUrl, message: smm.caption, access_token: pageToken });
+          if (!fb.id) throw new Error((fb.error && fb.error.message) || "публикуването е отказано");
+          fbPostId = fb.id;
         } catch (e) { fbErr = e.message; }
       }
 
