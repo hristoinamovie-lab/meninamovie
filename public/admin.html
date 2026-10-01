@@ -735,10 +735,12 @@ function listRowNew(k,it){
   var can2 = canPublish()&&(st==="published"||st==="hidden");
   var smmBtn="";
   if(SMM_KINDS.indexOf(k)>=0&&canPublish()){
-    var posted = !!(it.smm&&it.smm.postedAt);
-    smmBtn = '<button class="pbtn sm'+(posted?" on":"")+'" '+
-      (posted?"disabled":'data-act="smmpublish" data-k="'+k+'" data-id="'+it.id+'"')+'>'+
-      (posted?"✓ SMM":"→ SMM")+'</button>';
+    // бутоните никога не се деактивират — ако постът бъде изтрит директно в Instagram/Facebook,
+    // панелът няма как да разбере сам; затова винаги може да се натисне пак (с потвърждение)
+    var igDone=!!(it.smm&&it.smm.igPostId), fbDone=!!(it.smm&&it.smm.fbPostId);
+    smmBtn =
+      '<button class="pbtn sm'+(igDone?" on":"")+'" data-act="smmpublish" data-plat="ig" data-k="'+k+'" data-id="'+it.id+'">'+(igDone?"✓ Instagram":"→ Instagram")+'</button>'+
+      '<button class="pbtn sm'+(fbDone?" on":"")+'" data-act="smmpublish" data-plat="fb" data-k="'+k+'" data-id="'+it.id+'">'+(fbDone?"✓ Facebook":"→ Facebook")+'</button>';
   }
   return '<div class="p-row'+(sched?" is-sched":"")+'" style="cursor:default" data-title="'+esc2(String(it.t||"").toLowerCase())+'"'+
     (catField?' data-cat="'+esc2(it[catField]||"")+'"':"")+
@@ -1010,14 +1012,15 @@ function edModeTabs(k){
   return '<div class="ed-tabbar">'+
     '<button type="button" data-act="edmode" data-mode="write" class="'+(m==="write"?"on":"")+'">Редакция</button>'+
     '<button type="button" data-act="edmode" data-mode="preview" class="'+(m==="preview"?"on":"")+'">Преглед</button>'+
-    (SMM_KINDS.indexOf(k)>=0?'<button type="button" data-act="edmode" data-mode="smm" class="'+(m==="smm"?"on":"")+'">SMM</button>':"")+
+    (SMM_KINDS.indexOf(k)>=0?'<button type="button" data-act="edmode" data-mode="smm" class="'+(m==="smm"?"on":"")+'">Instagram</button>':"")+
     '</div>';
 }
-/* снимка (1080×1350) + текст за Instagram/Facebook — пазят се на самата статия (it.smm),
-   запазват се с общия бутон "Запази", и после се публикуват отделно с бутона до статията в списъка */
+/* снимка (1080×1350) + текст за Instagram — пазят се на самата статия (it.smm), запазват се с общия
+   бутон "Запази", и после се публикуват с бутона "Instagram" до статията в списъка. Facebook няма
+   отделни полета тук — бутонът "Facebook" в списъка споделя директно снимката и текста на самата
+   статия, без нужда от подготовка тук. */
 function edSmmHTML(k,it){
-  var s=it.smm||(it.smm={img:"",caption:"",ig:true,fb:true});
-  var wantIg=s.ig!==false, wantFb=s.fb!==false;
+  var s=it.smm||(it.smm={img:"",caption:""});
   return '<div class="pv-wrap"><div class="a-form"><div class="a-f">'+
     '<label>Снимка за Instagram — 1080 × 1350</label>'+
     (s.img
@@ -1026,16 +1029,9 @@ function edSmmHTML(k,it){
     '<input type="file" accept="image/*" data-img="smm" data-shape="ig" style="margin-top:8px;width:100%;background:none;border:0;color:var(--tx2);font-size:12px">'+
     '</div>'+
     '<div class="a-f"><label>Текст за публикацията (copy)</label>'+
-    '<textarea data-f="smmCaption" placeholder="Текст за публикацията в Instagram/Facebook…" style="min-height:160px;width:100%;background:#0A0908;border:1px solid var(--line);color:var(--tx);padding:10px;font:inherit">'+esc2(s.caption||"")+'</textarea>'+
+    '<textarea data-f="smmCaption" placeholder="Текст за публикацията в Instagram…" style="min-height:160px;width:100%;background:#0A0908;border:1px solid var(--line);color:var(--tx);padding:10px;font:inherit">'+esc2(s.caption||"")+'</textarea>'+
     '</div>'+
-    '<div class="a-f"><label>Къде да се публикува</label>'+
-    '<div class="tagbox">'+
-      '<span class="'+(wantIg?"on":"")+'" data-act="smmtoggle" data-plat="ig">Instagram</span>'+
-      '<span class="'+(wantFb?"on":"")+'" data-act="smmtoggle" data-plat="fb">Facebook</span>'+
-    '</div>'+
-    '<p class="a-note">По подразбиране са включени и двете — изключи някоя, ако искаш да я пропуснеш при това публикуване.</p>'+
-    '</div>'+
-    '<p class="a-note">Instagram качва снимката по-горе директно като публикация. Facebook не ползва тази снимка — споделя линк към статията на сайта (като обикновено споделяне), с визията и заглавието, които сайтът вече показва за нея. Текстът по-горе се ползва и за двете. Запазва се с обикновеното „Запази" горе. Публикуването проверява дали статията вече е публична на сайта — ако е насрочена или скрита, отказва.</p>'+
+    '<p class="a-note">Снимката и текстът тук са за бутона "Instagram" до статията в списъка. За Facebook няма нужда от подготовка — бутонът "Facebook" в списъка публикува директно снимката и краткото описание на самата статия, с линк към нея. Запазва се с обикновеното „Запази" горе. Публикуването проверява дали статията вече е публична на сайта — ако е насрочена или скрита, отказва.</p>'+
     '</div></div>';
 }
 /* пълен преглед — как ще изглежда публикуваната страница, със снимка и тагове */
@@ -1508,27 +1504,26 @@ function onClick(e){
   if(act==="calhide"){ var o3=all(k).filter(function(x){return x.id===id;})[0];
     if(o3){ o3.hidden=!o3.hidden; persist(o3.hidden?"Скрито от календара.":"Върнато в календара."); } return; }
   if(act==="rmsmmimg"){ if(A.edit){ A.edit.smm=A.edit.smm||{}; A.edit.smm.img=""; } draw(); return; }
-  if(act==="smmtoggle"){
-    if(A.edit){ A.edit.smm=A.edit.smm||{}; var p=t.getAttribute("data-plat"), cur=A.edit.smm[p]!==false; A.edit.smm[p]=!cur; draw(); }
-    return;
-  }
   if(act==="smmpublish"){
+    var plat=t.getAttribute("data-plat"), platLbl=plat==="ig"?"Instagram":"Facebook";
     var oS=all(k).filter(function(x){return x.id===id;})[0]; if(!oS) return;
-    if(!oS.smm||!oS.smm.caption){ flash("Добави текст в раздел SMM на статията, преди да публикуваш.","err"); return; }
-    if(oS.smm.ig===false&&oS.smm.fb===false){ flash("Отметни поне Instagram или Facebook в раздел SMM на статията.","err"); return; }
-    if(oS.smm.ig!==false&&!oS.smm.img){ flash("Добави снимка за Instagram в раздел SMM на статията.","err"); return; }
-    var targets=[oS.smm.ig!==false?"Instagram":null,oS.smm.fb!==false?"Facebook":null].filter(Boolean).join(" и ");
-    if(!confirm('Да публикувам ли "'+oS.t+'" в '+targets+'?')) return;
-    flash("Пращам към "+targets+"…","ok");
-    fetch("/api/smm-publish",{method:"POST",headers:uHeaders(),body:JSON.stringify({k:k,id:id})})
+    if(plat==="ig"&&(!oS.smm||!oS.smm.img||!oS.smm.caption)){ flash("Добави снимка и текст в раздел Instagram на статията, преди да публикуваш.","err"); return; }
+    // бутонът не се блокира след първо публикуване — ако постът бъде изтрит директно в
+    // Instagram/Facebook, това е единственият начин да се публикува пак
+    var already = plat==="ig" ? (oS.smm&&oS.smm.igPostId) : (oS.smm&&oS.smm.fbPostId);
+    var q = already
+      ? ('Вече е публикувано в '+platLbl+' по-рано. Да публикувам ли отново (напр. ако старият пост е изтрит там)?')
+      : ('Да публикувам ли "'+oS.t+'" в '+platLbl+'?');
+    if(!confirm(q)) return;
+    flash("Пращам към "+platLbl+"…","ok");
+    fetch("/api/smm-publish",{method:"POST",headers:uHeaders(),body:JSON.stringify({k:k,id:id,platform:plat})})
       .then(function(r){return r.json().catch(function(){return {};}).then(function(j){return {ok:r.ok,j:j};});})
       .then(function(res){
-        // дори при грешка сървърът пази каквото вече е успяло (напр. Instagram да, Facebook не) —
-        // отразяваме го тук, за да не изглежда "нищо не мина" и за да не се дублира при нов опит
-        oS.smm.igPostId=res.j.igPostId||oS.smm.igPostId||""; oS.smm.fbPostId=res.j.fbPostId||oS.smm.fbPostId||"";
-        if(!res.ok||res.j.error){ flash("Грешка: "+(res.j.message||res.j.error||"неуспешно публикуване.")+" Натисни SMM пак — успешната част няма да се качи повторно.","err"); draw(); return; }
-        oS.smm.postedAt=res.j.postedAt||new Date().toISOString();
-        flash("Публикувано в "+targets+".","ok");
+        if(!res.ok||res.j.error){ flash("Грешка: "+(res.j.message||res.j.error||"неуспешно публикуване."),"err"); return; }
+        oS.smm=oS.smm||{};
+        if(plat==="ig") oS.smm.igPostId=res.j.igPostId||oS.smm.igPostId;
+        else oS.smm.fbPostId=res.j.fbPostId||oS.smm.fbPostId;
+        flash("Публикувано в "+platLbl+".","ok");
         draw();
       })
       .catch(function(){ flash("Няма връзка със сървъра.","err"); });
@@ -1876,7 +1871,7 @@ function blank(k){
   if(k==="episodes"){b.yt="";b.sp="";b.n="";b.len="";b.cat="";}
   if(k==="merch"){b.img="";b.price=0;b.sizes=[];b.on=true;}
   if(k==="calendar"){b.kind="event";b.platform="";b.poster="";b.src="manual";b.genre=[];b.price=0;}
-  if(SMM_KINDS.indexOf(k)>=0) b.smm={img:"",caption:"",ig:true,fb:true};
+  if(SMM_KINDS.indexOf(k)>=0) b.smm={img:"",caption:""};
   return b;
 }
 /* полетата в Настройки (data-f="s:...") не минават през collect() — той изисква отворен редактор (A.edit),
