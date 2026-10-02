@@ -2515,6 +2515,23 @@ async function metaFetch(env, pathAndQuery, params) {
 }
 /* публикуване на Facebook страница изисква конкретния токен НА СТРАНИЦАТА, не системния токен
    директно — Meta го дава чрез отделна заявка, стига системният токен да има достъп до страницата */
+/* Instagram обработва качената снимка няколко секунди — публикуването преди това връща "Media ID is not available".
+   Питаме за статуса на контейнера, докато стане FINISHED. */
+async function metaWaitContainer(env, containerId) {
+  let last = "";
+  for (let i = 0; i < 12; i++) {
+    const res = await fetch(
+      "https://graph.facebook.com/v21.0/" + containerId + "?fields=status_code&access_token=" + encodeURIComponent(env.META_TOKEN || "")
+    );
+    let j = {};
+    try { j = await res.json(); } catch (e) {}
+    last = j.status_code || "";
+    if (last === "FINISHED") return "";
+    if (last === "ERROR" || last === "EXPIRED") return "Instagram отказа снимката (статус " + last + ") — провери размера/формата ѝ";
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+  return "Instagram още обработва снимката (статус: " + (last || "неизвестен") + ") — опитай пак след малко";
+}
 async function metaPageToken(env) {
   const res = await fetch(
     "https://graph.facebook.com/v21.0/" + env.META_PAGE_ID + "?fields=access_token&access_token=" + encodeURIComponent(env.META_TOKEN || "")
@@ -2850,6 +2867,8 @@ async function handleRequest(request, env, ctx) {
         try {
           const create = await metaFetch(env, env.META_IG_ID + "/media", { image_url: imageUrl, caption: smm.caption });
           if (!create.id) throw new Error((create.error && create.error.message) || "контейнерът е отказан");
+          const notReady = await metaWaitContainer(env, create.id);
+          if (notReady) throw new Error(notReady);
           const pub = await metaFetch(env, env.META_IG_ID + "/media_publish", { creation_id: create.id });
           if (!pub.id) throw new Error((pub.error && pub.error.message) || "публикуването е отказано");
           it.smm = Object.assign({}, smm, { igPostId: pub.id, igAt: new Date().toISOString() });
